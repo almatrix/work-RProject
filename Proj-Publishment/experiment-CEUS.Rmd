@@ -1,0 +1,1302 @@
+---
+title: "Understanding Contextualized Mobility Patterns from Location-based Social Networks"
+author: "Ming Li"
+date: "Wednesday, September 10, 2014"
+output: html_document
+---
+
+before trying infering mobility patterns from the dataset, the question must be answered: 
+
+to what extend can mobility patterns be revealed from the dataset? 
+is it predictable? how predictable is it?
+
+```{r,echo=FALSE}
+load("D:\\Experiments\\R\\data\\checkin_global_all_0918.Rda")
+library("rgdal")
+library(scales)
+library(ggplot2)
+library(reshape2)
+library(manipulate)
+library("plyr")
+source("D:\\GitRepos\\work\\fun\\multiplot.R")
+source("D:\\GitRepos\\work\\fun\\lm_eqn.R")
+ppi=300
+basedir = "D:\\Experiments\\R\\img\\IJGIS\\"
+```
+
+
+#### 1. some statistical results of the dataset
+
+##### 1.1 Trajectory
+```{r,echo=FALSE, fig.width=6, fig.height=6}
+# library(ggmap)
+# map <- get_map(location = c(lon=-74.0059,lat=40.7127), zoom = 11, color="bw")
+# map = get_openstreetmap(bbox = c(left = -74.27, bottom = 40.48, 
+#                                  right = -73.69, top = 40.91),
+#                         format = "png") 
+
+
+nycb = readOGR(dsn="D:\\Experiments\\foursquare checkin data\\shapefile\\boundaries", 
+               layer="NYC_borough_boundaries_WGS84")
+nycb@data$id = rownames(nycb@data)
+nycb.points = fortify(nycb, region="id")
+nycb.df = join(nycb.points, nycb@data, by="id")
+
+
+
+load("D:\\Experiments\\R\\data\\checkin_single_0910.Rda")
+distinct.locations = as.data.frame(table(checkin.single$venue_id))
+checkin.single = merge(x=checkin.single, 
+                       y=distinct.locations, 
+                       by.x="venue_id", by.y="Var1", all.X=TRUE)
+# order by time
+checkin.single = checkin.single[order(checkin.single$timestamps.x),]
+# traj = checkin.single[,c("lat.x","lon.x")]
+
+# 
+# checkin.A = usersets[[usersets.active.idx[1]]]
+# checkin.A = merge(x=checkin.A, 
+#                   y=as.data.frame(table(checkin.A$venue_id)), 
+#                   by.x="venue_id", by.y="Var1", all.X=TRUE)
+# checkin.A = checkin.A[order(checkin.A$timestamps.x),]
+
+
+
+
+# p1<-ggmap(map) + 
+#     geom_polygon(data=nycb.df,aes(long,lat,group=group,fill=BoroCode,alpha=1/2)) +
+# #     geom_path(data=nycb.df,aes(long,lat,group=group,fill=BoroCode),color="blue") +
+#     geom_path(data=checkin.single, aes(x=lon.x, y=lat.x, colour=yearday),alpha=1/2)+
+#     geom_point(data=checkin.single, aes(x=lon.x, y=lat.x, size = sqrt(sqrt(Freq))), 
+#                color = "dark green", alpha = 1/3)+
+#     theme(legend.position="none",axis.title=element_blank())
+# p2<-ggmap(map) + 
+#     geom_path(data=checkin.A, aes(x=lon.x, y=lat.x, colour=yearday),alpha=1/2)+
+#     geom_point(data=checkin.A, aes(x=lon.x, y=lat.x, size = sqrt(sqrt(Freq))), 
+#                color = "dark green", alpha = 1/3)+
+#     theme(legend.position="none",axis.title=element_blank())
+# png(paste0(basedir,"img\\ceus_traj_map.png"), width = 8*ppi, height = 4*ppi, res=ppi,bg = "transparent")
+# multiplot(p1, p2,cols=2)
+# dev.off()
+
+p3<-ggplot(checkin.single) +
+    
+#     geom_polygon(data=nycb.df,aes(long,lat,group=group),fill="#CADFAA",alpha=0.8) + 
+    geom_polygon(data=nycb.df,aes(long,lat,group=group),alpha=.1,color="grey") +
+#     scale_fill_manual(values=c("#9999CC", "#9999CC", "#9999CC","#9999CC", "#9999CC"))+
+#     geom_path(data=nycb.df,aes(long,lat,group=group,fill=BoroCode),color="white") +
+    
+     geom_path(aes(x=lon.x, y=lat.x),color="#55B1F7",alpha=.6,size=.1)+
+    geom_point(aes(x=lon.x, y=lat.x, size = sqrt(Freq)/10),
+               color = "#55B1F7", alpha = 0.3)+
+#     coord_equal() +
+#     scale_fill_brewer("Utah Ecoregion")
+    theme(legend.position="none",
+#           panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
+#           panel.background = element_blank(), plot.background = element_blank(),
+          axis.title=element_blank())
+#           panel.border = element_rect(fill=NA) )
+#           axis.text=element_blank(),axis.ticks=element_blank())
+#           axis.line = element_line())
+# p4<-ggplot(checkin.A) +
+#     
+# #     geom_polygon(data=nycb.df,aes(long,lat,group=group),alpha=1/2) + 
+#     geom_polygon(data=nycb.df,aes(long,lat,group=group),alpha=.1,color="grey") +
+# #     geom_polygon(data=nycb.df,aes(long,lat,group=group,fill=BoroCode,alpha=1/2)) +
+# #     geom_path(data=nycb.df,aes(long,lat,group=group,fill=BoroCode),color="white") +
+#     
+#     geom_path(aes(x=lon.x, y=lat.x),color="#55B1F7",alpha=0.6,size=.1)+
+#     geom_point(aes(x=lon.x, y=lat.x, size = sqrt(Freq)/10), 
+#                color = "#55B1F7", alpha = 1/3)+
+#     theme(legend.position="none",
+# #           panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
+# #           panel.background = element_blank(), plot.background = element_blank(),
+#           axis.title=element_blank())
+# #           axis.text=element_blank(),axis.ticks=element_blank())
+# #           axis.line = element_line())
+# 
+
+tiff(paste0(basedir,"traj_map_blank.tiff"), width = 4*ppi, height = 4*ppi, res=ppi,bg = "transparent")
+p3
+dev.off()
+```
+
+
+##### 1.2 CCDF and CDF 
+
+the following codes split the data by user, and get some basic statistics (e.g. checkin days, 
+checkin per day, total checkin, etc.) into the variable *usersets.stats*
+
+```{r}
+# preparations
+# seperate the users
+days = length(unique(checkin.global$yearday))
+usersets = split(checkin.global, checkin.global$user_id)
+
+# users statistics
+usersets.cnt = sapply(usersets,function(i){nrow(i)})
+usersets.cates = sapply(usersets,function(i){ length(unique(i$cate_l2)) })
+usersets.days = sapply(usersets,function(i){ length(unique(i$yearday)) })
+usersets.cnt.perday = usersets.cnt / usersets.days
+# usersets.hours = sapply(usersets,function(i){ceiling(length(unique(as.numeric(i$hour)))/3)/8})
+usersets.hours = sapply(usersets,function(i){length(unique(as.numeric(i$hour)))/24})
+
+usersets.stats = data.frame("perday"=usersets.cnt.perday,
+                         "days"=usersets.days,
+                         "hourcomp"=usersets.hours,
+                         "totalcnt"=usersets.cnt,
+                         "cates"=usersets.cates)
+rm(usersets.cnt,usersets.days,usersets.cnt.perday,usersets.hours,usersets.cates)
+```
+
+
+Based on the basic statistics, we can answer 2 questions:
+
+* how many percentages of users have more than X personal checkin counts ?
+* how many percentages of checkins are created by X% users?
+
+The questions are answered by the following code and figure:
+```{r,echo=FALSE}
+# checkin counts of each user
+# checkin.counts = sort( sapply(usersets, function(i) nrow(i)) )
+
+# 0. the distributions of personal checkin counts
+# cnt.distr = transform(as.data.frame(table(checkin.counts)), 
+#                  probability=ave(Freq, FUN=function(x) x / sum(x)))
+# gg.cnt.distr <- ggplot(cnt.distr,aes(x=as.numeric(checkin.counts),y=probability)) + 
+#     stat_smooth(se = F, method = "lm", formula = y ~ poly(x, 8),color="#56B4E9",size=2) +
+#     stat_smooth(data=cnt.distr[150:356,],aes(x=as.numeric(checkin.counts),y=probability),
+#                 se = F, method = "lm", formula = y ~ poly(x, 8),color="#E69F00",
+#                 geom="area",fill = "#E69F00", alpha=.5) +
+#     scale_x_continuous(trans="log10",breaks=c(1,10,100,150,1000),
+#                       labels=c(expression(10^0),
+#                                expression(10^1),expression(10^2),150,
+#                                expression(10^3))) +
+#     scale_y_sqrt()
+```
+```{r}
+# 1. ccdf of personal checkin counts
+# i.e.: how many percentages of users have more than X personal checkin counts ?
+cnt.personal.ccdf = transform(as.data.frame(table(usersets.stats$totalcnt)), 
+                 ccdf=ave(Freq, FUN=function(x) 1-cumsum(x) / sum(x)))
+# 2. cdf of total checkin counts
+# i.e.: how many percentages of checkins are created by X% users?
+cnt.total.cdf = transform(data.frame("counts"=sort(usersets.stats$totalcnt,decreasing=TRUE)), 
+                          user.pct = ave(1:length(counts), FUN=function(x) x/length(counts)),
+                          cdf=ave(counts, FUN=function(x) cumsum(x) / sum(x)))
+```
+```{r,echo=FALSE, fig.width=8, fig.height=3}
+# where the count of personal checkins is 30
+cnt.30.user = cnt.personal.ccdf[cnt.personal.ccdf$Var1==29,"ccdf"] 
+
+# how many checkins are created by these users?
+cnt.30.cnt = cnt.total.cdf[abs(cnt.total.cdf$user.pct-cnt.30.user)<1e-6,"cdf"]  
+
+gg.cnt.ccdf <- ggplot(cnt.personal.ccdf,aes(x=as.numeric(Var1),y=ccdf)) +
+    geom_line(color="#56B4E9",size=2) +
+    geom_path(aes(x=c(30,30),y=c(0,cnt.30.user)),color = "#E69F00", linetype="dotted") +
+    geom_path(aes(x=c(30,0),y=c(cnt.30.user,cnt.30.user)),color = "#E69F00", linetype="dotted") +
+    geom_point(aes(x=30,y=cnt.30.user),fill="#E69F00",color=NA,alpha=.5,size=6,shape=21)+
+    annotate("text", label = "(30, 10.1%)", size=4, x = 80, y = 0.15,colour = "red") +
+    scale_x_log10(breaks=c(1,10,100,1000),
+                  labels=c(expression(10^0),expression(10^1),
+                           expression(10^2),expression(10^3))) +
+    scale_y_log10(breaks=c(0.0001,0.001,0.01,0.1,1),
+                  labels=c(expression(10^-4),expression(10^-3),expression(10^-2),
+                           expression(10^-1),expression(10^0))) +
+    xlab("Users' Personal Checkin Counts\n\n(a)") +
+    ylab("CCDF pf Personal Checkin")+
+    theme(axis.title = element_text(size=10))
+
+gg.cnt.cdf <- ggplot(cnt.total.cdf[seq(1,nrow(cnt.total.cdf),by=100),],aes(x=user.pct,y=cdf)) +
+    geom_line(color="#56B4E9",size=2) +
+    geom_path(aes(x=c(cnt.30.user,cnt.30.user),y=c(0,cnt.30.cnt)),
+              color = "#E69F00", linetype="dotted") +
+    geom_path(aes(x=c(cnt.30.user,0),y=c(cnt.30.cnt,cnt.30.cnt)),
+              color = "#E69F00", linetype="dotted") +
+    geom_point(aes(x=cnt.30.user,y=cnt.30.cnt),fill="#E69F00",color=NA,alpha=.5,size=6,shape=21)+
+    annotate("text", label = "(10.1%, 61.9%)", size=4, x = 0.12, y = 0.4,colour = "red") +
+    scale_x_log10(breaks=c(0.0001,0.001,0.01,0.1,1),
+                  labels=c(expression(10^-4),expression(10^-3),expression(10^-2),
+                           expression(10^-1),expression(10^0))) +
+    scale_y_log10(breaks=c(0.001,0.01,0.1,1),
+                  labels=c(expression(10^-3),expression(10^-2),
+                           expression(10^-1),expression(10^0))) +
+    xlab("Percentage of Users\n\n(b)")  +
+    ylab("CDF of Total Checkin") +
+    theme(axis.title = element_text(size=10))
+
+# multiplot( gg.cnt.ccdf, gg.cnt.cdf, cols=2 )
+
+tiff(paste0(basedir,"counts_distribution.tiff"), 
+    width = 8*ppi, height = 3*ppi, res=ppi,bg = "transparent")
+multiplot( gg.cnt.ccdf, gg.cnt.cdf, cols=2 )
+dev.off()
+
+rm(cnt.personal.ccdf,cnt.total.cdf,cnt.30.cnt,cnt.30.user,days,gg.cnt.ccdf,gg.cnt.cdf)
+
+
+```
+
+
+##### 1.3 Independence on data size / "active user" 
+
+We also get the subset of the first month for comparison. The statistics is done in a similar way into 
+the variable *temp.usersets.stats*
+
+```{r, echo=FALSE}
+# a (temptory) reference is reqired here
+temp.checkin.global = checkin.global[c(1:106413),] #the first month
+temp.usersets = split(temp.checkin.global, temp.checkin.global$user_id)
+
+# users statistics
+temp.usersets.cnt = sapply(temp.usersets,function(i){nrow(i)})
+temp.usersets.days = sapply(temp.usersets,function(i){ length(unique(i$yearday)) })
+temp.usersets.cnt.perday = temp.usersets.cnt / temp.usersets.days
+# temp.usersets.hours = sapply(temp.usersets,function(i){ceiling(length(unique(as.numeric(i$hour)))/3)/8})
+temp.usersets.hours = sapply(temp.usersets,function(i){length(unique(as.numeric(i$hour)))/24})
+
+temp.usersets.stats = data.frame("perday"=temp.usersets.cnt.perday,
+                         "days"=temp.usersets.days,
+                         "hourcomp"=temp.usersets.hours,
+                         "totalcnt"=temp.usersets.cnt)
+rm(temp.usersets.cnt,temp.usersets.days,temp.usersets.cnt.perday,temp.usersets.hours)
+rm(temp.checkin.global,temp.usersets)
+```
+
+
+The following figure describes the number of checkins per checkin day and the number of checkin days of all users within a period of 150 days (5 months, a) and 28 days (1 month, b). The hour completeness of each user is also expressed in (a) and (b) by colour.
+
+```{r,echo=FALSE, fig.width=10, fig.height=3}
+
+gg.activeness<-ggplot(usersets.stats, aes(y=days,x=perday)) +
+    geom_point(aes(group=as.factor(hourcomp),color=as.factor(floor(hourcomp*8)/8)),size=1) +
+    geom_line(aes(x=perday,y=30/perday)) +
+    scale_x_log10(breaks=c(1,10,30,100),
+                  labels=c(expression(10^0),expression(10^1),30,
+                           expression(10^2))) +
+    scale_y_log10(limits=c(10^-.2,150),breaks=c(1,10,30,100),
+                  labels=c(expression(10^0),expression(10^1),30,
+                           expression(10^2))) +
+    xlab("Number of Checkins per Day\n\n(a)") +
+    ylab("Number of Checkin Days") +
+    theme(axis.title = element_text(size=10),
+          plot.title = element_text(size=11)) + 
+    scale_color_brewer(name="Hour Completeness",palette="RdYlGn")+
+    geom_text(label = "Total Checkins > 30", size=3, x = 1.25, y = 0.37, angle=-28)+
+    geom_text(label = "Total Checkins < 30", size=3, x = 1.19, y = 0.17, angle=-28)+
+    ggtitle(expression(paste("February 1"^"st", " - June 30"^"th", " (150 days)" )))
+
+gg.activeness.ref<-ggplot(temp.usersets.stats, aes(x=perday,y=days)) +
+    geom_point(aes(group=as.factor(hourcomp),color=as.factor(floor(hourcomp*8)/8)),size=1) +
+    geom_line(aes(x=perday,y=30/perday)) +
+    scale_x_log10(breaks=c(1,10,30,100),
+                  labels=c(expression(10^0),expression(10^1),30,
+                           expression(10^2))) +
+    scale_y_log10(limits=c(10^-.2,30),breaks=c(1,10,30,100),
+                  labels=c(expression(10^0),expression(10^1),30,
+                           expression(10^2))) +
+    xlab("Number of Checkins per Day\n\n(b)") +
+    ylab("Number of Checkin Days") +
+    theme(axis.title = element_text(size=10),
+          plot.title = element_text(size=11)) + 
+    scale_color_brewer(name="Hour Completeness",palette="RdYlGn")+
+    geom_text(label = "Total Checkins > 30", size=3, x = 1.24, y = 0.36, angle=-37)+
+    geom_text(label = "Total Checkins < 30", size=3, x = 1.16, y = 0.24, angle=-37)+
+    ggtitle(expression(paste("February 1"^"st", " - February 28"^"th", " (28 days)" )))
+
+png(paste0(basedir,"activeness_ab.png"), 
+    width = 10*ppi, height = 3*ppi, res=ppi,bg = "transparent")
+multiplot(gg.activeness,gg.activeness.ref,cols=2)
+dev.off()
+
+# multiplot(gg.activeness,gg.activeness.ref,cols=2)
+
+rm(gg.activeness,gg.activeness.ref)
+```
+
+And the following figure describes the linear relations between hour completeness and 
+user’s total checkin counts. 
+
+```{r,echo=FALSE, fig.width=8, fig.height=3}
+gg.scattered.c <- ggplot()+
+    
+    geom_smooth(data=usersets.stats,aes(y=totalcnt,x=hourcomp,color="1"),
+                method="lm",formula=y~x,alpha=.1)+
+    geom_point(data=usersets.stats,aes(y=totalcnt,x=hourcomp,color="1",shape="1"),size=1.5)+
+    geom_path(aes(x=c(0.51,0.51),y=c(0,30),color="1"), linetype="dotted") +
+    geom_text(aes(x = 0.8, y = 10^0.5,color="1", 
+                  label = lm_eqn(data.frame(x=usersets.stats$hourcomp,y=usersets.stats$totalcnt))), 
+              parse = TRUE,size=3)+
+    
+    geom_smooth(data=temp.usersets.stats,aes(y=totalcnt,x=hourcomp,color="2"),
+                method="lm",formula=y~x,alpha=.1)+
+    geom_point(data=temp.usersets.stats,aes(y=totalcnt,x=hourcomp,color="2",shape="2"),size=1)+
+    geom_path(aes(x=c(0.488,0.488),y=c(0,30),color="2"), linetype="dotted")+
+#     geom_text(aes(x = 0.25, y = 1500, color="2", 
+#                   label = lm_eqn(data.frame(x=temp.usersets.stats$hourcomp,
+#                                             y=temp.usersets.stats$totalcnt))), 
+#               parse = TRUE,size=3)+
+    
+    scale_color_discrete( breaks = c("1","2"), labels=c("150 Days (a)","28 Days (b)") )+
+    scale_shape_discrete( breaks = c("1","2"), labels=c("150 Days (a)","28 Days (b)") )+
+    xlab("Hour Completeness\n\n(c)") +
+    ylab("Total Checkin Counts") +
+    theme(axis.title = element_text(size=10),legend.title=element_blank(),
+          plot.title = element_text(size=11)) + 
+    scale_y_log10(breaks=c(10,30,100,1000),
+                  labels=c(expression(10^1),30,expression(10^2),expression(10^3)))
+
+gg.scattered.c
+# manipulate(
+#     gg.scattered.c  + geom_vline(xintercept =x.max,color = "#E69F00", linetype="dotted", size=2),
+#     x.max= slider(0,1)
+#     )
+
+png(paste0(basedir,"activeness_c.png"), 
+    width = 8*ppi, height = 3*ppi, res=ppi,bg = "transparent")
+gg.scattered.c
+dev.off()
+
+rm(gg.scattered.c)
+```
+
+The above figures suggested that "hour completenss" can be a good criterion to define 
+"active users", and a reasonable threshold can be 0.5
+
+```{r}
+# decide "active" user sets
+usersets.active.idx = which(usersets.stats$hourcomp > 0.5)
+usersets.inactive.idx = which(usersets.stats$hourcomp <= 0.5)
+# usersets.active.idx = which(usersets.cnt >= 30)
+# usersets.inactive.idx = which(usersets.cnt < 30)
+
+```
+
+
+#### 2. some more statistics & comparisons between the two groups
+
+```{r, echo=FALSE}
+# # dist.loc = sort( sapply(usersets, function(i){ length(unique(i$venue_id)) }) )
+# # save(dist.loc,file="D:\\Experiments\\R\\data\\ceus_dist.loc_0918.Rda")
+# load("D:\\Experiments\\R\\data\\ceus_dist.loc_0918.Rda")
+# gg.loc.distr <- ggplot(data.frame("locations"=dist.loc),
+#                        aes(x=locations)) + 
+#     geom_density(aes(y=..density..), color="dark grey", fill="red", alpha=.5) +
+#     scale_x_log10(breaks=c(1,10,100,1000),
+#                   labels=c(expression(10^0),
+#                            expression(10^1),expression(10^2),
+#                            expression(10^3))) 
+# # ccdf of checkin counts
+# ccdf = transform(as.data.frame(table(dist.loc)), 
+#                  ccdf=ave(Freq, FUN=function(x) 1-cumsum(x) / sum(x)))
+# # pnt = ccdf[ccdf$dist.loc==150,"ccdf"]
+# gg.loc.ccdf <- ggplot(ccdf) +
+#     geom_line(aes(x=as.numeric(dist.loc),y=ccdf),size=2,color="red") +
+# #     geom_path(aes(x=c(150,150),y=c(0,pnt)),color = "blue", linetype="dotted") +
+# #     geom_path(aes(x=c(150,0),y=c(pnt,pnt)),color = "blue", linetype="dotted") +
+#     scale_x_log10(breaks=c(1,10,100,1000),
+#                   labels=c(expression(10^0),expression(10^1),
+#                            expression(10^2),expression(10^3))) +
+#     scale_y_log10(breaks=c(10^-6,10^-4,10^-2,10^0),
+#                   labels=c(expression(10^-6),expression(10^-4),
+#                            expression(10^-2),expression(10^0))) 
+# 
+# png(paste0(basedir,"img\\ceus_locations_distribution.png"), 
+#     width = 8*ppi, height = 3*ppi, res=ppi,bg = "transparent")
+# multiplot(gg.loc.distr, gg.loc.ccdf, cols=2)
+# dev.off()
+
+```
+
+
+##### 2.1 checkin intervals (both temporal and spatial)
+
+```{r,eval=FALSE}
+####################################
+# basic calculation
+
+# temporal 
+ave.interval.t = sapply(usersets,function(user){
+    leng = nrow(user)
+    t = user[order(user$timestamps.x),"timestamps.x"]
+    t1 = t[1:(leng-1)]
+    t2 = t[2:leng]
+    delta = t2-t1
+    mean(delta/3600)
+})
+
+# spatial
+ave.interval.s = sapply(usersets,function(user){
+    leng = nrow(user)
+    s = user[order(user$timestamps.x),c("lat.x","lon.x")]
+    s1 = user[1:(leng-1),]
+    s2 = user[2:leng,]
+    mean(sqrt(((s2$lat.x-s1$lat.x)*111319.49)^2 +
+                 ((s2$lon.x-s1$lon.x)*84379.035)^2 ) /1000)
+})
+
+```
+```{r,echo=FALSE}
+# save(ave.interval.t,file="D:\\Experiments\\R\\data\\average.interval.t.Rda")
+load("D:\\Experiments\\R\\data\\average.interval.t.Rda")
+
+# save(ave.interval.s,file="D:\\Experiments\\R\\data\\average.interval.s.Rda")
+load("D:\\Experiments\\R\\data\\average.interval.s.Rda")
+```
+```{r}
+####################################
+# grouping 
+
+# inactive users
+ave.interval.t1 = ave.interval.t[usersets.inactive.idx]
+ave.interval.s1 = ave.interval.s[usersets.inactive.idx]
+# active users
+ave.interval.t2 = ave.interval.t[usersets.active.idx]
+ave.interval.s2 = ave.interval.s[usersets.active.idx]  
+```
+```{r,echo=FALSE, fig.width=8, fig.height=3}
+####################################
+# plotting
+
+# temporal
+# for inactive users
+
+gg.interval.t <- ggplot()+
+    stat_density(data=data.frame("interval"=ave.interval.t1),
+              aes(x = interval, y = ..density..,fill="1"),position="identity",adjust=2,alpha=0.5) +
+    stat_density(data=data.frame("interval"=ave.interval.t2),
+              aes(x = interval, y = ..density..,fill="2"),position="identity",adjust=2,alpha=0.5) +
+    scale_fill_discrete( breaks = c("1","2"),labels=c("Inactive Users", "Active Users" ) )+
+    scale_x_continuous(limits=c(0,168),breaks=seq(0,168,by=24),labels=seq(0,168,by=24)) +
+#     scale_y_sqrt()+
+    xlab("Temporal Interval (h)") +
+    ylab("Density") +
+    theme(axis.title = element_text(size=10),legend.title=element_blank(),
+          legend.position=c(.78,.8),legend.background=element_blank())
+
+# png(paste0(basedir,"img\\ceus_interval_t_distri.png"), width = 4*ppi, height = 3*ppi, res=ppi)
+# gg.interval.t
+# dev.off()
+
+#spatial
+# for inactive users
+gg.interval.s <- ggplot() +
+#     geom_area(data=data.frame("interval"=unlist(ave.interval.s1)[!is.na(unlist(ave.interval.s1))]),
+#               aes(x = interval, y = ..density..,fill="1"),stat="density",adjust=2,alpha=0.5) +
+#     geom_area(data=data.frame("interval"=unlist(ave.interval.s2)[!is.na(unlist(ave.interval.s2))]),
+#               aes(x = interval, y = ..density..,fill="2"),stat="density",adjust=2,alpha=0.5) +
+    stat_density(data=data.frame("interval"=ave.interval.s1),
+              aes(x = interval, y = ..density..,fill="1"),position="identity",adjust=2,alpha=0.5) +
+    stat_density(data=data.frame("interval"=ave.interval.s2),
+              aes(x = interval, y = ..density..,fill="2"),position="identity",adjust=2,alpha=0.5) +
+    scale_fill_discrete( breaks = c("1","2"),labels=c("Inactive Users", "Active Users" ) )+
+    scale_x_continuous(trans="log10",limits=c(10^-2,10^2),breaks=c(10^-2,10^-1,10^0,10^1,10^2),
+                       labels=c(expression(10^-2),expression(10^-1),expression(10^0),
+                                expression(10^1),expression(10^2))) +
+    xlab("Spatial Interval (Km)") +
+    ylab("Density") +
+    theme(axis.title = element_text(size=10),legend.title=element_blank(),
+          legend.position=c(.25,.8),legend.background=element_blank())
+
+# peak.s2=c("x"=interval.s2.distr[which(interval.s2.distr$density==max(interval.s2.distr$density)),"interval"],
+#          "y"=max(interval.s2.distr$density))
+
+
+# png(paste0(basedir,"img\\ceus_interval_s_distri.png"), width = 4*ppi, height = 3*ppi, res=ppi)
+# gg.interval.s
+# dev.off()
+
+
+multiplot(gg.interval.t,gg.interval.s,cols=2)
+
+# ####################################
+# # spatiotemporal
+# interval.st1 = data.frame("temporal"=unlist(ave.interval.t1)[!is.na(unlist(ave.interval.t1))],
+#                          "spatial"=unlist(ave.interval.s1)[!is.na(unlist(ave.interval.s1))])
+# interval.st1 = interval.st1[interval.st1$temporal>0 & interval.st1$spatial>0,]
+# interval.st1.sample = interval.st1[sample(c(1:nrow(interval.st1)),1000),]
+# 
+# interval.st2 = data.frame("temporal"=unlist(ave.interval.t2)[!is.na(unlist(ave.interval.t2))],
+#                          "spatial"=unlist(ave.interval.s2)[!is.na(unlist(ave.interval.s2))])
+# interval.st2 = interval.st2[interval.st2$temporal>0 & interval.st2$spatial>0,]
+# interval.st2.sample = interval.st2[sample(c(1:nrow(interval.st2)),1000),]
+# 
+# gg.interval.st <- ggplot() +
+#     geom_point(data=interval.st1.sample, aes(x=temporal, y=spatial,color="1"),size=1,alpha=.5)+
+#     geom_smooth(data=interval.st1,aes(x=temporal, y=spatial,fill="1"), alpha=0.5)+
+#     geom_point(data=interval.st2.sample,aes(x=temporal, y=spatial,color="2"), size=1,alpha=.5)+
+#     geom_smooth(data=interval.st2,aes(x=temporal, y=spatial,fill="2"), alpha=0.5)+
+#     scale_fill_discrete( breaks = c("1","2"),labels=c("Inactive Users", "Active Users" ) )+
+#     scale_color_discrete( breaks = c("1","2"),labels=c("Inactive Users", "Active Users" ) )+
+#     scale_x_continuous(trans="log10",breaks=c(10^-3,10^-2,10^-1,10^0,10^1,10^2,10^3),
+#                        labels=c(expression(10^-3),expression(10^-2),expression(10^-1),expression(10^0),
+#                                 expression(10^1),expression(10^2),expression(10^3))) +
+#     scale_y_continuous(trans="log10",limits=c(10^-3,50),breaks=c(10^-3,10^-2,10^-1,10^0,10^1,10^2),
+#                        labels=c(expression(10^-3),expression(10^-2),expression(10^-1),expression(10^0),
+#                                 expression(10^1),expression(10^2))) +
+#     xlab("Temporal Interval (h)") +
+#     ylab("Spatial Interval (km)") +
+#     theme(axis.title = element_text(size=10),legend.title=element_blank())
+# png(paste0(basedir,"img\\ceus_interval_st.png"), width = 6*ppi, height = 3*ppi, res=ppi)
+# gg.interval.st
+# dev.off()
+# 
+# ##########################
+# 
+# png(paste0(basedir,"img\\ceus_ave_interval_distri.png"), width = 8*ppi, height = 3*ppi, res=ppi)
+# multiplot(gg.interval.t, gg.interval.s,  cols=2)
+# dev.off()
+# png(paste0(basedir,"img\\ceus_ave_st.png"), width = 8*ppi, height = 3*ppi, res=ppi)
+# multiplot( gg.interval.st,  gg.interval.st2, cols=2)
+# dev.off()
+```
+
+##### 2.2 daily covered distance (gyration)
+
+```{r,eval=FALSE}
+gyration = sapply(usersets,function(i){
+    usersets.daily = split(i,i$yearday)
+    sapply(usersets.daily,function(j){
+        center.lat = mean(j$lat.x)
+        center.lon = mean(j$lon.x)
+        
+        leng = nrow(j)  
+        dist.squared = ((j$"lat.x"-center.lat)*111319.49)^2 +
+                       ((j$"lon.x"-center.lon)*84379.035)^2 
+        
+        sqrt(mean(dist.squared)) / 1000
+    })
+})
+```
+```{r,echo=FALSE, fig.width=4, fig.height=3}
+# save(gyration,file="D:\\Experiments\\R\\data\\gyration.Rda")
+load("D:\\Experiments\\R\\data\\gyration.Rda")
+
+# grouping 
+gyration1 = gyration[usersets.inactive.idx]
+gyration2 = gyration[usersets.active.idx]  
+
+gg.gyration = ggplot() +
+    geom_area(data=data.frame("interval"=unlist(gyration1)[!is.na(unlist(gyration1))]),
+              aes(x = interval, y = ..density..,fill="1"),stat="density",adjust=2,alpha=0.5) +
+    geom_area(data=data.frame("interval"=unlist(gyration2)[!is.na(unlist(gyration2))]),
+              aes(x = interval, y = ..density..,fill="2"),stat="density",adjust=2,alpha=0.5) +
+    scale_fill_discrete( breaks = c("1","2"),labels=c("Inactive Users", "Active Users" ) )+
+    scale_x_continuous(trans="log10",limits=c(10^-3,10^1.5),
+                       breaks=c(10^-3,10^-2,10^-1,10^0,10^1,10^2),
+                       labels=c(expression(10^-3),expression(10^-2),expression(10^-1),
+                                expression(10^0),expression(10^1),expression(10^2))) +
+    xlab(expression(paste("Radius of Gyration (",r[g],", Km)"))) +
+    ylab("Density") +
+    theme(axis.title = element_text(size=10),legend.title=element_blank(),
+          legend.position=c(.22,.8),legend.background=element_blank())
+
+gg.gyration 
+
+# manipulate(
+#     gg.gyration + geom_vline(xintercept =x.max,color = "#E69F00", linetype="dotted",size=2),
+#     x.max= slider(0.1,10)
+#     )
+# png(paste0(basedir,"img\\ceus_daily_gyration.png"), width = 4*ppi, height = 3*ppi, res=ppi)
+# gg.gyration
+# dev.off()
+
+```
+
+#### 3. Entropy
+
+##### 3.1 calculation of entropy
+
+* s-t clustering functions
+```{r}
+spatial.clustering = function(data){
+    # get coordinates
+    coords = data[,c("lon.x","lat.x")]
+    # determine number of clusters
+    ntotal = nrow(unique(coords))
+    if(ntotal > 2){
+        wss <- (ntotal-1) * sum(apply(coords,2,var))
+        for (i in 2:(ntotal-1)) 
+            wss[i] <- sum(kmeans(coords,centers=i)$withinss)
+        
+        ncls = length(wss[wss>0.05*wss[1]])+1
+        if(ncls > (ntotal-1)) ncls = ntotal-1
+        
+        # K-Means Cluster Analysis
+        clusters <- kmeans(coords,ncls) 
+        # get cluster means
+        aggregate(coords,by=list(clusters$cluster),FUN=mean)
+        # append cluster assignment
+        coords <- data.frame(data$gid,data$cate_l2, coords, as.factor(clusters$cluster)) 
+    }
+    else{
+        coords <- data.frame(data$gid,data$cate_l2, coords, as.factor(c(1))) 
+    }
+    colnames(coords) = c("id","cate_l2","lon","lat","sp.cls")
+    coords
+}
+
+temporal.clustering = function(data,interval=2){
+    data.frame("id"=data$gid,  "cate_l2"=data$cate_l2,
+               "hour.cls"=as.factor(floor(as.numeric(as.character(data$hour))/interval)))
+}
+```
+
+```{r,eval=FALSE}
+##########################
+# computing 
+# random entropy
+entropy.rand = sapply(usersets, function(i){
+    N = length(unique(i$cate_l2))
+    log2(N) 
+})
+
+# uncorrelated entropy (heterogeneity pattern)
+entropy.unc = sapply(usersets, function(i){
+    cate.freq = as.data.frame(table(i$cate_l2))
+    p = cate.freq$Freq / sum(cate.freq$Freq)
+    p = p[p>0]
+    -1 * sum(p * log2(p))
+})
+```
+```{r,eval=FALSE,echo=FALSE}
+# temprol entropy (temproal pattern)
+entropy.temp = sapply(usersets,function(i){
+    freq = as.data.frame(xtabs(data=i,~hour+cate_l2))
+    freq.marg = sapply(split(freq,freq$hour),function(j){
+        sum(j$Freq)
+    })
+    freq$marg = rep(freq.marg,length(unique(freq$cate_l2)))
+    
+    freq$p.joint = freq$Freq / sum(freq$Freq)    
+    freq$p.marg = freq$marg / sum(freq.marg)
+    p = freq[freq$Freq>0,c("p.joint","p.marg")]
+    sum(p$p.joint * log2(p$p.marg / p$p.joint))
+})
+```
+```{r,eval=FALSE}
+# real entropy (spatiotemporal pattern)
+entropy.real = sapply(usersets,function(user){
+
+    cls.s = spatial.clustering(user)
+    cls.t = temporal.clustering(user)
+    cls = merge(x=cls.s, y=cls.t[c("id","hour.cls")], by.x="id", by.y="id", all.X=TRUE)
+    
+    cls$cate_l2=factor(cls$cate_l2)
+    cls$st = as.factor(paste(cls$hour,cls$sp))
+    
+    
+    freq = as.data.frame(xtabs(data=cls,~st+cate_l2))
+    freq.marg = sapply(split(freq,freq$st),function(j){
+        sum(j$Freq)
+    })
+    freq$marg = rep(freq.marg,length(unique(freq$cate_l2)))
+    
+    freq$p.joint = freq$Freq / sum(freq$Freq)    
+    freq$p.marg = freq$marg / sum(freq.marg)
+    p = freq[freq$Freq>0,c("p.joint","p.marg")]
+    entropy = sum(p$p.joint * log2(p$p.marg / p$p.joint))
+    
+    entropy
+})
+
+# test
+entropy.real.act = sapply(usersets.active,function(user){
+
+    cls.s = spatial.clustering(user)
+    cls.t = temporal.clustering(user)
+    cls = merge(x=cls.s, y=cls.t[c("id","hour.cls")], by.x="id", by.y="id", all.X=TRUE)
+    
+    cls$cate_l2=factor(cls$cate_l2)
+    cls$st = as.factor(paste(cls$hour,cls$sp))
+    
+    
+    freq = as.data.frame(xtabs(data=cls,~st+cate_l2))
+    freq.marg = sapply(split(freq,freq$st),function(j){
+        sum(j$Freq)
+    })
+    freq$marg = rep(freq.marg,length(unique(freq$cate_l2)))
+    
+    freq$p.joint = freq$Freq / sum(freq$Freq)    
+    freq$p.marg = freq$marg / sum(freq.marg)
+    p = freq[freq$Freq>0,c("p.joint","p.marg")]
+    entropy = sum(p$p.joint * log2(p$p.marg / p$p.joint))
+    
+    entropy
+})
+```
+```{r,echo=FALSE}
+# save(entropy.rand,file="D:\\Experiments\\R\\data\\entropy.rand.Rda")
+# save(entropy.unc,file="D:\\Experiments\\R\\data\\entropy.unc.Rda")
+# save(entropy.temp,file="D:\\Experiments\\R\\data\\entropy.temp.Rda")
+# save(entropy.real,file="D:\\Experiments\\R\\data\\entropy.real.Rda")
+load("D:\\Experiments\\R\\data\\entropy.rand.Rda")
+load("D:\\Experiments\\R\\data\\entropy.unc.Rda")
+# load("D:\\Experiments\\R\\data\\entropy.temp.Rda")
+load("D:\\Experiments\\R\\data\\entropy.real.Rda")
+
+```
+```{r,echo=FALSE, fig.width=6, fig.height=3}
+##########################
+# grouping
+
+entropy.rand.act = entropy.rand[usersets.active.idx]
+entropy.unc.act = entropy.unc[usersets.active.idx]
+# entropy.temp.act = entropy.temp[usersets.active.idx]
+entropy.real.act = entropy.real[usersets.active.idx]
+
+
+# gg.entropy1 = ggplot() +
+#     stat_density(data=data.frame("entropy"=entropy.rand1),position = "identity",
+#               aes(x = entropy, y = ..density..,fill="1"),adjust = 3,alpha=0.5) +
+#     stat_density(data=data.frame("entropy"=entropy.unc1),position = "identity",
+#               aes(x = entropy, y = ..density..,fill="2"),adjust = 3,alpha=0.5) +
+#     stat_density(data=data.frame("entropy"=entropy.real1),position = "identity",
+#               aes(x = entropy, y = ..density..,fill="3"),adjust = 3,alpha=0.5) +
+#     scale_fill_discrete( breaks = c("1","2","3"),
+#          labels=list(bquote(S^.("rand")),bquote(S^.("unc")),bquote(S^.("real")) )  )+
+#     xlab(expression(paste("Entropy / S"))) +
+#     ylab("Density") +
+#     theme(axis.title = element_text(size=10),legend.title=element_blank(),
+#           legend.position=c(.85,.75),legend.background=element_blank())+
+#     scale_y_sqrt()+
+#     ggtitle("Entropies for Inactive Users")
+
+gg.entropy.act = ggplot() +
+    stat_density(data=data.frame("entropy"=entropy.rand.act),position = "identity",
+              aes(x = entropy, y = ..density..,fill="4"),adjust = 2,alpha=0.5) +
+    stat_density(data=data.frame("entropy"=entropy.unc.act),position = "identity",
+              aes(x = entropy, y = ..density..,fill="5"),adjust = 2,alpha=0.5) +
+#     stat_density(data=data.frame("entropy"=entropy.temp.act),position = "identity",
+#               aes(x = entropy, y = ..density..,fill="6"),adjust = 2,alpha=0.5) +
+    stat_density(data=data.frame("entropy"=entropy.real.act),position = "identity",
+              aes(x = entropy, y = ..density..,fill="7"),adjust = 2,alpha=0.5) +
+    scale_fill_discrete( breaks = c("4","5","7"),
+         labels=list(bquote(S^.("rand")),bquote(S^.("unc")),bquote(S^.("st")) )  )+
+    xlab(paste("Entropy \n\n(a)")) +
+    ylab("Density") +
+    theme(axis.title = element_text(size=10),legend.title=element_blank(),
+          legend.position=c(.85,.75),legend.background=element_blank())
+#     theme(axis.title = element_text(size=10),legend.title=element_blank(),
+#           legend.background=element_blank(),plot.title = element_text(size=11))
+#     ggtitle("Entropies of Differnt Models")
+
+gg.entropy.act
+
+png(paste0(basedir,"entropy.png"), width = 8*ppi, height = 3*ppi, res=ppi,bg = "transparent")
+multiplot(gg.entropy.act,g3,cols=2)
+dev.off()
+# 
+# manipulate(
+#     gg.entropy.act  + geom_vline(xintercept =x.max,color = "#E69F00", linetype="dotted", size=2),
+#     x.max= slider(0.4,4.8)
+#     )
+
+```
+
+##### 3.2 entropy's relation with a series of factors
+
+```{r,echo=FALSE, fig.width=8, fig.height=8}
+
+## relations 
+usersets.stats.act = usersets.stats[usersets.active.idx,]
+
+df1=data.frame("x"=usersets.stats.act$hourcomp,"y"=entropy.real.act) 
+g1 <- ggplot(df1)+
+    geom_point(aes(x=x,y=y),alpha=.3)+
+    geom_smooth(aes(x=x,y=y),method="lm",size=3)+
+    theme(axis.title = element_text(size=10),legend.title=element_blank(),
+          legend.background=element_blank(),plot.title = element_text(size=11))+
+    ggtitle("Entropies V.S. Hour completeness")+
+    xlab("Hour Completeness") +
+    ylab("Entropy") +
+    geom_text(aes(x = 0.9, y = 2.5, label = lm_eqn(df1)), size=3,parse = TRUE) 
+
+df2=data.frame("x"=usersets.stats.act$totalcnt,"y"=entropy.real.act)
+g2 <- ggplot(df2)+
+    geom_point(aes(x=x,y=y),alpha=.3)+
+    geom_smooth(aes(x=x,y=y),method="lm",size=3) +
+    theme(axis.title = element_text(size=10),legend.title=element_blank(),
+          legend.background=element_blank(),plot.title = element_text(size=11))+
+    scale_x_log10()+
+    ggtitle("Entropies V.S. checkin counts")+
+    xlab("Checkin Counts") +
+    ylab("Entropy")+
+    geom_text(aes(x = 1000, y = 2.5, label = lm_eqn(df2)), size=3,parse = TRUE)
+
+df3=data.frame("x"=usersets.stats.act$cates,"y"=entropy.real.act)
+g3 <- ggplot(df3,aes(x=x,y=y))+
+    geom_point(alpha=.3,size=1)+
+    stat_quantile(aes(colour = ..quantile..), quantiles = seq(0, 1, by=0.25),size = 1.2,linetype="dashed") +
+    scale_colour_gradient2(name = "Quantile",midpoint = 0.5) +
+#     geom_smooth(aes(x=x,y=y),method="lm",formula= y~ x,size=3) +
+    theme(axis.title = element_text(size=10),
+          legend.background=element_blank(),plot.title = element_text(size=11))+
+#     ggtitle("Entropies V.S. Unique categories (N)")+
+    xlab("Number of Unique Categories \n\n(b)") +
+    ylab("Entropy") +
+    scale_y_continuous(limit=c(0,3))+
+    geom_text(aes(x = 70, y = 2.7, label = lm_eqn(df3)), size=3,parse = TRUE)
+
+df4=data.frame("x"=usersets.stats.act$totalcnt,"y"=usersets.stats.act$cates)
+g4 <- ggplot(df4)+
+    geom_point(aes(x=x,y=y),alpha=.3)+
+    geom_smooth(aes(x=x,y=y),method="lm",size=3) +
+    theme(axis.title = element_text(size=10),legend.title=element_blank(),
+          legend.background=element_blank(),plot.title = element_text(size=11))+
+    scale_x_log10()+
+    ggtitle("Checkin counts V.S. Unique categories (N)")+
+    xlab("Unique Categories") +
+    ylab("Checkins Counts")+
+    geom_text(aes(x = 1000, y = 10, label = lm_eqn(df4)), size=3,parse = TRUE)
+
+# png(paste0(basedir,"img\\ceus_entropy_relations2.png"), width = 8*ppi, height = 6*ppi, res=ppi,bg = "transparent")
+# multiplot(g1,g2,g3,g4,cols=2)
+# dev.off()
+
+multiplot(g1,g2,g3,g4,cols=2)
+
+
+```
+
+
+
+#### 4. Regularity as lower bounds
+
+##### 4.1 calculation of regularity
+
+```{r,eval=FALSE}
+# reg.s.t = lapply(usersets.active, function(user){
+#     
+#     cls.s = spatial.clustering(user)
+#     cls.t = temporal.clustering(user)
+#     cls = merge(x=cls.s, y=cls.t[c("id","hour.cls")], by.x="id", by.y="id", all.X=TRUE)
+#     cls = merge(x=cls, y = user[c("gid","yearday")], by.x="id", by.y="gid", all.X=TRUE)
+#     
+#     cls$cate_l2=factor(cls$cate_l2)
+#     cls$st = as.factor(paste(cls$hour,cls$sp))
+#     
+#    
+# #     the most probable category for this user considering both spatial and temporal
+#     pi.st = sapply(split(cls,cls$st),function(st){
+#         cate_seq = st$cate_l2
+#         # the most probable category
+#         cate_freq = as.data.frame(table(cate_seq))
+# #         if(length(unique(st$yearday))>1) 
+#             ans = max(cate_freq$Freq)/sum(cate_freq$Freq)
+# #         else ans = NA
+#         ans
+#     })
+#     
+# 
+#     
+#     freq.st = as.data.frame(table(cls$st))
+#     p.st = freq.st$Freq/sum(freq.st$Freq)
+#     
+#     sum(p.st * pi.st,na.rm=TRUE)
+# 
+# #     c("temp"=pi.t,"sp"=pi.s)
+# })
+
+reg.t = sapply(usersets.active, function(user){
+
+    
+    user$cate_l2=factor(user$cate_l2)
+    user$hour = factor(user$hour)
+    
+   
+#     the most probable category for this user in that hour
+    pi.t = sapply(split(user,user$hour),function(hour){
+        cate_seq = hour$cate_l2
+        # the most probable category
+        cate_freq = as.data.frame(table(cate_seq))
+#         if(length(unique(st$yearday))>1) 
+            ans = max(cate_freq$Freq)/sum(cate_freq$Freq)
+#         else ans = NA
+        ans
+    })
+    
+
+    
+    freq.t = as.data.frame(table(user$hour))
+    p.t = freq.t$Freq/sum(freq.t$Freq)
+    
+    sum(p.t * pi.t,na.rm=TRUE)
+
+})
+
+```
+```{r,echo=FALSE,fig.width=4,fig.height=3}
+# save(reg.t, file="D:\\Experiments\\R\\data\\reg.t.Rda")
+load("D:\\Experiments\\R\\data\\reg.t.Rda")
+
+gg.reg = ggplot(data.frame("regularity"=reg.t)) + 
+    stat_density(aes(x = regularity, y = ..density..),
+                 position="identity",adjust=2,alpha=0.5,fill="#56B4E9") +
+    xlab(expression(atop(italic(Pi)^"max","\n\n(a)") ) )  +
+    ylab("Density") +
+#     theme(axis.title = element_text(size=10),legend.title=element_blank(),
+#           legend.position="none",legend.background=element_blank())
+    theme(axis.title = element_text(size=10),legend.title=element_blank(),
+          legend.position="none",plot.title = element_text(size=11))+
+    scale_x_continuous(limit=c(0,1))
+
+gg.reg
+
+manipulate(
+    gg.reg  + geom_vline(xintercept =x.max,color = "#E69F00", linetype="dotted", size=2),
+    x.max= slider(0.2,0.6)
+    )
+
+
+```
+
+
+
+##### 4.2 relations with other factors 
+```{r}
+usersets.active = usersets[usersets.active.idx]
+# relation between "regularity" and "hour"
+reg.t.mat = sapply(usersets.active, function(user){
+    
+    user$cate_l2=factor(user$cate_l2)
+   
+#     the most probable category for this user in that hour
+    pi.t = sapply(split(user,user$hour),function(hour){
+        cate_seq = hour$cate_l2
+        # the most probable category
+        cate_freq = as.data.frame(table(cate_seq))
+#         if(length(unique(st$yearday))>1) 
+            ans = max(cate_freq$Freq)/sum(cate_freq$Freq)
+#         else ans = NA
+        ans
+    })
+    
+    pi.t[is.na(pi.t)]=0
+    
+    pi.t
+
+})
+```
+```{r,echo=FALSE,fig.width=4,fig.height=3}
+gg.reg.hour <- ggplot(data.frame("hour"=c(0:23),"reg.mean"=colMeans(data.frame(t(reg.t.mat))),
+       "se"=apply(data.frame(t(reg.t.mat)),2,sd)/sqrt(4422) ),
+       aes(x=hour,y=reg.mean) )+
+    geom_smooth(se=F, method = "lm", formula = y ~ poly(x, 12),color="#56B4E9",size=2) +
+    geom_point(size=1.5) + 
+    geom_errorbar(aes(ymin=reg.mean-2*se, ymax=reg.mean+2*se), colour ="black", size =.3, width=.5)+
+    xlab("Hour of Day\n\n(b)") +
+    ylab(expression(paste(Pi^min, "(", mu %+-% 2*sigma,")"))) +
+#     theme(axis.title = element_text(size=10),legend.title=element_blank(),
+#           legend.position="none",legend.background=element_blank())
+    theme(axis.title = element_text(size=10),plot.title = element_text(size=11))
+gg.reg.hour
+```
+```{r}
+# relations between hour and N
+n.t.mat = sapply(usersets.active, function(user){
+
+    user$cate_l2=factor(user$cate_l2)
+   
+#   n in each hour for this user
+    n.t = sapply(split(user,user$hour),function(hour){
+        length(unique(hour$cate_l2))
+    })
+    
+    n.t[is.na(n.t)]=0
+    
+    n.t
+
+})
+```
+```{r,echo=FALSE,fig.height=3,fig.width=4}
+gg.n.hour <- ggplot(data.frame("hour"=c(0:23),"n.mean"=colMeans(data.frame(t(n.t.mat))),
+       "se"=apply(data.frame(t(n.t.mat)),2,sd)/sqrt(4422) ),
+       aes(x=hour,y=n.mean) )+
+    geom_smooth(se=F, method = "lm", formula = y ~ poly(x, 12),color="#56B4E9",size=2) +
+    geom_point(size=1.5) + 
+    geom_errorbar(aes(ymin=n.mean-2*se, ymax=n.mean+2*se), colour ="black", size =.3, width=.5)+
+    xlab("Hour of Day\n\n(d)") +
+    ylab(expression(paste("Hourly Number of Unique Categories(", mu %+-% 2*sigma,")"))) +
+#     theme(axis.title = element_text(size=10),legend.title=element_blank(),
+#           legend.position="none",legend.background=element_blank())
+    theme(axis.title = element_text(size=10),plot.title = element_text(size=11))
+gg.n.hour
+
+# relations between regulatiry and N
+df.reg.n = data.frame("x"=usersets.stats.act$cates,"y"=reg.t)
+gg.reg.n <- ggplot(df.reg.n)+
+    geom_point(aes(x=x,y=y),alpha=.3,size=1)+
+    geom_smooth(aes(x=x,y=y),method="lm",formula=y~log10(x),size=2) +
+    theme(axis.title = element_text(size=10),legend.title=element_blank(),
+          legend.background=element_blank(),plot.title = element_text(size=11))+
+#     ggtitle("Regularity V.S. Unique categories (N)")+
+    xlab("Number of Unique Categories\n\n(c)") +
+    ylab(expression(paste(Pi^min))) +
+    scale_y_continuous(limits=c(0,1))+
+#     scale_x_log10()+
+    geom_text(aes(x = 75, y = 0.9, label = lm_eqn_log(df.reg.n)), size=3,parse = TRUE)
+gg.reg.n
+
+png(paste0(basedir,"regularity.png"), width = 8*ppi, height = 6*ppi, res=ppi)
+multiplot(gg.reg,gg.reg.n,gg.reg.hour,gg.n.hour,cols=2)
+dev.off()
+
+
+
+# manipulate(
+#     gg.reg  + geom_vline(xintercept =x.max,color = "#E69F00", linetype="dotted", size=2),
+#     x.max= slider(0,1)
+#     )
+```
+#### 5. upper bounds based on Fano's inequality
+
+##### 5.1 Fano's inequality
+
+Fano's inquality states:
+
+$$H(X|Y)\leq H(e)+p(e)\log(N-1)$$
+
+where
+
+$$p(e)=p(X\neq Y)=1-\Pi$$
+
+and 
+
+$$H(e)=-p(e) \log p(e)-(1-p(e)) \log (1-p(e))$$
+
+It is tranlated in our case to:
+
+$$S^{real}\leq -\Pi \log \Pi - (1-\Pi)\log(1-\Pi)+(1-\Pi)\log(N-1)$$
+
+The mathmatical relations is described in the following figure:
+
+```{r,echo=FALSE,fig.width=5,fig.height=3}
+x = seq(from=0,to=1,length=101)
+N = c(1,2,5,20,100,500)
+df = data.frame()
+temp=lapply(N,function(n){
+    y = rep(0,101) 
+    if(n!=1){
+        y[1]=log2(n-1)
+        y[2:100] = (1-x[2:100])*log2(n-1) - x[2:100]*log2(x[2:100]) - (1-x[2:100])*log2(1-x[2:100]) 
+    }
+    newdf = data.frame("pi"=x, "S"=y, "N"=as.factor(n))
+    df <<- rbind(df, newdf)
+    NA
+})
+# png(paste0(basedir,"img\\ceus_relation_pi.s.N.png"), width = 5*ppi, height = 3*ppi, res=ppi,bg = "transparent")
+gg.pi.s.n <- ggplot(df) + 
+    geom_path(aes(x=pi,y=S,group=N,color=N)) +
+    theme(legend.background=element_blank(),legend.title=element_blank(),
+          axis.title = element_text(size=10))+
+    scale_color_discrete( breaks = levels(df$N),
+         labels=list(bquote(italic(N)==.(N[1])),bquote(italic(N)==.(N[2])),
+                     bquote(italic(N)==.(N[3])),bquote(italic(N)==.(N[4])),
+                     bquote(italic(N)==.(N[5])),bquote(italic(N)==.(N[6])))  )+
+    geom_point(aes(x=0.5,y=5.48145),fill="#E69F00",color=NA,alpha=.5,size=4,shape=21)+
+    annotate("text", label = "(italic(Pi)[0]~~italic(S)[0])",
+             parse = TRUE,size=2, x = 0.62, y = 5.5, colour = "black") +
+    annotate("text", label = ",",size=2, x = 0.62, y = 5.5, colour = "black") +
+    xlab(bquote(atop(italic(Pi),"\n\n(a)") ) ) +
+    ylab(bquote(italic(S)^max ) ) 
+#     ggtitle(expression(paste("S"^"max", " ~ (", Pi, ", N)")))
+# dev.off()
+```
+
+
+##### 5.2 calculation of upper bounds 
+
+```{r,echo=FALSE}
+piset = data.frame()
+temp = sapply(seq_along(usersets.active),function(id){
+    
+    N = length(unique(usersets.active[[id]]$cate_l2))
+
+    S = entropy.real.act[id]
+#     Stemp = entropy.temp[id]
+    Sunc = entropy.unc.act[id]
+    Srand = entropy.rand.act[id]
+    
+    x = seq(from=0,to=1,length=1001)
+    y = rep(0,1001)
+
+    if(N!=1){
+        y[1]=log2(N-1)
+        y[2:1000] = (1-x[2:1000])*log2(N-1) - x[2:1000]*log2(x[2:1000]) - (1-x[2:1000])*log2(1-x[2:1000]) 
+    }
+
+    yoffset = y[2:length(y)]
+    yoffset[length(y)]=-0.001
+    
+    pi = ifelse(S<=max(y),x[which( y>=S & yoffset<S )],x[which(y==max(y))] )
+#     pitemp = ifelse(Stemp<=max(y),x[which( y>=Stemp & yoffset<Stemp )],x[which(y==max(y))] )
+    piunc = ifelse(Sunc<=max(y),x[which( y>=Sunc & yoffset<Sunc )],x[which(y==max(y))] )
+    pirand = ifelse(Srand<=max(y),x[which( y>=Srand & yoffset<Srand )],x[which(y==max(y))] )
+    
+    piset <<- rbind(piset,c("id"=id,"rand"=pirand,"unc"=piunc,"real"=pi,"n"=N))
+
+    NA
+})
+rm(temp)
+colnames(piset)=c("id","rand","unc","real","n")
+piset.melt= melt(piset,id.vars=c("id","n"))
+```
+```{r,eval=FALSE}
+gg.pi <- ggplot(piset.melt) + 
+    stat_density(aes(x=value,y=..density..,group=variable, fill=variable),
+                 position = "identity",adjust = 5,color=NA, alpha=.5) +
+#     scale_x_continuous(limits=c(0,1))+
+    theme(legend.position=c(.85,.75),legend.background=element_blank(),
+          legend.title=element_blank())+
+        theme(axis.title = element_text(size=10),legend.title=element_blank(),
+          legend.background=element_blank(),plot.title = element_text(size=11))+
+    scale_fill_discrete( breaks = c("rand","unc","real"),
+         labels=list(bquote(italic(Pi)^.("rand")),bquote(italic(Pi)^.("unc")),
+                     bquote(italic(Pi)^.("st")) )  )+
+    xlab(expression(atop(italic(Pi)^"max","\n\n(b)") ) ) +
+    ylab("Density")
+#     scale_y_sqrt()+
+#     ggtitle(expression(paste(Pi^"max"," for Active Users")))
+
+# manipulate(
+#     gg.pi2 + geom_vline(xintercept =x.max,color = "#E69F00", linetype="dotted"),
+#     x.max= slider(0,1)
+#     )
+
+png(paste0(basedir,"img\\ceus_pi2.png"), width = 8*ppi, height = 3*ppi, res=ppi)
+multiplot(gg.pi.s.n, gg.pi, cols=2)
+dev.off()
+
+```
+
+
+##### 5.3 relations with other factors
+
+```{r}
+gg.pi.n = ggplot(piset,aes(x=n,y=real))+
+    geom_point(alpha=.3,size=1)+
+    stat_quantile(aes(colour = ..quantile..), quantiles = seq(0, 1, by=0.25),size = 1.2,linetype="dashed") +
+    scale_colour_gradient2(name="Quantile",midpoint = 0.5) + 
+#     geom_smooth(aes(x=n,y=real),method="lm",formula=y~x,size=2) +
+    theme(axis.title = element_text(size=10),
+#           legend.title=element_blank(),legend.background=element_blank(),
+          plot.title = element_text(size=11))+
+#     ggtitle("Regularity V.S. Unique categories (N)")+
+    xlab("Number of Unique Categories\n\n(a)") +
+    ylab(expression(Pi^"max"))  +
+    scale_y_continuous(limits=c(0.6,1)) 
+#     scale_x_log10()+
+#     geom_text(aes(x = 75, y = 0.65, label = lm_eqn(piset,piset$n,piset$real)), size=3,parse = TRUE)
+
+
+
+mutual.imp.df = data.frame(
+    "s.unc"= entropy.unc.act,
+    "s.real"= entropy.real.act,
+    "mutual"= entropy.unc.act-entropy.real.act,
+    "pimin" = reg.t,
+    "pimax" = piset$real,
+    "imp1" = piset$real-reg.t,
+    "imp2" = piset$real / reg.t,
+    "n" = piset$n,
+    "hc" = usersets.stats.act$hourcomp)
+
+
+gg.pi.reg <- ggplot(mutual.imp.df,aes(x=pimin,y=pimax,color=log10(n)) )+
+    geom_point(size=1) +
+    geom_smooth( method = "lm",color="#56B4E9",formula = y~x,size=2) +
+    scale_colour_gradient2(name="N",midpoint = 1.3, low="red",high="blue",
+                           breaks=c(0,1,2),
+                           labels=c(expression(10^0), expression(10^1),
+                                    expression(10^2))) +   
+#     geom_errorbar(aes(ymin=mu-2*se, ymax=mu+2*se), colour ="black", size =.3, width=.5)+
+    xlab(expression(atop(italic(Pi)^"min","\n\n(b)") ) ) +
+    ylab(expression(Pi^max)) +
+#     geom_text(aes(x = 0.625, y = 0.7, 
+#                   label = lm_eqn(mutual.imp.df,mutual.imp.df$pimin,mutual.imp.df$pimax)), 
+#               size=3,parse = TRUE,color="black")+
+#     theme(axis.title = element_text(size=10),legend.title=element_blank(),
+#           legend.position="none",legend.background=element_blank())
+    theme(axis.title = element_text(size=10),
+          plot.title = element_text(size=11))
+
+```
+
+
+
+```{r}
+
+
+# gg.pimin.s <- 
+
+
+
+gg.mutual.pimin <- 
+    ggplot(mutual.imp.df,aes(x=mutual,y=pimin,color=log10(n)) )+
+    geom_point(size=1) +
+    scale_colour_gradient2(name="N",midpoint = 1.3, low="red",high="blue",
+                           breaks=c(0,1,2),
+                           labels=c(expression(10^0), expression(10^1),
+                                    expression(10^2))) +
+#     geom_smooth( method = "lm",color="#56B4E9",formula = y~log(x),size=2) +
+    xlab("Mutual Information\n\n(c)" )  +
+    ylab(expression(italic(Pi)^"min" ) ) +
+#     geom_text(aes(x = 0.625, y = 0.75, 
+#                   label = lm_eqn_log(data.frame("x"=mutual.imp.df$mutual,"y"=mutual.imp.df$pimin))), 
+#               size=3,parse = TRUE)+
+    theme(axis.title = element_text(size=10),plot.title = element_text(size=11))
+
+
+gg.mutual.pimax <- 
+    ggplot(mutual.imp.df,aes(x=mutual,y=pimax,color=log10(n)) )+
+    geom_point(size=1) +
+    scale_colour_gradient2(name="N",midpoint = 1.3, low="red",high="blue",
+                           breaks=c(0,1,2),
+                           labels=c(expression(10^0), expression(10^1),
+                                    expression(10^2))) +
+#     geom_smooth( method = "lm",color="#56B4E9",formula = y~x,size=2) +
+    xlab("Mutual Information\n\n(d)" )  +
+    ylab(expression(italic(Pi)^"max" ) ) +
+#     geom_text(aes(x = 0.625, y = 0.75, 
+#                   label = lm_eqn_log(data.frame("x"=mutual.imp.df$mutual,"y"=mutual.imp.df$pimax))), 
+#               size=3,parse = TRUE)+
+    theme(axis.title = element_text(size=10),plot.title = element_text(size=11))
+
+
+gg.mutual.imp1 <- 
+    ggplot(mutual.imp.df,aes(x=mutual,y=imp1,color=log10(n)) )+
+    geom_point(size=1) +
+    scale_colour_gradient2(name="N",midpoint = 1.3, low="red",high="blue",
+                           breaks=c(0,1,2),
+                           labels=c(expression(10^0), expression(10^1),
+                                    expression(10^2))) +
+    geom_smooth( method = "lm",color="#56B4E9",formula = y~x,size=2) +
+    xlab("Mutual Information\n\n(c)" )  +
+    ylab(expression(Delta~Pi == italic(Pi)^"max" - italic(Pi)^"min") ) +
+    geom_text(aes(x = 2, y = 0.75, 
+                  label = lm_eqn(data.frame("x"=mutual.imp.df$mutual,"y"=mutual.imp.df$imp1))),
+              size=3,parse = TRUE,color="black")+
+    theme(axis.title = element_text(size=10),plot.title = element_text(size=11))
+
+gg.mutual.imp2 <- 
+    ggplot(mutual.imp.df,aes(x=mutual,y=imp1,color=log10(hc)) )+
+    geom_point(size=1,alpha=0.8) +
+    scale_colour_gradient2(name="H.C",midpoint = -0.2, low="red",high="blue",
+                           breaks=c(-0.25,-0.15,-0.05,0),
+                           labels=c(0.56,0.71,0.89,1) ) +
+    geom_smooth( method = "lm",color="#56B4E9",formula = y~x,size=2) +
+    xlab("Mutual Information\n\n(d)" )  +
+    ylab(expression(Delta~Pi == italic(Pi)^"max" - italic(Pi)^"min") ) +
+#     geom_text(aes(x = 2, y = 0.75, 
+#                   label = lm_eqn(data.frame("x"=mutual.imp.df$mutual,"y"=mutual.imp.df$imp1))),
+#               size=3,parse = TRUE,color="black")+
+    theme(axis.title = element_text(size=10),plot.title = element_text(size=11))
+
+png(paste0(basedir,"relations.pi.mutual.png"), width = 8*ppi, height = 6*ppi, res=ppi)
+multiplot(gg.pi.n,gg.mutual.imp1,
+          gg.pi.reg,gg.mutual.imp2,cols=2)
+dev.off()
+```
+

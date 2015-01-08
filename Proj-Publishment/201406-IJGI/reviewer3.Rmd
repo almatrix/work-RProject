@@ -1,0 +1,160 @@
+---
+title: "Feedback to Reviewers' Comments"
+output: word_document
+date: "Friday, August 22, 2014"
+---
+
+## Review Report Form 
+
+| | High | Average | Low | No Answer
+--------|------|---------|-----|---------
+Originality / Novelty    |	( )   |   (x)  |    ( )  |    ( )      
+Significance of Content |	( )   |   (x)  |    ( )   |   ( )      
+Quality of Presentation |	( )   |   ( )  |    (x)   |   ( )      
+Scientific Soundness 	|	( )   |   ( )  |    (x)   |   ( )      
+Interest to the readers |		( )     | (x)   |   ( )   |   ( )      
+Overall Merit		|	( )    |  (x)  |    ( )  |    ( )      
+
+### English Language and Style 
+
+( ) English language and style are fine 
+
+(x) Minor spell check required 
+
+( ) Extensive editing of English language and style required 
+
+( ) I don't feel qualified to judge about the English Language and Style 
+
+### Comments and Suggestions for Authors 
+
+```
+This paper has been well written on the topic of 3D geo-visualization in a mobile-computing environment. It has defined a context model based on the cartographic communication model and proposed that adaptive geo-visualization can be decomposed to content and presentation adaption. The idea of using VGI to refine raw data is interesting. However the paper could be improved if the following suggestions could be considered:
+
+1. the title does not indicate the ‘mobile’ which is basic for the paper’s new model in the content.
+```
+
+**Reply:**
+
+Thanks for such concrete comments.You are definitely right in pointing out the keyword "mobile". There were  too many topics and keywords in the previous manuscript, and it became difficult to decide which ones should be included in the title. In the revised version, we decided to constrain our research effort by removing the 3D visualization part. And we also adapted our title to the new texts accordingly. The new title now is **Contextualized Relevance Evaluation of Geographic Information for Mobile Users Based on Location-Based Social Networks**. 
+
+----
+
+```
+2. the sentence on lines 81-83 is ambiguous. With mobile computing devices and ‘web’, digital maps bear ‘mobile’ as one typical characteristic. The paper needs to distinguish the portability of hard-copy maps and mobility of digital maps.
+```
+
+**Reply:**
+
+Thanks for the comments. The ambiguity is probably caused by our expressions. By saying "digital maps with the digital revolution", we mean the first maps that are evolved in the ditial world, which are the ones spreaded in the desktop computer. So those first generation of "digital maps" in computers are not portable/mobile anymore. 
+
+I see we in fact agree with each other at the point that mobile maps are both digital and mobile. We distiguish mobile maps from (computer) digital maps because the mobile maps are different from their peers in computers, since the mobility feature requires the cooperation of usage context.
+
+Anyway, since the revised manuscript focuses on the relevance evaluation, maps (visualization of geographic information) are not mentioned much any more. 
+
+----
+
+
+```
+3. in the literature review part, relevant works on ‘content adaption’ and ‘presentation adaption’ should be introduced, such as multi-scale and LoD of geospatial data. At the same time the VGI part may be suppressed to some extent.
+```
+
+**Reply:**
+
+Thanks! The literature review part do need improvments as you suggested. We can see that relevant works on adaptations will contribute to a better organization of the previous manuscript (with the topic of a framework of context-aware 3D visualizaiton). We will include the suggestion when we later cover the visualization part in other works. 
+
+This paper has been revised to a great extent by removing visualization part and focusing only on relevance evaluation part (the foundations of information retrieval, or 'content adaptation'), because we realize that the previous manuscript has covered too wide topics, which caused too many problems as the other reviewers have also pointed out. 
+
+With the new research focus in the revised manuscript, the literature review has been also re-organized. It now includes two subsections: geographic relevance evaluation and VGI.  
+
+----
+
+```
+4. the authors need to provide literature support to the argument in the sentence on lines 209-212 or further explain it.
+```
+
+**Reply:**
+
+We are terribly sorry about a fatal clerical errors we made here.
+
+> "When the users are reading geo-visualization in mobile devices, their information demands are reshaped by the mobile environment..."
+
+It meant to be "information perception" instead of "information demands" in this sentence. 
+
+In the previous manuscript, the whole model is devided into information demands (corresponding to content adaptation) and information perception (corresponding to presentation adaptation). The contextual impacts on "information demands" have been explained in ealier sentences, and here it should be about "information perception". What the sentence wants to say is that the user might have differnt perception towards the same information under differnt contexts (differnt mood, diffent time restrictions, etc.)
+
+----
+
+```
+5. the paper needs define what is a ‘geographic object’ and make a consistency of ‘geospatial object’, ‘geographic object’, ‘geo-object’.
+```
+
+**Reply:**
+
+Thanks again for the concrete comments. We then found the unconsistency was even more severe than what you have pointed out, because we were also mixing these terms with "geo-data", "geo-information", etc., by which we didn't intend to make a big distinction. "Object" is commonly used in 3D visualization. People say "camera object", "light object", etc. In the revised manuscript, we have changed all terms to "geographic information" to keep consitency.
+
+----
+
+```
+6. the paper needs to explain which kinds of ‘mining techniques’ have been used in extract semantic information of checkin data, on line 266. And what does a full record of checkin include?
+```
+
+**Reply:**
+
+Thanks! In the revised version, we select only two representative contextual factors (temporal and meteorological) to explain our work concretely. As you can see in figure 2, spectral analysis is used to explore temproal impact, and correspondence analysis is used to mine meteorological impact in figure 4.
+
+We also have add texts to explain what a full record of checkin include in section 3.2 when we introduce the dataset:
+
+> "Each time a user checks in a venue, a checkin object will be created in the database, which covers the profile of the user (id, name, gender, photo, friends, home city, etc.), the profile of the venue (id, name, category, location and updated statistics, etc.), as well as the profile of the checkin event (timestamps, location, attached text messages, opinions to the venue, etc.)."
+
+----
+
+```
+7. to figure 2(b), what do the x and y axes denote? Why are the intervals of vertical axis in the four insets different from each other? It is misleading.
+```
+
+**Reply:**
+
+In Figure 2(b), the x-axis means the hour of day, y-axis correspond to differnt category of venues, and z-axis is the check-in counts of each category in each hour of day in the corresponding spatial clusters. The x-axis can be in 24 groups, indicating 24 hours per day; but we aggregated them into 6 groups because 24 groups would make the figure very hard to read. 
+
+The intervals of vertial axis (aka, z-axis, the check-in counts axis) is different because the user have different numbers of check-ins in different clusters, and the axes of the figures are automatically adapted in Matlab. Clearly the user check in the most frequently in cluster 1 and cluster 4. We keep the adapted axes because we want to show that the user's interest patterns towards differnt venues accross time and cluster. If we keep the intervals consistent in the four insets, then the patterns in e.g. cluster 3 would hardly be noticed. 
+
+Anyway, in the revised version, this bar graph is no longer used, because it can just offer a visual impression, but cannot give direct input for the relevance evaluation. In section 3.3 of the revised manuscript, we presented other analytic results which can be used in relevance evalutation process. 
+
+----
+
+```
+8. the process of generating figure 4 is ambiguous and needs more details.
+```
+
+**Reply:**
+
+In the previous manuscript, we considered four contextual factors, i.e. temporal, meteorological, sequential and spatial. The figure is generated based on the user's propabilities of visiting a certain category under the specified contexts (a vector whose length is the number of all categories).
+
+In the revised version, we have improved our approaches as described in section 4.1. The new algorithm gives a formulation to integrate the impacts of each contextual factor, thereby contextualize the priori relevance score. Consequently, figure 4 is also removed in the revised version.
+
+
+----
+
+```
+9. section 4.2 explains how to model user’s behaviors, but the ‘content adaption’, or data refinement, is still vague.
+```
+
+**Reply:**
+
+Thanks for pointing it out. We were really constrained in space to give any detailed explanations because we have to cover also another major part (visualization) in the previous manuscript. Now the revised version can spend almost the whole space in explaining this issue. 
+
+Especially, section 4.1 gives a formulated approach towards contextualizing relevance evaluation. Based on the assessed relevance score, the information can be ranked according to the score, and only those with high rank (high relevance score according to our algorithm) will be retrieved. In this way, the "content" is adapted to context. 
+
+----
+
+```
+10. the idea to customize geo-visualization according to users’ contexts is interesting. That means the visual content may be different when a specific user come back after he/she changes the relevant context, for example here by making new check-ins. How to handle the inconsistencies? And it applies when more than one users are doing the same searching if they have different check-in records.
+```
+
+**Reply:**
+
+That is a really good point. Honestly, we haven't considered the potential visual inconsistencies yet. Although the visualization part is removed from this revised manuscript, you definitely made a good point that we will consider in our future work.
+
+On the one hand, the visual contents are supposed to be different to represent the "context-awareness". When the user make a new check-in, we assume his/her interest would shifted somehow, and the highlighting target as well as the visual elements *should* be changed accordingly. 
+On the other hand, as you pointed out, it might cause inconsistency problems, which might confuse the users and make our visualization misleading. In this regard, we might consider adding some transition or guiding elements, etc. And maybe a contextual background with a lower LOD would help in such cases. 
+

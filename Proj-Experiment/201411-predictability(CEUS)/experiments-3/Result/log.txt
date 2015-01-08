@@ -1,0 +1,439 @@
+[1] "successfully load the data"
+[1] "*****************working on JOB26 *****************"
+[1] "successfully arrange the data in 36 * 40 grids."
+[1] "The best h for the expected number of clusters is 0.3"
+[1] "successfully lower the ranks of $hour into 6 clusters."
+[1] "The best h for the expected number of clusters is 1"
+[1] "successfully lower the ranks of $ugrid.id into 10 clusters."
+[1] "The best h for the expected number of clusters is 1"
+[1] "successfully lower the ranks of $hour_grid into 12 clusters."
+[1] "The best h for the expected number of clusters is 1"
+[1] "successfully lower the ranks of $hour_grid_weekday into 15 clusters."
+# weights:  520 (459 variable)
+initial  value 794794.809471 
+iter  10 value 546517.825777
+iter  20 value 536828.513793
+iter  30 value 535330.139975
+iter  40 value 533631.814588
+iter  50 value 532127.786092
+iter  60 value 529729.946722
+iter  70 value 526181.408148
+iter  80 value 524205.723748
+iter  90 value 522766.213750
+iter 100 value 521893.476271
+iter 110 value 520782.308545
+iter 120 value 519729.483198
+iter 130 value 518438.257190
+iter 140 value 517468.915785
+iter 150 value 517079.835648
+iter 160 value 516862.175859
+iter 170 value 516708.071885
+iter 180 value 516627.020835
+iter 190 value 516569.728943
+iter 200 value 516538.097935
+iter 210 value 516513.441896
+iter 220 value 516500.361716
+iter 230 value 516492.671712
+iter 240 value 516484.858725
+iter 250 value 516477.191439
+iter 260 value 516470.426125
+iter 270 value 516465.938778
+iter 280 value 516463.788240
+iter 290 value 516462.578030
+iter 300 value 516461.999749
+iter 310 value 516461.562022
+iter 320 value 516461.161571
+iter 330 value 516460.892389
+iter 340 value 516460.706341
+iter 350 value 516460.558134
+iter 360 value 516460.448327
+final  value 516460.437577 
+converged
+[1] "*****************working on JOB27 *****************"
+[1] "successfully arrange the data in 36 * 40 grids."
+[1] "The best h for the expected number of clusters is 0.3"
+[1] "successfully lower the ranks of $hour into 6 clusters."
+[1] "The best h for the expected number of clusters is 0.724"
+[1] "successfully lower the ranks of $ugrid.id into 20 clusters."
+[1] "The best h for the expected number of clusters is 1"
+[1] "successfully lower the ranks of $hour_grid into 12 clusters."
+[1] "The best h for the expected number of clusters is 1"
+[1] "successfully lower the ranks of $hour_grid_weekday into 15 clusters."
+# weights:  620 (549 variable)
+initial  value 794794.809471 
+iter  10 value 545484.328874
+iter  20 value 536380.734096
+iter  30 value 534882.527408
+iter  40 value 533177.550379
+iter  50 value 531633.534821
+iter  60 value 529293.979005
+iter  70 value 525763.916218
+iter  80 value 523462.021097
+iter  90 value 521636.441913
+iter 100 value 520646.989210
+iter 110 value 519726.652267
+iter 120 value 518297.461944
+iter 130 value 517445.871587
+iter 140 value 516673.633648
+iter 150 value 516099.273893
+iter 160 value 515810.883658
+iter 170 value 515643.832886
+iter 180 value 515554.320773
+iter 190 value 515474.090750
+iter 200 value 515435.487922
+iter 210 value 515406.768386
+iter 220 value 515385.951810
+iter 230 value 515371.548451
+iter 240 value 515364.316851
+iter 250 value 515357.412823
+iter 260 value 515352.228360
+iter 270 value 515350.531016
+iter 280 value 515348.310172
+iter 290 value 515346.323980
+iter 300 value 515344.973463
+iter 310 value 515343.857775
+iter 320 value 515342.941790
+iter 330 value 515342.276022
+iter 340 value 515341.129697
+iter 350 value 515339.849948
+iter 360 value 515339.218293
+iter 370 value 515339.029103
+iter 380 value 515338.763547
+final  value 515338.638678 
+converged
+[1] "*****************working on JOB28 *****************"
+[1] "successfully arrange the data in 36 * 40 grids."
+[1] "The best h for the expected number of clusters is 0.3"
+[1] "successfully lower the ranks of $hour into 6 clusters."
+[1] "The best h for the expected number of clusters is 0.624"
+[1] "successfully lower the ranks of $ugrid.id into 30 clusters."
+[1] "The best h for the expected number of clusters is 1"
+[1] "successfully lower the ranks of $hour_grid into 12 clusters."
+[1] "The best h for the expected number of clusters is 1"
+[1] "successfully lower the ranks of $hour_grid_weekday into 15 clusters."
+# weights:  720 (639 variable)
+initial  value 794794.809471 
+iter  10 value 545429.853260
+iter  20 value 536291.812782
+iter  30 value 534750.737837
+iter  40 value 533014.626780
+iter  50 value 531376.718239
+iter  60 value 528969.745961
+iter  70 value 525409.055985
+iter  80 value 522777.342963
+iter  90 value 521135.091743
+iter 100 value 520426.044785
+iter 110 value 519227.756555
+iter 120 value 517959.634085
+iter 130 value 517084.173767
+iter 140 value 516134.168313
+iter 150 value 515433.825112
+iter 160 value 515080.810514
+iter 170 value 514891.226560
+iter 180 value 514791.269842
+iter 190 value 514695.915502
+iter 200 value 514641.520070
+iter 210 value 514600.547707
+iter 220 value 514575.395736
+iter 230 value 514554.709383
+iter 240 value 514545.224420
+iter 250 value 514531.586031
+iter 260 value 514519.553175
+iter 270 value 514511.304911
+iter 280 value 514505.978184
+iter 290 value 514503.287596
+iter 300 value 514501.476879
+iter 310 value 514499.791369
+iter 320 value 514498.286138
+iter 330 value 514497.174882
+iter 340 value 514496.560395
+iter 350 value 514496.096918
+iter 360 value 514495.646958
+iter 370 value 514495.241676
+iter 380 value 514494.943751
+iter 390 value 514494.752233
+final  value 514494.731089 
+converged
+[1] "*****************working on JOB29 *****************"
+[1] "successfully arrange the data in 36 * 40 grids."
+[1] "The best h for the expected number of clusters is 0.3"
+[1] "successfully lower the ranks of $hour into 6 clusters."
+[1] "The best h for the expected number of clusters is 0.548"
+[1] "successfully lower the ranks of $ugrid.id into 40 clusters."
+[1] "The best h for the expected number of clusters is 1"
+[1] "successfully lower the ranks of $hour_grid into 12 clusters."
+[1] "The best h for the expected number of clusters is 1"
+[1] "successfully lower the ranks of $hour_grid_weekday into 15 clusters."
+# weights:  820 (729 variable)
+initial  value 794794.809471 
+iter  10 value 550848.292613
+iter  20 value 541231.106789
+iter  30 value 539261.804159
+iter  40 value 537460.742504
+iter  50 value 535013.208095
+iter  60 value 531238.069114
+iter  70 value 526631.414127
+iter  80 value 523783.409105
+iter  90 value 521807.429529
+iter 100 value 520048.480962
+iter 110 value 519328.581739
+iter 120 value 517627.359434
+iter 130 value 515521.890657
+iter 140 value 513761.168031
+iter 150 value 512678.727583
+iter 160 value 511922.654694
+iter 170 value 511542.664179
+iter 180 value 511282.481063
+iter 190 value 511081.827760
+iter 200 value 510964.159803
+iter 210 value 510894.103606
+iter 220 value 510840.741250
+iter 230 value 510804.514081
+iter 240 value 510778.735097
+iter 250 value 510749.287627
+iter 260 value 510733.294514
+iter 270 value 510717.539000
+iter 280 value 510703.528095
+iter 290 value 510688.466150
+iter 300 value 510679.185553
+iter 310 value 510672.414457
+iter 320 value 510669.442428
+iter 330 value 510666.527295
+iter 340 value 510663.478219
+iter 350 value 510659.892427
+iter 360 value 510657.096823
+iter 370 value 510655.912142
+iter 380 value 510655.054433
+iter 390 value 510654.579615
+iter 400 value 510654.360298
+iter 410 value 510654.185662
+iter 420 value 510654.004212
+final  value 510653.931003 
+converged
+[1] "*****************working on JOB30 *****************"
+[1] "successfully arrange the data in 36 * 40 grids."
+[1] "The best h for the expected number of clusters is 0.3"
+[1] "successfully lower the ranks of $hour into 6 clusters."
+[1] "The best h for the expected number of clusters is 0.484"
+[1] "successfully lower the ranks of $ugrid.id into 50 clusters."
+[1] "The best h for the expected number of clusters is 1"
+[1] "successfully lower the ranks of $hour_grid into 12 clusters."
+[1] "The best h for the expected number of clusters is 1"
+[1] "successfully lower the ranks of $hour_grid_weekday into 15 clusters."
+# weights:  920 (819 variable)
+initial  value 794794.809471 
+iter  10 value 560752.016211
+iter  20 value 549354.314932
+iter  30 value 545330.472912
+iter  40 value 541501.725959
+iter  50 value 538208.786399
+iter  60 value 534199.225969
+iter  70 value 529389.813640
+iter  80 value 525013.704451
+iter  90 value 522381.507378
+iter 100 value 520583.211607
+iter 110 value 519203.230026
+iter 120 value 517692.115397
+iter 130 value 515823.038937
+iter 140 value 513804.834415
+iter 150 value 512000.764545
+iter 160 value 510990.323761
+iter 170 value 510215.851493
+iter 180 value 509546.956735
+iter 190 value 509106.320080
+iter 200 value 508846.714272
+iter 210 value 508649.051878
+iter 220 value 508472.109188
+iter 230 value 508340.593311
+iter 240 value 508254.805692
+iter 250 value 508183.004478
+iter 260 value 508148.419531
+iter 270 value 508114.718202
+iter 280 value 508085.033525
+iter 290 value 508053.057652
+iter 300 value 508025.468784
+iter 310 value 508002.005349
+iter 320 value 507982.446723
+iter 330 value 507971.652743
+iter 340 value 507965.704697
+iter 350 value 507961.595098
+iter 360 value 507957.567530
+iter 370 value 507952.086695
+iter 380 value 507945.601398
+iter 390 value 507942.411019
+iter 400 value 507940.335903
+iter 410 value 507939.527335
+iter 420 value 507939.147338
+iter 430 value 507938.911885
+final  value 507938.868955 
+converged
+[1] "*****************working on JOB16 *****************"
+[1] "successfully arrange the data in 18 * 20 grids."
+[1] "The best h for the expected number of clusters is 0.3"
+[1] "successfully lower the ranks of $hour into 6 clusters."
+[1] "The best h for the expected number of clusters is 0.516"
+[1] "successfully lower the ranks of $ugrid.id into 20 clusters."
+[1] "The best h for the expected number of clusters is 1"
+[1] "successfully lower the ranks of $hour_grid into 11 clusters."
+[1] "The best h for the expected number of clusters is 1"
+[1] "successfully lower the ranks of $hour_grid_weekday into 16 clusters."
+# weights:  620 (549 variable)
+initial  value 794794.809471 
+iter  10 value 582330.667692
+iter  20 value 576121.020878
+iter  30 value 574914.121265
+iter  40 value 573602.339197
+iter  50 value 572175.446077
+iter  60 value 569384.687729
+iter  70 value 565310.823981
+iter  80 value 562496.795612
+iter  90 value 561071.189699
+iter 100 value 559634.179304
+iter 110 value 558867.005859
+iter 120 value 557962.852747
+iter 130 value 556886.151056
+iter 140 value 556136.229576
+iter 150 value 555589.280513
+iter 160 value 555165.130062
+iter 170 value 554861.355988
+iter 180 value 554674.209521
+iter 190 value 554568.582273
+iter 200 value 554505.204545
+iter 210 value 554462.812335
+iter 220 value 554432.581160
+iter 230 value 554403.269887
+iter 240 value 554381.727660
+iter 250 value 554368.760284
+iter 260 value 554356.492945
+iter 270 value 554343.929301
+iter 280 value 554335.643548
+iter 290 value 554329.838333
+iter 300 value 554326.646311
+iter 310 value 554324.691412
+iter 320 value 554322.429325
+iter 330 value 554320.005674
+iter 340 value 554317.603754
+iter 350 value 554314.571872
+iter 360 value 554312.686110
+iter 370 value 554310.753823
+iter 380 value 554310.111410
+final  value 554309.760958 
+converged
+[1] "*****************working on JOB17 *****************"
+[1] "successfully arrange the data in 36 * 40 grids."
+[1] "The best h for the expected number of clusters is 0.3"
+[1] "successfully lower the ranks of $hour into 6 clusters."
+[1] "The best h for the expected number of clusters is 0.724"
+[1] "successfully lower the ranks of $ugrid.id into 20 clusters."
+[1] "The best h for the expected number of clusters is 1"
+[1] "successfully lower the ranks of $hour_grid into 12 clusters."
+[1] "The best h for the expected number of clusters is 1"
+[1] "successfully lower the ranks of $hour_grid_weekday into 15 clusters."
+# weights:  620 (549 variable)
+initial  value 794794.809471 
+iter  10 value 545484.328874
+iter  20 value 536380.734096
+iter  30 value 534882.527408
+iter  40 value 533177.550379
+iter  50 value 531633.534821
+iter  60 value 529293.979005
+iter  70 value 525763.916218
+iter  80 value 523462.021097
+iter  90 value 521636.441913
+iter 100 value 520646.989210
+iter 110 value 519726.652267
+iter 120 value 518297.461944
+iter 130 value 517445.871587
+iter 140 value 516673.633648
+iter 150 value 516099.273893
+iter 160 value 515810.883658
+iter 170 value 515643.832886
+iter 180 value 515554.320773
+iter 190 value 515474.090750
+iter 200 value 515435.487922
+iter 210 value 515406.768386
+iter 220 value 515385.951810
+iter 230 value 515371.548451
+iter 240 value 515364.316851
+iter 250 value 515357.412823
+iter 260 value 515352.228360
+iter 270 value 515350.531016
+iter 280 value 515348.310172
+iter 290 value 515346.323980
+iter 300 value 515344.973463
+iter 310 value 515343.857775
+iter 320 value 515342.941790
+iter 330 value 515342.276022
+iter 340 value 515341.129697
+iter 350 value 515339.849948
+iter 360 value 515339.218293
+iter 370 value 515339.029103
+iter 380 value 515338.763547
+final  value 515338.638678 
+converged
+[1] "*****************working on JOB18 *****************"
+[1] "successfully arrange the data in 54 * 60 grids."
+[1] "The best h for the expected number of clusters is 0.3"
+[1] "successfully lower the ranks of $hour into 6 clusters."
+[1] "The best h for the expected number of clusters is 0.7568"
+[1] "successfully lower the ranks of $ugrid.id into 21 clusters."
+[1] "The best h for the expected number of clusters is 1"
+[1] "successfully lower the ranks of $hour_grid into 14 clusters."
+[1] "The best h for the expected number of clusters is 1"
+[1] "successfully lower the ranks of $hour_grid_weekday into 16 clusters."
+# weights:  660 (585 variable)
+initial  value 794794.809471 
+iter  10 value 524655.175055
+iter  20 value 515117.727923
+iter  30 value 511592.443232
+iter  40 value 508605.717702
+iter  50 value 505743.918316
+iter  60 value 502329.478567
+iter  70 value 497523.408105
+iter  80 value 493915.897997
+iter  90 value 491716.286229
+iter 100 value 489784.828664
+iter 110 value 488689.249030
+iter 120 value 487242.368268
+iter 130 value 485553.399184
+iter 140 value 483556.002146
+iter 150 value 481992.823440
+iter 160 value 480904.948256
+iter 170 value 480125.025350
+iter 180 value 479709.290839
+iter 190 value 479207.785073
+iter 200 value 478893.588133
+iter 210 value 478706.273515
+iter 220 value 478580.581439
+iter 230 value 478490.929639
+iter 240 value 478421.035954
+iter 250 value 478372.325086
+iter 260 value 478330.737878
+iter 270 value 478278.189842
+iter 280 value 478240.466955
+iter 290 value 478201.921217
+iter 300 value 478175.970342
+iter 310 value 478163.941217
+iter 320 value 478158.242244
+iter 330 value 478155.737419
+iter 340 value 478153.392180
+iter 350 value 478151.318373
+iter 360 value 478149.391457
+iter 370 value 478148.221419
+iter 380 value 478147.571790
+iter 390 value 478147.203971
+iter 400 value 478146.957694
+iter 410 value 478146.734443
+iter 420 value 478146.509515
+iter 420 value 478146.506869
+iter 430 value 478146.411639
+final  value 478146.343523 
+converged
+[1] "*****************working on JOB19 *****************"
+[1] "successfully arrange the data in 72 * 80 grids."
+[1] "The best h for the expected number of clusters is 0.3"
+[1] "successfully lower the ranks of $hour into 6 clusters."
+[1] "The best h for the expected number of clusters is 0.816"
+[1] "successfully lower the ranks of $ugrid.id into 20 clusters."
+[1] "The best h for the expected number of clusters is 1"
+[1] "successfully lower the ranks of $hour_grid into 16 clusters."

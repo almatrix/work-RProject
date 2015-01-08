@@ -1,0 +1,128 @@
+---
+title: "Log Linear Regression"
+output: html_document
+---
+
+reference source url: http://ww2.coastal.edu/kingw/statistics/R-tutorials/loglin.html 
+
+have a look at the data...
+```{r}
+data(Titanic)
+dimnames(Titanic)
+```
+There are 4 categorical variables crosstabulated in this table, and there are...
+```{r}
+margin.table(Titanic)
+```
+...cases in the table.
+
+### Some Basics
+Log linear analysis allows us to look for relationships among variables in a multiway contigency table. (chi-squared anaylysis is fit for two-way tables.)
+
+create a  two-way table over "sex" and "survived":
+```{r}
+margin.table(Titanic, c(2,4))
+```
+**odds ratio** is: (344/126)/(367/1364)=`r (344/126) / (367/1364) `
+
+**likelyhood ratio** $= \frac{sensitivity}{1-specificity}=\frac{P(+|D)}{1-P(-|D^{C})}$.
+
+suppose: 
+```
+    | + | - 
+ ---|---|---
+ D  | a | b
+ Dc | c | d
+``` 
+then likelyhood ratio in this case would be:$\frac{a/(a+b)}{1-d/(c+d)}=\frac{a/(a+b)}{c/(c+d)}$. i.e.: likelyhood ratio is (344/(344+126)) / (367/(367+1364)) = `r (344/(344+126)) / (367/(367+1364))`
+ 
+This figures says: females were ~ 3.5 times as likely to survive".
+And log linear analysis is based on "chi-square" of such "likelihood ratio".
+
+**Note**:
+
+* chi-square statistic: $$\chi^{2}=\sum \frac{(O_{i}-E_{i})^{2}}{E_{i}}$$
+    + in the two-way table above: $\chi^{2}=\frac{n(ad - bc)^2}{(a+b)(c+d)(a+c)(b+d)}$
+* likelihood ratio test: $$D=-2ln( \frac{likelihood for null model}{likelihood for alternative model})$$
+* likelihood ratio test statistic: $$A(x)=\frac {L(H_{0}|x)}{L(H_{1}|x)}$$
+* likelihood ratio chi-square statistic: $$G^2=2\sum O_{ij}ln \frac {O_{ij}}{E_{ij}}$$
+
+ref: https://v8doc.sas.com/sashtml/stat/chap28/sect19.htm
+
+### Log linear analysis 
+传统的chi-square test的原假设是factor之间没有关系，factor对观测值的影响是独立的。因此期望值$F_{ij}=(f_{i+}*f_{+j})/f_{++}$. 此时行和列各耗费一个自由度，总的自由度是$(I-1)*(J-1)$. 如果卡方检验告诉我们要拒绝原假设(p<0.05),它同时也说明了factor之间是不独立的，或者说是相关的。
+
+一个极端的原假设是观测值完全随机存在，factor对观测值没有影响，即期望值$F_{ij}=f_{++}/(I*J)$.此时检验只消耗一个自由度，总的自由度是$I×J-1$.这种模型其实是log linear analysis 的**null model**. 
+
+与此相应的另一个极端是认为观测值依赖于factor以及factor之间的相关关系，即factor对观测值的影响不独立。这样的模型期望值$F_{ij}=f_{ij}$，卡方检验的自由度为0. 这种模型在log linear analysis中称为**saturated model**.
+
+关于log linear analysis的另一个说明是，它不区分解释因子和响应因子。
+
+```{r}
+library(MASS)
+loglm(~ Class + Sex + Age + Survived, data=Titanic)
+summary(Titanic)
+```
+可以看到，不考虑相关关系的log linear模型的结果和summary的chi-square test结果是一致的。两个结果$p=0$都说明要拒绝原假设，即各个因子之间是共同起作用而不是独立的。
+
+另一方面，如果考虑所有的相关关系，得到的saturated model如下：
+```{r}
+sat.model = loglm(~ Class * Sex * Age * Survived, data=Titanic)
+sat.model 
+```
+$p=1$,告诉我们要接受原假设(即因子之间存在相关关系)。但是df=0，这个模型什么都解释不了。
+
+saturated model实际上是将所有4个factor进行组合(15种)，然后将所有的组合结果都作为一个因子进行回归计算。我们可以从其中删除一些不必要的组合因子，比如：
+```{r}
+update(sat.model, ~.-(Class:Sex:Age:Survived))
+```
+可以看出，去除这个four-way interaction之后的模型与saturated model表达的结果没什么太大差异，说明这个four-way interaction对观测值的影响很小，可以从模型中滤除。然而滤除不合适就会导致模型不可信：
+```{r}
+update(sat.model, ~.-(Class:Sex:Age:Survived + Sex:Age:Survived + 
+                          Class:Sex:Survived + Sex:Survived))
+```
+因此，需要在极端之间找到一个平衡，找到最合适的组合变量——他们能够最有效地解释因子是如何交互影响观测结果的。
+
+问题是：一共有15个组合因子，不可能一个一个去试。解决方案==> step()
+```{r}
+step(sat.model, direction="backward")
+```
+AIC: Akaike's Information Criterion. 值越小越好。
+
+step()帮我们去掉了两个组合因子，有4个自由度，0.79的p-value表示模型可信。我们重新计算这个模型,并保存：
+```{r}
+loglm(formula = ~Class + Sex + Age + Survived + Class:Sex + Class:Age + 
+     Sex:Age + Class:Survived + Sex:Survived + Age:Survived + 
+     Class:Sex:Age + Class:Sex:Survived + Class:Age:Survived, 
+     data = Titanic) -> step.model
+step.model
+# the EFs produced by the model
+fitted(step.model)
+# the standardized residuals
+resid(step.model)
+```
+
+### More
+
+R自带的glm()也可以完成这个工作：
+```{r}
+# to data frame
+ti = as.data.frame(Titanic)
+ti
+glm.model = glm(Freq ~  Class * Age * Sex * Survived, data=ti, family=poisson)
+# analysis of variance
+anova(glm.model, test="Chisq")
+```
+方差分析对log linear analysis来说非常有效。每一行解释了每个组合因子对整体方差的贡献。上面方差分析的结果让我们想要尝试去除三个不显著的因子：Class:Age:Sex:Survived, Age:Sex:Survived, Class:Age:Sex:
+```{r}
+anova(update(glm.model,.~.-(Class:Age:Sex:Survived+Age:Sex:Survived
+                             +Class:Age:Sex)),test="Chisq")
+1-pchisq(22,df=7)
+```
+p-value仅为0.0025；说明模型不可信，说明我们删除的因子过多了，放回来一个。
+这与我们之前用step()的结果是统一的。
+```{r}
+anova(update(glm.model,.~.-(Class:Age:Sex:Survived+Age:Sex:Survived)),
+      test="Chisq")
+1-pchisq(2,df=4)
+```

@@ -1,0 +1,50 @@
+[1] "successfully load the data"
+[1] "successfully arrange the data in 36 * 40 grids."
+[1] "The best h for the expected number of clusters is 0.3"
+[1] "successfully lower the ranks of $ hour into 6 clusters."
+[1] "The best h for the expected number of clusters is 1"
+[1] "successfully lower the ranks of $ ugrid.id into 10 clusters."
+[1] "Data preparation finished after 5.259 seconds"
+[2] "Data preparation finished after 0.078 seconds"
+[3] "Data preparation finished after 5.339 seconds"
+[4] "Data preparation finished after 0 seconds"    
+[5] "Data preparation finished after 0 seconds"    
+# weights:  270 (234 variable)
+initial  value 794794.809471 
+iter  10 value 613475.123445
+iter  20 value 597810.246146
+iter  30 value 591800.290782
+iter  40 value 589132.836757
+iter  50 value 586365.634831
+iter  60 value 584604.849432
+iter  70 value 582746.738685
+iter  80 value 579256.800408
+iter  90 value 576494.646708
+iter 100 value 573099.159981
+iter 110 value 571132.763031
+iter 120 value 569678.721463
+iter 130 value 568263.079871
+iter 140 value 567746.239221
+iter 150 value 567417.749756
+iter 160 value 567092.232303
+iter 170 value 566934.189712
+iter 180 value 566862.090885
+iter 190 value 566824.008373
+iter 200 value 566790.439603
+iter 210 value 566760.418724
+iter 220 value 566726.005120
+iter 230 value 566705.218081
+iter 240 value 566688.571725
+final  value 566672.847457 
+converged
+[1] "Regression model converged in 639.189 seconds"
+[2] "Regression model converged in 0.246 seconds"  
+[3] "Regression model converged in 639.516 seconds"
+[4] "Regression model converged in 0 seconds"      
+[5] "Regression model converged in 0 seconds"      
+[1] "Model summary finished after 1536.914 seconds"
+[2] "Model summary finished after 0.724 seconds"   
+[3] "Model summary finished after 1537.665 seconds"
+[4] "Model summary finished after 0 seconds"       
+[5] "Model summary finished after 0 seconds"       
+[1] "141206 correct predictions out of 345175 . Rate: 0.409085246614036"

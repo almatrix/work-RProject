@@ -1,0 +1,51 @@
+[1] "successfully load the data"
+[1] "successfully arrange the data in 54 * 60 grids."
+[1] "The best h for the expected number of clusters is 0.3"
+[1] "successfully lower the ranks of $ hour into 6 clusters."
+[1] "The best h for the expected number of clusters is 1"
+[1] "successfully lower the ranks of $ ugrid.id into 11 clusters."
+[1] "Data preparation finished after 5.513 seconds"
+[2] "Data preparation finished after 0.094 seconds"
+[3] "Data preparation finished after 5.608 seconds"
+[4] "Data preparation finished after 0 seconds"    
+[5] "Data preparation finished after 0 seconds"    
+# weights:  280 (243 variable)
+initial  value 794794.809471 
+iter  10 value 585713.193325
+iter  20 value 577137.486158
+iter  30 value 574006.872853
+iter  40 value 572026.618291
+iter  50 value 569483.883198
+iter  60 value 566136.083088
+iter  70 value 562745.276878
+iter  80 value 560195.083272
+iter  90 value 558104.012361
+iter 100 value 555160.029300
+iter 110 value 552997.403986
+iter 120 value 551622.812740
+iter 130 value 550661.965281
+iter 140 value 549909.383439
+iter 150 value 549531.759915
+iter 160 value 549297.521018
+iter 170 value 549012.413179
+iter 180 value 548819.862877
+iter 190 value 548731.513827
+iter 200 value 548696.182574
+iter 210 value 548676.331780
+iter 220 value 548667.183369
+iter 230 value 548661.287501
+iter 240 value 548657.485027
+iter 250 value 548652.758979
+final  value 548652.305397 
+converged
+[1] "Regression model converged in 673.957 seconds"
+[2] "Regression model converged in 0.22 seconds"   
+[3] "Regression model converged in 674.28 seconds" 
+[4] "Regression model converged in 0 seconds"      
+[5] "Regression model converged in 0 seconds"      
+[1] "Model summary finished after 1625.151 seconds"
+[2] "Model summary finished after 1.94 seconds"    
+[3] "Model summary finished after 1627.013 seconds"
+[4] "Model summary finished after 0 seconds"       
+[5] "Model summary finished after 0 seconds"       
+[1] "150180 correct predictions out of 345175 . Rate: 0.435083653219381"

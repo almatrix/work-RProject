@@ -1,0 +1,7 @@
+Module for The R statistics package, version 3.1.1 loaded.
+Job ran on: tane-n077
+
+Error in Ops.factor(comparison$prediction, comparison$real) : 
+  level sets of factors are different
+Calls: ifelse -> Ops.factor
+Execution halted

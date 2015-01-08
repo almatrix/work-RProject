@@ -1,0 +1,45 @@
+cols = 40
+rows = 36
+
+ncls.grid = 20
+ncls.hour = 6
+
+ncls.ia.h.g=10
+ncls.ia.h.l=10
+ncls.ia.h.w=10
+ncls.ia.g.l=10
+ncls.ia.g.w=10
+ncls.ia.l.w=10
+
+ncls.ia.h.g.l=10
+ncls.ia.h.g.w=10
+ncls.ia.h.l.w=10
+ncls.ia.g.l.w=10
+
+ncls.ia.h.g.l.w = 10
+
+job.id = 15
+job.group.id = 11
+
+
+regression.formula = paste("cate_l1 ~", "ugrid.id.cid",
+
+						"+ hour.cid",
+						"+ last.cate_l1",
+						"+ isweekend", 
+
+						"+ hour_grid.cid",
+						"+ hour_last.cid",
+						"+ hour_weekday.cid",
+						"+ grid_last.cid",
+						"+ grid_weekday.cid",
+						"+ last_weekday.cid",
+
+						"+ hour_grid_last.cid",
+						"+ hour_grid_weekday.cid",
+						"+ hour_last_weekday.cid",
+						"+ grid_last_weekday.cid",
+
+						"+ hour_grid_last_weekday.cid",
+
+						"- 1")

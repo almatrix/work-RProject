@@ -1,0 +1,60 @@
+---
+title: "Untitled"
+author: "Ming Li"
+date: "Thursday, August 14, 2014"
+output: html_document
+---
+
+```{r}
+score = read.csv( "D:\\Experiments\\R\\data\\test.csv") 
+
+```
+
+chi-squre:
+```{r}
+res.messi = xtabs(~res+messi, data=score)
+chisq.test(res.messi)
+
+
+res.dimaria = xtabs(~res+dimaria, data=score)
+chisq.test(res.dimaria)
+
+res.others = xtabs(~res+others, data=score)
+chisq.test(res.others)
+
+res.messi.dimaria = xtabs(~res+messi+dimaria, data=score)
+chisq.test(res.messi.dimaria)
+```
+
+multinomial:
+```{r}
+library(nnet)
+tmodel<-multinom(res~ messi+dimaria+others,
+                      data=score,maxit = 1000)
+tsummary = summary(tmodel)
+z = tsummary$coefficients/tsummary$standard.errors
+p = (1 - pnorm(abs(z), 0, 1)) * 2
+```
+
+computation by hand:
+```{r}
+# baseline is "even"
+# first: logistic regression for "win" vs "even"
+data.win.even = score[which(score$res %in% c("win","even")), ]
+contingency.win.even = as.data.frame(
+    xtabs(~res+messi+dimaria+others, data = data.win.even) )
+contingency.win.even=contingency.win.even[contingency.win.even$Freq!=0,]
+contingency.win.even$res <- factor(contingency.win.even$res)
+# res.table = as.data.frame(table(score$res))
+# odds.win = res.table[which(res.table$Var1=="win"),"Freq"] / 
+#     res.table[which(res.table$Var1=="even"),"Freq"]
+#library(reshape2)
+#contingency.win.even.wide = dcast(contingency.win.even, res+messi+dimaria~others, value.var="Freq")
+
+contingency.win.even.wide = as.data.frame(
+    model.matrix( ~ Freq+res+messi+dimaria+others,contingency.win.even))
+data.win.even$res <- factor(data.win.even$res)
+data.win.even.wide = as.data.frame(
+    model.matrix( ~ res+messi+dimaria+others,data.win.even))
+```
+

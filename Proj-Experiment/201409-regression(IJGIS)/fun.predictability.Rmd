@@ -1,0 +1,90 @@
+---
+title: "Untitled"
+author: "Ming Li"
+date: "Friday, October 10, 2014"
+output: word_document
+---
+
+entropy theory
+
+$$p(x)=\Pr \left \{ X=x \right \},x \in \mathbb{X}$$
+
+$$H(X)=-\sum_{x \in \mathbb{X} } p(x)\log p(x)$$
+
+$(X,Y)\sim p(x,y)$
+
+$$H(X|Y)=\sum_{x \in \mathbb{X}}\sum_{y \in \mathbb{Y}} p(x,y)\log \frac{p(y)}{p(x,y)}$$
+
+$I(X;Y)$
+
+$$I(X;Y)=H(X)-H(X|Y)=H(Y)-H(Y|X)$$
+
+entropy calculations
+
+$$S_{i}^{rand}=H(X)=-\sum_{x \in \mathbb{X} } p_{i}(x)\log p_{i}(x)
+=-\sum_{x \in \mathbb{X}_{i} } \frac{1}{\left \| \mathbb{X}_{i} \right \|}\log \frac{1}{\left \| \mathbb{X}_{i} \right \|} 
+= \log \left \| \mathbb{X}_{i} \right \|$$
+
+$$S_{i}^{unc}=H(X)=-\sum_{x \in \mathbb{X} } p_{i}(x)\log p_{i}(x)
+=-\sum_{x \in \mathbb{X} } 
+\frac{\lambda_{i,x}}{\lambda_{i} }
+\log \frac{\lambda_{i,x}}{\lambda_{i} }$$
+
+$$S_{i}^{rand} \geqslant S_{i}^{unc}$$
+
+$$S_{i}^{real}\approx S_{i}^{st}=H(X|T,S)
+=-\sum_{x \in \mathbb{X} }\sum_{t \in \mathbb{T} }\sum_{s \in \mathbb{S}} p_{i}(x,t,s)
+\log \frac{p_{i}(x,t,s)}{p_{i}(t,s) }$$
+
+$$H(X|T,S)=H(X)-I(X;T)-I(X;S|T)$$
+
+$$S_{i}^{unc} \geqslant S_{i}^{st} \geqslant  S_{i}^{real}$$
+
+$\lim_{n\rightarrow \infty }I(X;C_{n} | C_{1}, \cdots ,C_{n-1}) \rightarrow 0$
+
+
+predictability
+
+$$\Pi = \sum_{c_{i} \in \mathbb{C} } p(C=c_{i})\pi_{i}$$
+
+$$\pi_{i} = \sup_{\hat x_{a}}\left \{  \Pr(X=\hat x_{a}|c_{i})  \right \}$$
+
+
+
+$c_{i}=c_{T=t, S=s, \cdots}$
+
+$$S^{unc} \leq $$
+
+
+lower bound 
+
+$R$
+
+$$R=\sum_{t \in \mathbb{T} } p(t) \pi_{t}= \sum_{t \in \mathbb{T} } p(t) \Pr(X= \hat x_{ML}^{t} | t) $$
+
+$t \in \mathbb{T} \subset \mathbb{C}$
+
+$$\Pi = \sum_{c_{i} \in \mathbb{C} } p(c_{i})\pi_{i} 
+= \sum_{c_{i} \in \mathbb{C} } \left (  \sum_{t \in \mathbb{T} } p(t)p(c_{i} | t) \right ) \pi_{i}
+= \sum_{t \in \mathbb{T} }p(t) \left (  \sum_{c_{i} \in \mathbb{C} } p(c_{i} | t)  \pi_{i}\right )
+\geq \sum_{t \in \mathbb{T} }p(t) \left (  \sum_{c_{i} \in \mathbb{C} } p(c_{i} | t)  \Pr(X=\hat x_{ML}^{t} | c_{i})\right )
+=\sum_{t \in \mathbb{T} } p(t)\Pr(X=\hat x_{ML}^{t}|t)  
+= R$$
+
+where $\hat x_{ML}$ is the user’s most visited category during the hour $t$, and $t \in \mathbb{T} \subset \mathbb{C}$. The inequality is because $\pi_{i} = \sup_{\hat x_{a}}\left \{  \Pr(X=\hat x_{a}|c_{i})  \right \}  \geq  \Pr(X=\hat x_{ML}^{t} | c_{i})$. Therefore, it is reasonable to use R as the lower bound of predictability
+
+
+upper bound
+
+$P(e)=1-\Pi$
+
+$$H(X|Y)\leq H(e)+p(e)\log(N-1)$$
+
+
+$$p(e)=p(X\neq Y)=1-\Pi$$
+
+$$H(e)=-p(e) \log p(e)-(1-p(e)) \log (1-p(e))$$
+
+$$S^{real}\leq -\Pi \log \Pi - (1-\Pi)\log(1-\Pi)+(1-\Pi)\log(N-1)$$
+
+$S_{0}$

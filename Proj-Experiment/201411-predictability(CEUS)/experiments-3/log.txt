@@ -1,0 +1,75 @@
+[1] "**************************************************************"
+[1] "2014-11-20 14:12:10 CET"
+[1] "Test new configs. Because of memeory limit, the interaction columns\n            has been precalculated based on 40*36 grids and 20 grid clusters "
+[1] "successfully load the data"
+[1] "2014-11-20 14:12:10 working on JOB26 *************"
+[1] "**************************************************************"
+[1] "2014-11-20 14:18:16 CET"
+[1] "Test new configs. Because of memeory limit, the interaction columns\n            has been precalculated based on 40*36 grids and 20 grid clusters "
+[1] "successfully load the data"
+[1] "2014-11-20 14:18:16 working on JOB26 *************"
+[1] "successfully arrange the data in 99 * 110 grids."
+[1] "The best h for the expected number of clusters is 0.852"
+[1] "successfully lower the ranks of $ugrid.id into 20 clusters."
+# weights:  620 (549 variable)
+initial  value 794751.060355 
+iter  10 value 519710.497854
+iter  20 value 505938.425909
+iter  30 value 501779.643767
+iter  40 value 498508.598532
+iter  50 value 495137.551690
+iter  60 value 490447.802820
+iter  70 value 486140.603152
+iter  80 value 482517.304074
+iter  90 value 479110.318913
+iter 100 value 475890.886935
+iter 110 value 474375.015397
+iter 120 value 472178.992303
+iter 130 value 469862.116425
+iter 140 value 467655.316848
+iter 150 value 465986.692471
+iter 160 value 464630.012777
+iter 170 value 463702.233014
+iter 180 value 463247.765196
+iter 190 value 462940.209404
+iter 200 value 462639.278775
+iter 210 value 462388.010525
+iter 220 value 462225.617830
+iter 230 value 462110.021927
+iter 240 value 462003.499342
+iter 250 value 461901.108063
+iter 260 value 461825.358052
+iter 270 value 461729.477162
+iter 280 value 461682.177995
+iter 290 value 461627.142928
+iter 300 value 461592.910455
+iter 310 value 461566.939115
+iter 320 value 461549.895599
+iter 330 value 461541.862667
+iter 340 value 461537.169306
+iter 350 value 461533.617509
+iter 360 value 461530.656411
+iter 370 value 461527.435412
+iter 380 value 461526.096757
+iter 390 value 461525.423502
+iter 400 value 461525.030059
+iter 410 value 461524.730682
+iter 420 value 461524.499973
+iter 430 value 461524.336626
+final  value 461524.279802 
+converged
+[1] "**************************************************************"
+[1] "2014-11-20 14:56:59 CET"
+[1] "Test new configs. Because of memeory limit, the interaction columns"
+[1] "has been precalculated based on 40*36 grids and 20 grid clusters "
+[1] "successfully load the data"
+[1] "2014-11-20 14:56:59 working on JOB16 *************"
+[1] "successfully arrange the data in 9 * 10 grids."
+[1] "The best h for the expected number of clusters is 0.244"
+[1] "successfully lower the ranks of $ugrid.id into 20 clusters."
+# weights:  620 (549 variable)
+initial  value 794751.060355 
+iter  10 value 556118.376966
+iter  20 value 546477.818228
+iter  30 value 543721.089820
+iter  40 value 541443.026401

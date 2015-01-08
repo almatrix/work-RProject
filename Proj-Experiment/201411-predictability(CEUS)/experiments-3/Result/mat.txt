@@ -1,0 +1,230 @@
+[[1]]
+[1] 345175
+
+$col.id
+[1] 1
+
+$row.id
+[1] 1
+
+          Category     Hour   Weekday      Grid     Former
+Category        NA 6.214982 1.0013752 17.529077 10.5088020
+Hour      4.156769       NA 0.9296858  3.281310  2.3564078
+Weekday   1.025312 1.423245        NA  1.428508  0.9229979
+Grid      7.607618 2.129222 0.6054983        NA  5.5385103
+Former   10.814496 3.590589 0.9110497 13.209931         NA
+[[1]]
+[1] 1512
+
+$col.id
+[1] 22
+
+$row.id
+[1] 15
+
+           Category      Hour  Weekday          Grid     Former
+Category         NA 16.446796 4.447513 -1.572657e-08  46.787135
+Hour      10.823167        NA 3.764531  0.000000e+00  13.059602
+Weekday    4.310264  5.544016       NA  0.000000e+00   5.047673
+Grid     100.000000       NaN      NaN            NA 100.000000
+Former    42.999906 14.492647 5.481650 -5.402725e-07         NA
+[[1]]
+[1] 24201
+
+$col.id
+[1] 20
+
+$row.id
+[1] 23
+
+         Category     Hour   Weekday Grid   Former
+Category       NA 7.978210 1.2652780    0 7.962300
+Hour     5.191703       NA 0.9512148    0 4.006874
+Weekday  1.240689 1.433346        NA    0 0.824753
+Grid          NaN      NaN       NaN   NA      NaN
+Former   7.977990 6.058265 0.8232213    0       NA
+[[1]]
+[1] 1068
+
+$col.id
+[1] 22
+
+$row.id
+[1] 22
+
+          Category       Hour  Weekday          Grid    Former
+Category        NA  12.485458 3.490609  0.000000e+00 13.831971
+Hour      7.663044         NA 3.583325 -2.777335e-08 10.196298
+Weekday   3.305240   5.528295       NA  0.000000e+00  4.352848
+Grid           NaN 100.000027      NaN            NA       NaN
+Former   14.574969  18.504283 4.999230  0.000000e+00        NA
+[[1]]
+[1] 852
+
+$col.id
+[1] 33
+
+$row.id
+[1] 18
+
+           Category      Hour  Weekday          Grid    Former
+Category         NA 14.087040 4.022267 -1.996886e-07 25.428698
+Hour       7.623607        NA 3.848983  0.000000e+00 12.955845
+Weekday    3.351289  5.925794       NA  0.000000e+00  5.396929
+Grid     100.000000       NaN      NaN            NA       NaN
+Former    22.326900 24.394691 6.693213  0.000000e+00        NA
+[[1]]
+[1] 64
+
+$col.id
+[1] 32
+
+$row.id
+[1] 22
+
+          Category      Hour  Weekday         Grid   Former
+Category        NA  45.39029 23.81334 -0.001589284 20.50945
+Hour      18.38975        NA 31.18864 -0.001284395 10.76190
+Weekday   12.91727  41.85429       NA  0.000000000 30.38279
+Grid     100.00000 100.00000      NaN           NA      NaN
+Former    17.59843  15.23525 26.58658  0.000000000       NA
+[[1]]
+[1] 139
+
+$col.id
+[1] 28
+
+$row.id
+[1] 20
+
+         Category      Hour  Weekday          Grid    Former
+Category       NA  45.40951 14.28017  0.000000e+00  60.65965
+Hour     24.37472        NA 17.71622 -2.549645e-05  38.69239
+Weekday  11.87451  27.44599       NA  0.000000e+00  21.09228
+Grid          NaN 100.00000      NaN            NA 100.00000
+Former   48.71970  64.05041 24.02630 -3.636041e-03        NA
+[[1]]
+[1] 108
+
+$col.id
+[1] 25
+
+$row.id
+[1] 21
+
+          Category      Hour  Weekday          Grid   Former
+Category        NA  40.43051 15.75192 -1.034508e-04 32.35525
+Hour      22.08194        NA 19.84709 -8.473329e-05 32.53112
+Weekday   12.63643  29.15750       NA  0.000000e+00 34.04031
+Grid     100.00000 100.00000      NaN            NA      NaN
+Former    23.17812  50.23510 38.25069  0.000000e+00       NA
+[[1]]
+[1] 59
+
+$col.id
+[1] 24
+
+$row.id
+[1] 20
+
+           Category      Hour  Weekday         Grid    Former
+Category         NA  40.42525 42.29576 -0.005708027  27.27751
+Hour      10.920606        NA 32.87825 -0.002400080  43.04558
+Weekday   13.996476  40.57761       NA  0.000000000  23.79983
+Grid     100.000000 100.00000      NaN           NA 100.00000
+Former     9.193407  66.59864 30.34117 -0.019597528        NA
+[[1]]
+[1] 4563
+
+$col.id
+[1] 19
+
+$row.id
+[1] 19
+
+          Category      Hour  Weekday Grid    Former
+Category        NA 12.151981 2.834539    0 10.970554
+Hour      6.907652        NA 2.286347    0  6.313083
+Weekday   2.404349  3.411724       NA    0  3.085040
+Grid           NaN       NaN      NaN   NA       NaN
+Former   10.475136 10.309548 3.410976    0        NA
+[[1]]
+[1] 6122
+
+$col.id
+[1] 19
+
+$row.id
+[1] 23
+
+           Category      Hour  Weekday Grid    Former
+Category         NA 11.736987 1.015128    0 11.201384
+Hour      7.4523474        NA 2.400270    0  5.869671
+Weekday   0.9910916  3.690766       NA    0  2.105937
+Grid            NaN       NaN      NaN   NA       NaN
+Former   10.6238183  8.829470 2.064663    0        NA
+[[1]]
+[1] 250
+
+$col.id
+[1] 18
+
+$row.id
+[1] 23
+
+           Category     Hour  Weekday          Grid    Former
+Category         NA 37.13878 18.86753 -0.0004146054  43.20308
+Hour       1.354403       NA 13.12097  0.0000000000  17.70403
+Weekday    1.057701 20.18912       NA  0.0000000000  15.78920
+Grid     100.000000      NaN      NaN            NA 100.00000
+Former     4.403680 49.59009 30.45169 -0.0009003761        NA
+[[1]]
+[1] 371
+
+$col.id
+[1] 21
+
+$row.id
+[1] 21
+
+         Category      Hour  Weekday          Grid   Former
+Category       NA  18.90362 12.37058  0.000000e+00 29.76380
+Hour     11.43513        NA  9.06824 -6.839655e-07 21.29376
+Weekday  11.08518  13.43322       NA  0.000000e+00 13.79952
+Grid          NaN 100.00000      NaN            NA      NaN
+Former   26.82787  34.53342 14.84746  0.000000e+00       NA
+[[1]]
+[1] 1068
+
+$col.id
+[1] 22
+
+$row.id
+[1] 22
+
+          Category       Hour  Weekday          Grid    Former
+Category        NA  12.485458 3.490609  0.000000e+00 13.831971
+Hour      7.663044         NA 3.583325 -2.777335e-08 10.196298
+Weekday   3.305240   5.528295       NA  0.000000e+00  4.352848
+Grid           NaN 100.000027      NaN            NA       NaN
+Former   14.574969  18.504283 4.999230  0.000000e+00        NA
+OGR data source with driver: ESRI Shapefile 
+Source: "D:\Experiments\foursquare checkin data\shapefile\boundaries\NY-NY", layer: "NYC_borough_boundaries_WGS84"
+with 5 features and 4 fields
+Feature type: wkbMultiPolygon with 2 dimensions
+      long             lat            order          hole             piece           group      
+ Min.   :-74.26   Min.   :40.50   Min.   :    1   Mode :logical   1      :50806   4.1    :15840  
+ 1st Qu.:-73.93   1st Qu.:40.60   1st Qu.:19022   FALSE:76086     2      :10316   3.1    :15009  
+ Median :-73.88   Median :40.62   Median :38044   NA's :0         3      : 3033   4.2    : 9403  
+ Mean   :-73.90   Mean   :40.67   Mean   :38044                   6      : 2104   0.1    : 8909  
+ 3rd Qu.:-73.81   3rd Qu.:40.78   3rd Qu.:57065                   4      : 2066   2.1    : 5955  
+ Max.   :-73.70   Max.   :40.92   Max.   :76086                   11     : 1567   1.1    : 5093  
+                                                                  (Other): 6194   (Other):15877  
+      id               BoroCode              BoroName       Shape_Leng       Shape_Area       
+ Length:76086       Min.   :1.000   Bronx        : 8655   Min.   :330455   Min.   :6.364e+08  
+ Class :character   1st Qu.:3.000   Brooklyn     :23040   1st Qu.:464475   1st Qu.:1.624e+09  
+ Mode  :character   Median :4.000   Manhattan    : 6340   Median :741229   Median :1.938e+09  
+                    Mean   :3.338   Queens       :29028   Mean   :688537   Mean   :2.129e+09  
+                    3rd Qu.:4.000   Staten Island: 9023   3rd Qu.:896932   3rd Qu.:3.045e+09  
+                    Max.   :5.000                         Max.   :896932   Max.   :3.045e+09  
+                                                                                              

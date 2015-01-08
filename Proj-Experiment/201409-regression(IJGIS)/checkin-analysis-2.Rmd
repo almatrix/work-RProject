@@ -1,0 +1,429 @@
+---
+title: 'checkin data: global analysis'
+author: "Ming Li"
+date: "Wednesday, August 13, 2014"
+output: html_document
+---
+```{r, echo=FALSE}
+library(ggplot2)
+source("D:\\GitRepos\\work\\fun\\mathmatrixcal.R")
+basedir = "D:\\Experiments\\R\\"
+```
+
+Based on the [summarization](checkin-analysis-summarize.html/) of [previous work](checkin-analysis.html/), we want to perform similar exploratory analysis in a global scale. 
+
+The assumption is: despite the sparsity of any single users, the gloabl dataset will express some relevant patterns that might be hidden from single users, because of **LLN**.
+
+***********
+#### 1. chi-square for temporal and meteorological
+
+Load the data. 
+```{r,eval=FALSE}
+## checkin data
+## nrows=529931 ~~ 19 weeks/133 days's data
+checkin.global = read.csv( paste0(basedir, "data\\allcheckins.csv"), 
+                       header=TRUE, sep=",", nrows=529931, na.strings = "none",
+                       colClasses = c("numeric","numeric","factor","factor", "numeric","numeric",
+                                      "numeric","character","factor","factor")
+)
+checkin.global$datetime = strptime( strtrim(checkin.global$localtime,19), format="%Y-%m-%d %H:%M:%S")
+
+## weather data 
+weather = read.csv( paste0(basedir, "data\\weather.csv"), 
+                       header=TRUE, sep=",", na.strings = c("-9999","Unknown"),
+                       colClasses = c("numeric","numeric","numeric","character","numeric","factor",
+                                      "numeric","numeric","numeric","numeric","numeric","numeric",
+                                      "numeric","numeric")
+)
+## deal with logical data
+weather$fog=as.logical(weather$fog)
+weather$rain=as.logical(weather$rain)
+weather$snow=as.logical(weather$snow)
+weather$thunder=as.logical(weather$thunder)
+weather$tornado=as.logical(weather$tornado)
+
+## join checkin data with weather data based on timestamps 
+checkin.global = joindfsbytime(checkin.global, weather)
+
+## deal with time 
+checkin.global$hour = as.factor(format(checkin.global$datetime,"%H"))
+checkin.global$yearday = format(checkin.global$datetime,"%j")
+checkin.global$weekday = format(checkin.global$datetime,"%w")
+checkin.global$isweekend = as.factor(ifelse( ( checkin.global$weekday>5 ), "Saturday", 
+    ifelse( ( checkin.global$weekday<1 ),"Sunday","Workday")))
+
+## add record for last checkin
+# checkin.global = copylastcheckinrec(checkin.global)
+checkin.global = checkin.global[complete.cases(checkin.global$conds),]
+```
+
+```{r,echo=FALSE}
+## save(checkin.global,file="D:\\Experiments\\R\\data\\checkin_global_0813.Rda")
+## the data from the above procedure has been saved for convenience.
+load("D:\\Experiments\\R\\data\\checkin_global_0813.Rda")
+
+load("D:\\Experiments\\R\\data\\checkin_single_0910.Rda")
+```
+
+Again, chi-square test:
+```{r}
+# venue_cate v.s. hour of day
+cate.hour = xtabs(~hour+cate_l1, data=checkin.global)
+chisq.test(cate.hour)
+# venue_cate v.s. weekend/workday
+cate.weekend = xtabs(~isweekend+cate_l2, data=checkin.global)
+chisq.test(cate.weekend)
+# venue_cate v.s. weather condition
+cate.conds = xtabs(~conds+cate_l1, data=checkin.global)
+cate.conds = as.table(cate.conds[rowSums(cate.conds)>0,colSums(cate.conds)>0])
+chisq.test(cate.conds)
+#### interactions between factors
+# hour v.s. weekend/workday
+hour.isweekend = xtabs(~hour+isweekend, data=checkin.global)
+chisq.test(hour.isweekend)
+# hour v.s. weather condition
+hour.conds = xtabs(~hour+conds, data=checkin.global)
+hour.conds = as.table(hour.conds[rowSums(hour.conds)>0,colSums(hour.conds)>0])
+chisq.test(hour.conds)
+```
+
+The results shows that there are some interactions between these factors. The hour-weekend interaction can be explained like this: the number of checkins at a given hour of a given weekday cannot be estimated by the marginal checkins in each hour and marginal checkins in Saturday, sunday and workday; they have differnt patterns of checkins across the hour.
+
+Well, this seems to make things even more complicated. However, we still have to move on. 
+
+category with weather:
+```{r}
+# the probability of checkin a category under certain weather conditon
+cate.conds.p=t(apply(cate.conds, 1, function(x) x/sum(x)  ) )
+
+#cate.conds.p.vec = as.vector(cate.conds.p)
+cate.conds.vec = as.vector(cate.conds)
+weather.factor = factor(rep(rownames(cate.conds),10))
+category.factor = factor(rep(colnames(cate.conds),each=14))
+
+#summary(aov(cate.conds.p.vec~weather.factor))
+summary(aov(cate.conds.vec~weather.factor+category.factor))
+```
+
+correspondence analysis
+
+ref:http://www.statmethods.net/advstats/ca.html
+
+```{r}
+library(ca)
+prop.table(cate.conds, 1) # row percentages
+prop.table(cate.conds, 2) # column percentages
+fit <- ca(cate.conds)
+print(fit) # basic results
+summary(fit) # extended results
+#plot(fit) # symmetric map
+ppi <- 300
+png(paste0(basedir,"img\\plot_weather_category_correspondence2.png"), width = 8*ppi, height = 6*ppi, res=ppi)
+plot(fit, mass = TRUE, contrib = "absolute", map =
+   "rowgreen", arrows = c(TRUE, FALSE)) # asymmetric map
+dev.off()
+```
+
+
+***********
+
+#### 2. (temporal weighted) sequential factor
+
+Now consider the sequential factor. The hypothesis is two categories can be more connected if they are usually checked in consecutively. Basically, this should be done by 2nd level category, right? because the 1st level cannot give too much information. 
+
+The foundation approach here is Markov chain. 
+
+first, we should create a data frame that describe the sequences:
+
+```{r,eval=FALSE}
+sequence.list = lapply(split(checkin.global, checkin.global$user_id), function(i){
+    if(nrow(i)>30)
+        copylastcheckinrec(i, samesize=FALSE)
+})
+sequence.list[sapply(sequence.list, is.null)] = NULL
+sequence.global <- as.data.frame( do.call("rbind", sequence.list) )
+sequence.global$weight <- exp( -2 * sequence.global$time_diff / 60 )
+#temp <- lapply(sequence.list, function(i) sequence.global<<-rbind(sequence.global, i))
+```
+
+Note: `do.call("rbind", sequence.list)` combines all the data frame in the list into a data frame.
+
+```{r,echo=FALSE}
+# just in case:
+# save(sequence.global,file="D:\\Experiments\\R\\data\\sequence_global_0813.Rda")
+load("D:\\Experiments\\R\\data\\sequence_global_0813.Rda")
+```
+
+markov chain is based on contingency table; we'd like to do similarly, but the contingency table should be temporally weighted:
+```{r,eval=FALSE}
+unique.cates <- sort(unique(sequence.global$last_cate))
+levels.cates <- levels(checkin.global$cate_l2)
+transition.matrix <- matrix(0,nrow=length(unique.cates),  ncol=length(unique.cates), 
+                            dimnames=list(levels.cates[unique.cates],
+                                          levels.cates[unique.cates]));
+temp = lapply(split(sequence.global, sequence.global$last_cate), function(lst){
+    total.sum <- sum(lst$weight)
+    transition.matrix[ levels.cates[unique(lst$last_cate)], 
+                       levels.cates[sort(unique(lst$cate))] ] <<- 
+        sapply( split(lst, lst$cate), function(cur){ 
+            if(total.sum!=0) { p = sum(cur$weight) / total.sum }
+            else { p = 1/length(unique(lst$cate)) }  ## for all zeros
+            p
+        })
+    NA
+})
+rm(temp)
+```
+
+```{r,eval=FALSE}
+# just in case:
+# save(transition.matrix,file="D:\\Experiments\\R\\data\\transition.matrix_0814.Rda")
+load("D:\\Experiments\\R\\data\\transition.matrix_0814.Rda")
+library(markovchain)
+mcSequence <- new("markovchain",
+                 states = levels.cates[unique(sequence.global$last_cate)],
+                 transitionMatrix = transition.matrix,
+                 name = "sequence")
+predict(object = mcSequence, newdata = c("American Restaurant"),n.ahead = 3)
+```
+
+**********
+update @ 2014.09.05
+
+**3. correspondence analysis for hour** 
+
+```{r, fig.width=8, fig.height=4, dpi=300}
+hour.cate= xtabs(~cate_l1+hour,data=checkin.global)
+fit.hour.cate=ca(hour.cate)
+plot(fit.hour.cate, mass = TRUE, contrib = "absolute", map =
+                "rowgreen", arrows = c(TRUE, FALSE)) # asymmetric map
+```
+
+the points of `hour` can be connected clockwisely. And some of them are much more closer and form some clusters. Next thought: it should be possible to aggreate similar hours in the same *cluster*. In this way, the levels in the `hour` can be depressed, and each level can describe more final varience. 
+
+* step 0: get the coordinates of the `hour` point.
+* step 1: how many clusters?
+* step 2: k-means clustering
+
+ref: http://www.statmethods.net/advstats/cluster.html
+
+```{r, fig.width=8, fig.height=4, dpi=300}
+# get coordinates
+hour.coords = fit.hour.cate[["colcoord"]][,1:2]
+# Determine number of clusters
+wss <- (nrow(hour.coords)-1)*sum(apply(hour.coords,2,var))
+for (i in 2:15) wss[i] <- sum(kmeans(hour.coords,
+   centers=i)$withinss)
+plot(1:15, wss, type="b", xlab="Number of Clusters",
+  ylab="Within groups sum of squares") 
+
+# K-Means Cluster Analysis
+kmeansclusters <- kmeans(hour.coords,6) # 6 cluster solution
+# get cluster means
+aggregate(hour.coords,by=list(kmeansclusters$cluster),FUN=mean)
+# append cluster assignment
+hour.coords <- data.frame(hour=fit.hour.cate[["colnames"]],
+                          hour.coords, kmeansclusters$cluster) 
+
+# plot cluster
+ggplot(data=hour.coords, aes(x=X1,y=X2,color=as.factor(kmeansclusters.cluster)))+
+    geom_point( size=4, shape=21)+
+    geom_text(aes(label=hour),hjust=-0.5, vjust=0.5)
+```
+
+similar work can also be done with weather condition
+```{r, fig.width=8, fig.height=4, dpi=300}
+conds.cate= xtabs(~cate_l1+conds,data=checkin.global)
+fit.conds.cate=ca(conds.cate)
+plot(fit.conds.cate, mass = TRUE, contrib = "absolute", map =
+                "rowgreen", arrows = c(TRUE, FALSE)) # asymmetric map
+
+# get coordinates
+conds.coords = fit.conds.cate[["colcoord"]][,1:2]
+# Determine number of clusters
+wss <- (nrow(conds.coords)-1)*sum(apply(conds.coords,2,var))
+for (i in 2:10) wss[i] <- sum(kmeans(conds.coords,
+   centers=i)$withinss)
+plot(1:10, wss, type="b", xlab="Number of Clusters",
+  ylab="Within groups sum of squares") 
+
+# K-Means Cluster Analysis
+kmeansclusters <- kmeans(conds.coords,5) # 5 cluster solution
+# get cluster means
+aggregate(conds.coords,by=list(kmeansclusters$cluster),FUN=mean)
+# append cluster assignment
+conds.coords <- data.frame(conds=fit.conds.cate[["colnames"]],
+                          conds.coords, kmeansclusters$cluster) 
+
+# plot cluster
+ggplot(data=conds.coords, aes(x=X1,y=X2,color=as.factor(kmeansclusters.cluster)))+
+    geom_point( size=4, shape=21)+
+    geom_text(aes(label=conds),hjust=-0., vjust=0.5)
+```
+
+similar work can also be done with weekday
+```{r}
+weekday.cate= xtabs(~cate_l2+weekday,data=checkin.global)
+colnames(weekday.cate)=c("Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday")
+fit.weekday.cate=ca(weekday.cate)
+plot(fit.weekday.cate, mass = TRUE, contrib = "absolute", map =
+                "rowgreen", arrows = c(FALSE, TRUE)) # asymmetric map
+
+# get coordinates
+weekday.coords = fit.weekday.cate[["colcoord"]][,1:2]
+# Determine number of clusters
+wss <- (nrow(weekday.coords)-1)*sum(apply(weekday.coords,2,var))
+for (i in 2:6) wss[i] <- sum(kmeans(weekday.coords,
+   centers=i)$withinss)
+plot(1:6, wss, type="b", xlab="Number of Clusters",
+  ylab="Within groups sum of squares") 
+
+# K-Means Cluster Analysis
+kmeansclusters <- kmeans(weekday.coords,3) # 3 cluster solution
+# get cluster means
+aggregate(weekday.coords,by=list(kmeansclusters$cluster),FUN=mean)
+# append cluster assignment
+weekday.coords <- data.frame(weekday=fit.weekday.cate[["colnames"]],
+                          weekday.coords, kmeansclusters$cluster) 
+
+# plot cluster
+ggplot(data=weekday.coords, aes(x=X1,y=X2,color=as.factor(kmeansclusters.cluster)))+
+    geom_point( size=4, shape=21)+
+    geom_text(aes(label=weekday),hjust=-0.1, vjust=0.5)
+
+```
+
+
+```{r, fig.width=8, fig.height=4, dpi=300}
+conds.cate= xtabs(~cate_l1+conds,data=checkin.global)
+fit.conds.cate=ca(conds.cate)
+plot(fit.conds.cate, mass = TRUE, contrib = "absolute", map =
+                "rowgreen", arrows = c(TRUE, FALSE)) # asymmetric map
+
+# get coordinates
+conds.coords = fit.conds.cate[["colcoord"]][,1:2]
+# Determine number of clusters
+wss <- (nrow(conds.coords)-1)*sum(apply(conds.coords,2,var))
+for (i in 2:10) wss[i] <- sum(kmeans(conds.coords,
+   centers=i)$withinss)
+plot(1:10, wss, type="b", xlab="Number of Clusters",
+  ylab="Within groups sum of squares") 
+
+# K-Means Cluster Analysis
+kmeansclusters <- kmeans(conds.coords,5) # 5 cluster solution
+# get cluster means
+aggregate(conds.coords,by=list(kmeansclusters$cluster),FUN=mean)
+# append cluster assignment
+conds.coords <- data.frame(conds=fit.conds.cate[["colnames"]],
+                          conds.coords, kmeansclusters$cluster) 
+
+# plot cluster
+ggplot(data=conds.coords, aes(x=X1,y=X2,color=as.factor(kmeansclusters.cluster)))+
+    geom_point( size=4, shape=21)+
+    geom_text(aes(label=conds),hjust=-0., vjust=0.5)
+```
+
+new dataframe with aggregated categorical level
+```{r}
+hour.coords$hour.name=as.character(hour.coords$hour)
+checkin.single$hour.name = as.character(checkin.single$hour)
+checkin.single = merge(x=checkin.single, 
+                       y=hour.coords[,c("hour.name","kmeansclusters.cluster")], 
+                       by.x="hour.name", by.y="hour.name", all.X=TRUE)
+checkin.single$hour.ag = as.factor(checkin.single$kmeansclusters.cluster)
+checkin.single$kmeansclusters.cluster=NULL
+
+conds.coords$conds.name=as.character(conds.coords$conds)
+checkin.single$conds.name = as.character(checkin.single$conds)
+checkin.single = merge(x=checkin.single, 
+                       y=conds.coords[,c("conds.name","kmeansclusters.cluster")], 
+                       by.x="conds.name", by.y="conds.name", all.X=TRUE)
+checkin.single$conds.ag = as.factor(checkin.single$kmeansclusters.cluster)
+checkin.single$kmeansclusters.cluster=NULL
+
+save(checkin.single,file="D:\\Experiments\\R\\data\\checkin_single_0910.Rda")
+```
+
+
+** 4. regression analysis**
+
+1) without aggregation
+
+```{r}
+# chi-square test
+# hour v.s. weather condition
+hour.conds = xtabs(~hour+conds, data=checkin.single)
+hour.conds = as.table(hour.conds[rowSums(hour.conds)>0,colSums(hour.conds)>0])
+chisq.test(hour.conds)
+
+# log linear regression
+cate.hour.conds = xtabs(~hour+conds+cate_l1, data=checkin.single)
+freq.cate.hour.conds = as.data.frame(cate.hour.conds)
+loglin.sat.cate.hour.conds = glm(Freq~cate_l2*hour*conds, 
+                           data=freq.cate.hour.conds, family=poisson)
+#summary(loglin.sat.cate.hour)
+anova(loglin.sat.cate.hour.conds)
+
+# multinomial regression
+library(nnet)
+tmodel1<-multinom(cate_l1~ hour+conds+isweekend+windspd+temperatur,,
+                      data=checkin.single,maxit = 1000)
+tsummary1 = summary(tmodel1)
+z1 = tsummary1$coefficients/tsummary1$standard.errors
+p1 = (1 - pnorm(abs(z1), 0, 1)) * 2
+
+```
+
+2) with aggregation
+
+```{r}
+# chi-square test
+# hour v.s. weather condition
+hour.conds.ag = xtabs(~hour.ag+conds.ag, data=checkin.single)
+hour.conds.ag = as.table(hour.conds.ag[rowSums(hour.conds.ag)>0,colSums(hour.conds.ag)>0])
+chisq.test(hour.conds.ag)
+
+# log linear regression
+cate.hour.conds.ag = xtabs(~hour.ag+conds.ag+cate_l2, data=checkin.single)
+freq.cate.hour.conds.ag = as.data.frame(cate.hour.conds.ag)
+#### excution takes quite a long time
+loglin.sat.cate.hour.conds.ag = glm(Freq~cate_l2*hour.ag*conds.ag, 
+                           data=freq.cate.hour.conds.ag, family=poisson) 
+#### 
+#summary(loglin.sat.cate.hour)
+anova(loglin.sat.cate.hour.conds.ag)
+
+# multinomial regression
+tmodel2<-multinom(cate_l1~ hour.ag+conds.ag+isweekend+windspd+temperatur,
+                      data=checkin.single,maxit = 1000)
+tsummary2 = summary(tmodel2)
+z2 = tsummary2$coefficients/tsummary2$standard.errors
+p2 = (1 - pnorm(abs(z2), 0, 1)) * 2
+```
+
+
+update @2014.09.09 
+
+**5. multiple correspondence analysis**
+
+the correspondence analysis is used beforehand to reduce the number of levels in a variable. However, we see the problem because we don't just have two variables at hand. ==>multiple correspondence analysis
+
+ref: http://factominer.free.fr/classical-methods/multiple-correspondence-analysis.html
+
+```{r}
+library(FactoMineR)
+checkin.csample =  checkin.single[,c("cate_l1","hour","conds")]
+checkin.csample = checkin.csample[complete.cases(checkin.csample),]
+par(mfrow=c(2,2))
+res.mca = MCA(checkin.csample)
+plot.MCA(res.mca, cex=0.7)
+plot.MCA(res.mca, cex=0.7)
+plot.MCA(res.mca, invisible=c("var"), cex=0.7)
+plot.MCA(res.mca, invisible=c("ind"))
+plot.MCA(res.mca, invisible=c("ind", "var"))
+
+res.mca2 = MCA(checkin.csample, quali.sup=3) # should be just simple CA, but the result is strange
+
+```
+
+still cannot undertand the figures

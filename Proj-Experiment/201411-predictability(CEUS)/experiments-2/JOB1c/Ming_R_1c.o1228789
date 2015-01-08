@@ -1,0 +1,5 @@
+Module for The R statistics package, version 3.1.1 loaded.
+Job ran on: tane-n087
+
+Warning message:
+In sqrt(diag(vc)) : NaNs produced

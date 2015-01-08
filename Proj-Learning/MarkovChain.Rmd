@@ -1,0 +1,97 @@
+---
+title: "Markove Chain in R"
+author: "Ming Li"
+date: "Thursday, August 14, 2014"
+output: html_document
+---
+
+ref: http://statisticalrecipes.blogspot.de/2013/01/easy-introduction-to-markov-chains-in-r.html
+
+### Notations and Definitions 
+
+* a stochastic process $\left \{ X_{n},n=0,1,2,... \right \}$ takes on a finite/countable number of 
+possible values (nonnegative integers, $X_n \in \mathbb{Z}_+$). $X_{n}=i$ means the process is in state $i$ at time $n$.
+all possible values => **State Space**
+* **Markov Property**: $P_{ij} = P[X_{n+1} = j | X_n = i_n, X_{n-1} = i_{n-1}, \ldots, X_0 = i_0] = P[X_{n+1} = j | X_n = i_n] \hspace{.2in} \forall i, j \in \mathbb{Z}_+$
+* **Markov Chain**: a stochastic process with the above Markov Property
+* $P_{ij}$: 1-step **transition probability**
+    + $P_{ij} \geq 0, \hspace{.2in} \forall i,j \geq 0$
+    + $\sum_{j \geq 0} P_{ij} = 1, \hspace{.2in} i = 0, 1, 2, \ldots$
+    + n-step transition probability: $P_{ij}^n = P[X_{n+k} = j | X_k = i] \hspace{.2in} \forall n \geq 0, \hspace{.2in} i,j \geq 0$
+* **Initial State**
+* **Transition Matrix**
+
+### Example-1 
+
+ref: http://cran.r-project.org/web/packages/markovchain/vignettes/an_introduction_to_markovchain_package.pdf
+
+```{r}
+library(markovchain)
+# markovchain objects
+mcWeather <- new("markovchain",
+                 states = c("sunny", "cloudy", "rain"),
+                 transitionMatrix = matrix(data = c(0.70, 0.2,0.1,
+                                                    0.3,0.4, 0.3,
+                                                    0.2,0.45,0.35),
+                                           byrow = TRUE, nrow = 3),
+                 name = "Weather")
+show(mcWeather)
+plot(mcWeather)
+
+# transition probability from A to B
+transitionProbability(mcWeather, "cloudy", "rain")
+
+# conditional probability
+conditionalDistribution(mcWeather, "sunny")
+
+
+# dataframe<->markovchain object
+mcDf <- as(mcWeather, "data.frame")
+mcNew <- as(mcDf, "markovchain")
+
+# initial state
+initialState <- c(0,1,0)
+after2Days <- initialState * (mcWeather * mcWeather)
+after2Days
+after7Days <- initialState * (mcWeather^7)
+after7Days
+
+# stady state
+steadyStates(mcWeather)
+```
+
+### Example-2:  Simulation and Prediction 
+
+#### simulate a series of observations:
+
+```{r}
+weathersOfDays <- rmarkovchain(n = 365, object = mcWeather, t0 = "sunny")
+weathersOfDays[1:30]
+```
+
+#### estimate/fit a markov chain from the given data:
+
+there are three methods to do the estimation: 
+maximum likelihood, maximum likelihood with laplace smoothing, bootstrap
+
+```{r}
+weatherFittedMLE <- markovchainFit(data = weathersOfDays, method = "mle", name = "Weather MLE")
+weatherFittedMLE$estimate
+```
+
+Both MLE and Laplace approach are based on **createSequenceMatrix** function that converts the data sequence into a contigency table:
+
+```{r}
+createSequenceMatrix(stringchar = weathersOfDays)
+```
+
+#### making predictions:
+
+* predicting from a markov object
+```{r}
+# markov object is the one we estimated;
+# assuming last two days were: "cloudy","sunny" respectively
+# making prediction for the following three observations
+predict(object = weatherFittedMLE$estimate, newdata = c("cloudy","sunny"),n.ahead = 3)
+```
+

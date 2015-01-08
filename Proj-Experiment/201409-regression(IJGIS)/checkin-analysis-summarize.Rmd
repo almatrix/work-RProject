@@ -1,0 +1,38 @@
+---
+title: "Summarize"
+author: "Ming Li"
+date: "Wednesday, August 13, 2014"
+output: html_document
+---
+
+* Problems with analysis with a single user 
+    + even if for the top user (>3000 checkins during the 5 months), there are still many "outliers" caused by data sparsity, which will conflict the assumption of LLN;
+    + for those users who have small checkins, it does not even make sense to derive conclusions;
+    + maybe it is better to derive the general conclusions from the global dataset, and then adapt it to single users;
+        - good side is that now we can derive conclusions for any users regardless how many checkins they already had;
+        - challenge is that how to make adaptation?
+        
+But anyway, let's put that a bit later, and now: how to derive conclusions from global dataset? still, we consider four contextual factors: temporal, meteorological, sequential, and spatial. In the previous experiments (for a single user), what we have already tried?
+
+* multinomial logistic regression with all factors (weighted)
+    + as far as I'm concerned, the temporal weighted sequential factor makes sense; however, the geographically weighted spatial factors still needs consideration;
+    + the biggest problems are with the analysis of variables/predictors. We don't know how much each variable contribute to the total variance; either do we know whether there are any correlations amongst these predictors;----- we didn't argue why we include the four factors in the first place!!
+    
+* log linear analysis with temporal and meteorological factors
+    + remember the sprit of log linear analysis is multi-way contingency tables, which constraints its processing ability to discreate categorical data. Since we tend to include also other factors with continuous aspects, this might have problems;
+    + the reason why we try log linear analysis (good side) is that it is convienient to perform variance analysis, which makes it possible to see the contributions of different factors to the total variance, and exclude the unimportant ones;
+        - however, according to our experiments: when we include "temporal" and "meteorological" factors, there are only (for example) 3 predictors, and none of them should be removed, although according to the coefficients, many of them are "not significant". However, that dozens of coefficients correspond to the dummy variables (levels of the categorical factor). 
+        - It makes us wondering: there might be some "collinearity" within the levels. For example, "Mostly cloudy" and "Scattered clouds", "Rain" and "Light Rain", etc., they may contribute to similar results. And different hours of a day many not contribute the same. For example, from "1am" to "5am", there might be little variance; while from "8am" to "12am" there might be much more variance. 
+        - I also tried to expand these categorical variables into a "wide" format, but then it causes too heavy computation load. In fact it should not be a good idea, because if I see for example "3am" cannot passed the significant test I cannot just remove it from the model, because when we are making predictions, if the users do checkin at 3pm, then the model will never know what to do!
+    
+* chi-squared test
+    + all the above problems leads to the question: correlations between the factors (maybe even "correlations" among levels) and contributions of these factors;
+    + therefore we do chi-square test to test the correlations between these factors. the result is not as expected:
+        - although there are ditinct correlations between y(venue category) and (hour), (isweekend), (last category), the p-value for y and (weather condition) is not significant, and there are even strong correlations between (hour) and (isweekend), or (hour) and (weather condition), which DOES NOT make any sense!!!
+        - in fact, I probably know the reason: these factors are integrated to make impact on result, and they should NOT be analyzed seperately -- which will very probably lead to weird conclusions.
+
+* Multiple correspondence analysis
+    + I still have problems in thoroughly understanding MCA. Generally it can be understand similarly as PCA: find several priciple component to substitute the original factors. The synthetic variables might be difficult to explain, but they can explain the majority of variance with limited variables. -- if so, then the problems of "finding correlations between explain variables" can be avoided/bypassed/solved.
+    + I have made some plots, but I just cannot explain them! I think the sparsity also causes problems here because MCA is not robust to outliers! again, that makes me consider the "global" perspectives.
+    
+

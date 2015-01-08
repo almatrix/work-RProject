@@ -1,0 +1,85 @@
+---
+title: "Understanding Contextualized Mobility Patterns from Location-based Social Networks"
+author: "Ming Li"
+date: "Wednesday, September 10, 2014"
+output: html_document
+---
+
+### 1. Introduction 
+
+
+### 2. Data Investigation
+
+#### 2.1 Foursquare
+
+e.g. how much users, checkins, etc.
+
+#### 2.2 representativeness
+
+* global representativeness
+
+    + not random sampling (more young, etc. users), cannot represente the whole mobile users 
+        
+        => restrict our research / target user group
+
+* individual representativeness
+
+    + statistical
+
+        + number of checkins per day 
+    
+        + number of distinct locations
+    
+        + average checkin interval (spatial and temporal): spatiotemproal resolution / imcompleteness
+
+        + daily covered distance: radius of gyration
+    
+    + inferential 
+    
+        + entropy
+    
+        + predictability
+    
+        + regularity
+
+#### 2.3 entropy, predictability, and regularity
+
+* entropy (ref: [limits in human predictability, *science*])
+
+    + random entropy: $log_{2}N_{i}$, where $N_{i}$ is the number of distinct visited locations
+
+    + contextual-uncorrelated entropy: $\sum p_{i}(j)log_{2}p_{i}(j)$, where $p_{i}(j)$ is the historical visits, characterizing the *heterogeneity of visitation patterns* 
+    
+    + actual entropy: capturing the full spatiotemporal order in a user's mobility pattern (including the impacts of randomness, contextual-uncorrelated impacts, and contextual impacts)
+    
+* predictability
+
+    + the probability that an appropriate predictive algorithm can predict correctly the user's future whereabouts. (determined by entropy S and distinct locations N)-> higher bound
+    
+* regularity
+    
+    + lower bound
+
+
+### 3. Approach 
+
+#### 3.1 Context definition
+
+#### 3.2 Reveal the hidden contextual impacts
+
+#### 3.3 Lower the levels of the categorical variables
+
+#### 3.4 Model contextualized mobility patterns
+
+
+### 4. Experimental Results
+
+#### 4.1 Experimental Datasets
+
+#### 4.2 evaluation of regression model
+
+#### 4.3 Discussion
+
+
+### 5. Conclusion and Future Work
+

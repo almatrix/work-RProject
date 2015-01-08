@@ -1,0 +1,160 @@
+---
+title: "Feedback to Reviewers' Comments"
+output: word_document
+date: "Friday, August 22, 2014"
+---
+
+## Review Report Form
+
+| | High | Average | Low | No Answer
+--------|------|---------|-----|---------
+Originality / Novelty     |	( )    | (x)   |   ( )   |   ( )      
+Significance of Content |	( )    |  ( )   |   (x)    |  ( )      
+Quality of Presentation |	( )    |  ( )      |(x)   |   ( )      
+Scientific Soundness 	|	( )     | ( )     | (x)   |   ( )      
+Interest to the readers |		( )   |   ( )   |   (x)   |   ( )      
+Overall Merit 		|	( )   |   ( )   |   (x)   |   ( )      
+
+### English Language and Style 
+
+( ) English language and style are fine 
+
+( ) Minor spell check required 
+
+(x) Extensive editing of English language and style required 
+
+( ) I don't feel qualified to judge about the English Language and Style 
+
+#### Comments and Suggestions for Authors 
+
+```
+This is a very ambitous manuscript, which claims to use VGI to adapt 3D visualisations to user context. However, unfortunately, as the authors state only "early-stage" experiments are carried out and, to be frank, the illustrations in Figure 7 demonstrate clearly the immaturity of this work. I can't think of any application where the 3D representations shown would be of use (either those pre or post filtering).
+```
+
+**Reply:**
+
+Thanks for your comments. The original thoughts for this paper are to general framework that can guide our future work on context-aware mobile geo-visualization. It's true that the expriments especially in 3D visualization are in early stage, and the current visualization -- we have to admit -- cannot be of practical use yet. Thanks for making it plain, which makes us finally decide to remove the 3D visualization part from this paper since we are not ready enough to present it. 
+
+Hence, we have constrained our focus only in the first part (aka context-aware relevance evaluation). As for the visualization, we will move to that part with all our efforts in other papers.   
+
+----
+
+```
+In my view, the fundamental problem is simply that the authors attempt to combine an impressive number of research areas (VGI, 3D-visualisation, location-based services, geographic relevance, context and, implicitly, spatial cognition) without properly dealing with any of them.
+For example, the use (and benefits) of 3D are highly controversial for many tasks, and using it to abstract information (Figure 7) leads me to ask why not use a more appropriate 2D abstraction (see for example Wilkening and Fabrikant, 2013).
+```
+
+**Reply:**
+
+Thanks. This paper indeed involved a wide range of topics as you have pointed out. But as far as we are concerned, the final destination of "context-aware 3D visualization for mobile users" do involve a great many topics. Therefore, we'd like to explain why we want to work on 3D visualization in the first place. 
+
+We are aware that the use of 3D is controversial, but we still believe that it is superior than 2D in several ways in certain situations, especially for the non-specialists and people without a good ability of spatial recognition. 
+In our point of view, 3D is still constrained a lot by technologies, just like 50 years ago when people cannot imagine using bunches of colored images in the earliest web. If the barriers of graphics, interfaces, computing, etc. are soloved, and the techniques of 3D can be as mature as 2D today, We believe they can be both popular and useful.
+
+You are so right in pointing out the fundamental problems. We have too many topics to cover, but a paper has limited space, and we cannot yet support it with good results. 
+
+As stated above, we decided to remove the 3D part from the draft because on the one hand, it brings too many topics to discuss; on the other hand, we are not ready enough to present it now. In the revised version, the reserach is more focused, and the topics are reduced accordingly.  
+
+----
+
+```
+The discussion of context in the paper contradicts itself, with the authors stating in line 104: "By adapting geovisualizations to the user as well as the context" and then later introducing definitions (line 194-198) which include the user are part of the context (which is more what I might expect).
+```
+
+**Reply:**
+
+Thank you! As we have mentioned in section 3.1 (in both versions), the definition of context is various, and whether the user should be considered as part of context is controversial. The reason from our viewpoint is that context is (and shoule be) defined with the consideration of specific applications. From the system perspective, the user is part of context; while from the user perspective, they are seperate because context is considered as "the user's context". 
+
+In the application designed for our project, we consider user as part of the context. However, your comment remind us we didn't keep consistent in the text. We have improved on that in the revised version. 
+
+----
+
+```
+The model then presented is fairly trivial (Figure 1) and doesn't link at all to 3D (what's special about the 3D part here), or really bring anything new to the table. Indeed, the authors don't make any effort to show what the difference/ advantage is between their model and previous ones. 
+```
+
+**Reply:**
+
+Thanks. Because there are different perspectives of context, and the definition of context should always be connected with the application aera,  we tried to define the context in our work following the classic cartographic communication process. This "model" therefore is specially designed for visualization, because it considers also the rendering contexts such as the devices and the user's spatial recognition abilities. 
+
+However, since we have excluded the visualization part, we have also adapted the definition of context in section 3.1 of the revised manuscript. With a more focused research topic on the approcah of relevance evalution (instead of "framework"), we also stoped calling "context model". Instead, we only generally define context and choose two contextual factors as representatives of this reserach. 
+
+----
+
+```
+The claim of the authors seems to be that VGI, which for them includes effectively all data generated by individuals, can provide useful context. I fully agree with this notion, but would suggest that firstly rather a lot of work has been done on context-aware search in other communities too (e.g Adomavicius and Tuzhilin). Although quite a large volume of literature is cited, I always had the impression if was bolted on to the paper, rather than really thoroughly read and applied to this work.
+```
+
+**Reply:**
+
+Thanks! The recommended paper summarized many kinds of the uses of context in various areas, and it gives us hints in differnt ways. We are aware that there are indeed a lot of work on context-aware systems, and differnt reseraches always have differnt perspectives towards this notion. It is interesting to find the new angles. 
+
+Nevertheless, we think this paper is still new in the way how it finds out and uses context. Normally the use of context requires works on context collection with user input or sensor, context reasoning with a bunch of rules, and design of mechanisms to respond to context changes. In this paper, we attempt to derive context information and decide the impacts of context from VGI data with statistical techniques, as you pointed out. It is very interesting (and could be promissing) to work with context-aware systems in this way, and this would also differ our approach from the existing approaches. 
+
+However, we are also aware of the problems and limitations of our approach, and the related work of other researchers can benifit us a lot. So we will keep reading more literature in the future and make our own work more contributory.
+
+
+
+----
+
+```
+There are also all sorts of privacy issues here, which are simply not mentioned at all.
+```
+
+**Reply:**
+
+There are indeed privacy issues along with the research of big data such as social media, mobile phone usage, etc. It is a truth that users can feel unsafe to know that we are collecting their data, and analyzing their behavior. In the revised version, we introduced the visibility policy of Foursquare briefly in section 3.2 of the revised version: 
+
+> "Each time a user checks in a venue, a checkin object will be created in the database, which covers the profile of the user (...), the profile of the venue (...), as well as the profile of the checkin event (...)."
+
+> "With the application programming interface (API) of Foursquare, it is facile to extract the profiles of venues. Except for the id and gender, the profile of a user is however not visible to non-friend to protect the user privacy. The accessing policy towards the profiles of checkin events is a bit more complicated. If checkins are sent to public feeds such as Twitter, they are accessible with a Foursquare signature; otherwise they are also only visible to friends." 
+
+Therefore, the data that we collected are the public subset, and are anonymous (the friend-only access to user profile cannot be bypassed). Section 3.2 also gives a simple statistics:
+
+> "... the increase of checkins according to the collected data shows about 10% of the increase according to Foursquare statistics, which suggests that approximately 10% of the total Foursquare checkins are published via Twitter feeds and are therefore visible to the public." 
+
+----
+
+```
+I think there is potentially the core of an interesting paper here - however, I also think that science can't simply be undertaken as a process of "mashing-up" ideas from different fields, which is how this paper reads and feels to me. I'd therefore plead with the authors to take the time to go back to the drawing board, and write a more succinct piece, where the influences of, and the contribution to the literature are much clearer. 
+```
+
+**Reply:**
+
+We really appreciate your comment here, which forced us to construct our ideas in a more organized way. Your comment is valuable not only for improving this single paper, but in a more far-reaching way. 
+
+As you will see in the revised version, it is not just the removal of the visualization part. The paper is almost totally rewritten from the title and organization to the approach and experiment. It might read totally new compared to the pervious version, but we do hope it also reads more organized, more scientifical, and more contributory. We are looking forward to your comments on the new version!
+
+----
+
+```
+If the paper is to include examples (such as those shown in Figure 4 and Figure 7) these must be much more critically discussed and embedded. 
+```
+
+**Reply:**
+
+Thanks! Having excluded visualziation part, the revised version now focused on the approach for context-aware relevance evaluation, therefore required examples for validating the proposed approach. In the new draft, more discussions has beeen included with the presented figures (such as figure 4, figure 6).
+
+----
+
+
+```
+There are also various basic problems - for instance I can acheive a recall of 1.0 for every search by simply returning every document in my collection in response to a query, so Figure 5 doesn't show the precentage of "correct predictions" if it really shows recall (precision would show this, but more typical would be to report precision and recall if possible (if you know recall you know precision, but not vice-versa).
+```
+
+**Reply:**
+
+Thanks! The indicator does lose its meaning with a large prediction size (as you said, recall will just be 100% if all documents are retrieved). The confusion arises partly because we didn't have spaces to explain details such as the list size and the reason we choose indicators.
+
+Recall is defined in information retrival theory as $$\frac{\left | \left \{ relevant \right \} \cap \left \{ retrieved \right \} \right |}{\left | \left \{ relevant \right \} \right |}$$
+while precision is defined as $$\frac{\left | \left \{ relevant \right \} \cap \left \{ retrieved \right \} \right |}{\left | \left \{ retrieved \right \} \right |}$$
+
+Therefore, if you know the recall you don't necessarily know precision. In our previous experiment, the denominator is the relevant data (the places that the user has acturally been to in the next two hours), because we want to know how many places the user has acturally been to are correctly predicted by our algorithm. This indicator makes sense here because the prediction list size is set as 3 (which is really small) in our pervious experiment. The recall will of course increase with a bigger size, but we don't expect a long list because we try to filter data out.
+
+However, the prediction list is not fixed to 3. Sometimes the algorithm might only generate one prediction when it finds out the other candicates are all with very small probabilities. If this only one prediction is correct, the precision would be 100%. However, the recall might be 20% if the user has actually been to 5 locations in the next two hours. That's another reason we didn't use the indicator "precision", because in such circumstances, the precision might be exaggerated with a too small denominator.
+
+Just for reference, you can notice in our new figure 6 that when the prediction size is small, the precision is higher than recall. 
+
+In the revised version, we have focused on the approach of relevance evaluation, and our algorithms are also improved. Consequently, the experiments have been redesigned and redone accordingly. The new experiment aims to compare the performance of priori-relevance-based prediction and contextualized-relevance-based prediction. Therefore, it is important to observe the performance of the approaches under both criteria. The new result (figure 6) therefore depicts precision and recall of both approaches with varying list sizes. 
+
+

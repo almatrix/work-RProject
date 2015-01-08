@@ -1,0 +1,12 @@
+<NotepadPlus>
+    <Session activeView="0">
+        <mainView activeIndex="2">
+            <File firstVisibleLine="0" xOffset="0" scrollWidth="2660" startPos="0" endPos="0" selMode="0" lang="R" encoding="-1" filename="D:\GitRepos\work\experiments\experiments-3\JOB31\configs.R" backupFilePath="" originalFileLastModifTimestamp="1416845444" />
+            <File firstVisibleLine="0" xOffset="0" scrollWidth="2660" startPos="0" endPos="0" selMode="0" lang="R" encoding="-1" filename="D:\GitRepos\work\experiments\experiments-3\JOB32\configs.R" backupFilePath="" originalFileLastModifTimestamp="1416845493" />
+            <File firstVisibleLine="0" xOffset="0" scrollWidth="2660" startPos="0" endPos="0" selMode="0" lang="R" encoding="-1" filename="D:\GitRepos\work\experiments\experiments-3\JOB33\configs.R" backupFilePath="" originalFileLastModifTimestamp="1416845493" />
+            <File firstVisibleLine="0" xOffset="0" scrollWidth="2660" startPos="0" endPos="0" selMode="0" lang="R" encoding="-1" filename="D:\GitRepos\work\experiments\experiments-3\JOB34\configs.R" backupFilePath="" originalFileLastModifTimestamp="1416845492" />
+            <File firstVisibleLine="0" xOffset="0" scrollWidth="2660" startPos="0" endPos="0" selMode="0" lang="R" encoding="-1" filename="D:\GitRepos\work\experiments\experiments-3\JOB35\configs.R" backupFilePath="" originalFileLastModifTimestamp="1416845491" />
+        </mainView>
+        <subView activeIndex="0" />
+    </Session>
+</NotepadPlus>

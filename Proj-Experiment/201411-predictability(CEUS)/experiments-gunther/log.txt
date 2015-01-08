@@ -1,0 +1,350 @@
+[1] "2014-12-11 15:57:40 : Preparing data frame from the raw data data/csv-raw/NewYorkCity.csv"
+[1] "2014-12-11 15:57:40 : The raw checkin data loaded."
+[1] "2014-12-11 15:57:41 : Time related work done."
+[1] "2014-12-11 15:57:41 : Previous recording work done."
+[1] "2014-12-11 15:58:02 : Preparing data frame from the raw data data/csv-raw/NewYorkCity.csv"
+[1] "2014-12-11 15:58:15 : The raw checkin data loaded."
+[1] "2014-12-11 15:59:22 : Time related work done."
+[1] "2014-12-11 15:59:28 : Previous recording work done."
+[1] "2014-12-11 16:00:11 : Preparing data frame from the raw data data/csv-raw/LAUrbanized.csv"
+[1] "2014-12-11 16:00:18 : The raw checkin data loaded."
+[1] "2014-12-11 16:00:55 : Time related work done."
+[1] "2014-12-11 16:00:59 : Previous recording work done."
+[1] "2014-12-11 16:00:59 : Preparing data frame from the raw data data/csv-raw/ChicagoLand.csv"
+[1] "2014-12-11 16:01:05 : The raw checkin data loaded."
+[1] "2014-12-11 16:01:37 : Time related work done."
+[1] "2014-12-11 16:01:42 : Previous recording work done."
+RStudioGD 
+        2 
+RStudioGD 
+        2 
+RStudioGD 
+        2 
+RStudioGD 
+        2 
+RStudioGD 
+        2 
+RStudioGD 
+        2 
+RStudioGD 
+        2 
+RStudioGD 
+        2 
+RStudioGD 
+        2 
+RStudioGD 
+        2 
+RStudioGD 
+        2 
+RStudioGD 
+        2 
+RStudioGD 
+        2 
+OGR data source with driver: ESRI Shapefile 
+Source: "data/shapefiles", layer: "bounds_ChicagoCity"
+with 1 features and 4 fields
+Feature type: wkbMultiPolygon with 2 dimensions
+OGR data source with driver: ESRI Shapefile 
+Source: "data/shapefiles", layer: "bounds_ChicagoCity"
+with 1 features and 4 fields
+Feature type: wkbMultiPolygon with 2 dimensions
+OGR data source with driver: ESRI Shapefile 
+Source: "data/shapefiles", layer: "bounds_ChicagoCity"
+with 1 features and 4 fields
+Feature type: wkbMultiPolygon with 2 dimensions
+OGR data source with driver: ESRI Shapefile 
+Source: "data/shapefiles", layer: "NYC_borough_boundaries_WGS84"
+with 5 features and 4 fields
+Feature type: wkbMultiPolygon with 2 dimensions
+OGR data source with driver: ESRI Shapefile 
+Source: "data/shapefiles", layer: "bounds_LA_City"
+with 15 features and 10 fields
+Feature type: wkbPolygon with 2 dimensions
+OGR data source with driver: ESRI Shapefile 
+Source: "data/shapefiles", layer: "bounds_ChicagoCity"
+with 1 features and 4 fields
+Feature type: wkbMultiPolygon with 2 dimensions
+RStudioGD 
+        2 
+OGR data source with driver: ESRI Shapefile 
+Source: "data/shapefiles", layer: "bounds_LA_City_WGS84"
+with 15 features and 10 fields
+Feature type: wkbPolygon with 2 dimensions
+OGR data source with driver: ESRI Shapefile 
+Source: "data/shapefiles", layer: "NYC_borough_boundaries_WGS84"
+with 5 features and 4 fields
+Feature type: wkbMultiPolygon with 2 dimensions
+OGR data source with driver: ESRI Shapefile 
+Source: "data/shapefiles", layer: "bounds_LA_City_WGS84"
+with 15 features and 10 fields
+Feature type: wkbPolygon with 2 dimensions
+OGR data source with driver: ESRI Shapefile 
+Source: "data/shapefiles", layer: "bounds_ChicagoCity_WGS84"
+with 1 features and 4 fields
+Feature type: wkbMultiPolygon with 2 dimensions
+RStudioGD 
+        2 
+OGR data source with driver: ESRI Shapefile 
+Source: "data/shapefiles", layer: "NYC_borough_boundaries_WGS84"
+with 5 features and 4 fields
+Feature type: wkbMultiPolygon with 2 dimensions
+OGR data source with driver: ESRI Shapefile 
+Source: "data/shapefiles", layer: "bounds_LA_City_WGS84"
+with 15 features and 10 fields
+Feature type: wkbPolygon with 2 dimensions
+OGR data source with driver: ESRI Shapefile 
+Source: "data/shapefiles", layer: "bounds_ChicagoCity_WGS84"
+with 1 features and 4 fields
+Feature type: wkbMultiPolygon with 2 dimensions
+RStudioGD 
+        2 
+RStudioGD 
+        2 
+RStudioGD 
+        2 
+RStudioGD 
+        2 
+RStudioGD 
+        2 
+RStudioGD 
+        2 
+RStudioGD 
+        2 
+RStudioGD 
+        2 
+RStudioGD 
+        2 
+RStudioGD 
+        2 
+RStudioGD 
+        2 
+RStudioGD 
+        2 
+RStudioGD 
+        2 
+RStudioGD 
+        2 
+RStudioGD 
+        2 
+RStudioGD 
+        2 
+RStudioGD 
+        2 
+RStudioGD 
+        2 
+RStudioGD 
+        2 
+RStudioGD 
+        2 
+RStudioGD 
+        2 
+RStudioGD 
+        2 
+RStudioGD 
+        2 
+RStudioGD 
+        2 
+RStudioGD 
+        2 
+RStudioGD 
+        2 
+RStudioGD 
+        2 
+NULL
+RStudioGD 
+        2 
+RStudioGD 
+        2 
+NULL
+RStudioGD 
+        2 
+RStudioGD 
+        2 
+RStudioGD 
+        2 
+png 
+  4 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+No documentation for ‘scale_fill’ in specified packages and libraries:
+you could try ‘??scale_fill’
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+RStudioGD 
+        2 
+RStudioGD 
+        2 
+RStudioGD 
+        2 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 

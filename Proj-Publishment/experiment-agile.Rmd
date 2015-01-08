@@ -1,0 +1,757 @@
+---
+title: "experiments-agile"
+author: "Ming Li"
+date: "Tuesday, October 28, 2014"
+output: word_document
+---
+
+#### load the data, get the subset of active users
+```{r,echo=FALSE}
+
+library(rgdal)
+library(scales)
+library(ggplot2)
+library(reshape2)
+library(gridExtra)
+library(manipulate)
+library(plyr)
+library(vcd) # for chi-square and cramer's V
+source("D:\\GitRepos\\work\\fun\\multiplot.R")
+ppi=300
+basedir = "D:\\Experiments\\R\\"
+
+# load("D:\\Experiments\\R\\data\\checkin_global_all_0918.Rda")
+load("D:\\Experiments\\R\\data\\checkin_single_0910.Rda")
+load("D:\\Experiments\\R\\data\\checkin_active.Rda")
+
+# seperate the users
+# days = length(unique(checkin.global$yearday))
+# usersets = split(checkin.global, checkin.global$user_id)
+# 
+# # users statistics
+# usersets.cnt = sapply(usersets,function(i){nrow(i)})
+# usersets.cates = sapply(usersets,function(i){ length(unique(i$cate_l2)) })
+# usersets.days = sapply(usersets,function(i){ length(unique(i$yearday)) })
+# usersets.cnt.perday = usersets.cnt / usersets.days
+# # usersets.hours = sapply(usersets,function(i){ceiling(length(unique(as.numeric(i$hour)))/3)/8})
+# usersets.hours = sapply(usersets,function(i){length(unique(as.numeric(i$hour)))/24})
+# 
+# usersets.stats = data.frame("perday"=usersets.cnt.perday,
+#                          "days"=usersets.days,
+#                          "hourcomp"=usersets.hours,
+#                          "totalcnt"=usersets.cnt,
+#                          "cates"=usersets.cates)
+# rm(usersets.cnt,usersets.days,usersets.cnt.perday,usersets.hours,usersets.cates)
+# 
+# # decide "active" user sets
+# usersets.active.idx = which(usersets.stats$hourcomp > 0.5)
+# # subsetting
+# usersets.active = usersets[usersets.active.idx]
+# usersets.stats.act = usersets.stats[usersets.active.idx,]
+
+# # add one more column about the last visiting category
+# checkin.active = data.frame()
+# lapply(seq_along(usersets.active),function(i){
+#     if(i%%10==0)print(i)
+#     user = usersets.active[[i]]
+#     # order by time
+#     user = user[order(user$timestamps.x),]
+#     whereabout = user[,c("timestamps.x","cate_l1","cate_l2")]
+#     user[,c("last.timestamps.x","last.cate_l1","last.cate_l2")] = rbind( head(whereabout,1),
+#               head(whereabout,(nrow(whereabout)-1))  )
+#     user[1,"last.timestamps.x"]=0 
+#     
+#     # merge into a data frame
+#     checkin.active <<- rbind(checkin.active, user)
+#     
+#     NA
+# })
+# checkin.active$delta.hour = (checkin.active$timestamps.x - 
+#     checkin.active$last.timestamps.x )/3600
+# checkin.active$tweight = 2^(-1*checkin.active$delta.hour) 
+# save(checkin.active,file="D:\\Experiments\\R\\data\\checkin_active.Rda")
+# usersets.active = split(checkin.active, checkin.active$user_id)
+```
+
+
+
+#### spatial grid experiment (1)
+
+```{r,echo=FALSE}
+nycb = readOGR(dsn="D:\\Experiments\\foursquare checkin data\\shapefile\\boundaries", 
+               layer="NYC_borough_boundaries_WGS84")
+nycb@data$id = rownames(nycb@data)
+nycb.points = fortify(nycb, region="id")
+nycb.df = join(nycb.points, nycb@data, by="id")
+
+# compose grids
+corners = c("left" = min(nycb.points$long), "right" = max(nycb.points$long),
+            "top" =  max(nycb.points$lat),  "bottom" = min(nycb.points$lat) )
+# 
+# corners = c("left" = min(checkin.active$lon.x), "right" = max(checkin.active$lon.x),
+#             "top" =  max(checkin.active$lat.x),  "bottom" = min(checkin.active$lat.x) )
+
+##################################### FUNCTIONS ##############################################
+compose.grids.line = function (corners, cols, rows ){
+    
+    # horizontal lines: colomn coords
+    coords.col = seq(from = corners["left"], to =corners["right"],length= (cols+1) )
+    # vertical lines: row corrds
+    coords.row = seq(from = corners["bottom"], to =corners["top"],length= (rows+1) )
+    
+    df1 = data.frame("x" = rep(c(corners["left"], corners["right"]), rows+1 ),
+               "y" = rep(coords.row, each=2),
+               "type" = "h",
+               "id" = rep(c(1:(rows+1)), each=2)) 
+    df1$group = paste0(df1$type, df1$id)
+    
+    df2 = data.frame("x" = rep(coords.col, each=2),
+               "y" = rep(c(corners["bottom"], corners["top"]), cols+1 ),
+               "type" = "v",
+               "id" = rep(c(1:(cols+1)), each=2)
+               )
+    df2$group = paste0(df2$type, df2$id)
+    
+    rbind(df1, df2)
+    
+}
+
+compose.grids = function (corners, cols, rows ){
+    
+    # horizontal lines: colomn coords
+    coords.col = seq(from = corners["left"], to =corners["right"],length= (cols+1) )
+    # vertical lines: row corrds
+    coords.row = seq(from = corners["bottom"], to =corners["top"],length= (rows+1) )
+    
+    left = rep(c(coords.col[1:cols]), rows)
+    right = rep(c(coords.col[2:(cols+1)]), rows)
+    bottom = rep(c(coords.row[1:rows]), each = cols)
+    top = rep(c(coords.row[2:(rows+1)]), each = cols)
+             
+    df = data.frame("left"=left,"right"=right,"bottom"=bottom,"top"=top)
+    
+    df$row.id = rep(c(1:rows), each = cols)
+    df$col.id = rep(c(1:cols), rows)
+
+    df$uid = as.factor(paste(formatC(df$row.id,width=4,flag=0), 
+                             formatC(df$col.id,width=4,flag=0) ,sep="_") )
+    df$uid.seq = as.factor(1:nrow(df))
+    
+    df
+
+}
+
+
+# 
+# distinct.locations = as.data.frame(table(checkin.active$venue_id))
+# checkin.active2 = merge(x=checkin.active, 
+#                        y=distinct.locations, 
+#                        by.x="venue_id", by.y="Var1", all.X=TRUE)
+# order by time
+# checkin.active2= checkin.active2[order(checkin.active2$timestamps.x),]
+
+# put data in grids
+cols=40;rows=36
+grids = compose.grids(corners, cols, rows)
+col.size = (corners["right"]-corners["left"])/cols
+row.size = (corners["top"]-corners["bottom"])/rows
+# category.in.grids = data.frame("cate_l1"= checkin.active$cate_l1,
+#                                "cate_l2"= checkin.active$cate_l2,
+#                                "col.id" = ceiling( (checkin.active$lon.x-corners["left"]) / col.size ),
+#                                "row.id" = ceiling( (checkin.active$lat.x-corners["bottom"]) / row.size ) 
+#                                )
+# category.in.grids$uid = factor(paste0(category.in.grids$row.id, category.in.grids$col.id ),
+#                                levels = levels(grids$uid) )
+
+# merge category.in.grids with checkin.active
+checkin.active.in.grids = checkin.active
+checkin.active.in.grids$col.id = ceiling( (checkin.active$lon.x-corners["left"]) / col.size )
+checkin.active.in.grids$row.id = ceiling( (checkin.active$lat.x-corners["bottom"]) / row.size )
+checkin.active.in.grids$grid.id = 
+    factor(paste(formatC(checkin.active.in.grids$row.id, width = 4, flag = 0), 
+                 formatC(checkin.active.in.grids$col.id, width = 4, flag = 0), sep="_" ),
+           levels = levels(grids$uid) )
+
+stats.in.grids = as.data.frame(xtabs(data=checkin.active.in.grids, ~cate_l1+grid.id))
+stats.in.grids$sum = rep(ddply(stats.in.grids, .(grid.id), summarise, total=sum(Freq))$total,
+                         each = length(levels(checkin.active.in.grids$cate_l1)))
+stats.in.grids$p = stats.in.grids$Freq / stats.in.grids$sum
+stats.in.grids = merge(x=stats.in.grids, 
+                       y=grids, 
+                       by.x="grid.id", by.y="uid", all.X=TRUE)
+
+gg.map<-ggplot() +
+    
+    geom_path(data=compose.grids.line(corners, cols, rows),
+              aes(x=x, y=y,group=group),alpha=.5,size=.3,color="#DDDDDD")+
+    
+    geom_polygon(data=nycb.df,aes(long,lat,group=group),alpha=.1,color="grey") +
+    
+#     geom_path(aes(x=lon.x, y=lat.x),color="#55B1F7",alpha=.8,size=.2)+
+    geom_point(data=checkin.active[,c("lon.x","lat.x")],
+               aes(x=lon.x, y=lat.x),
+               color = "#55B1F7", alpha = 0.3, size=.5)+
+
+    theme(legend.position="none",
+          panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
+          panel.background = element_blank(), plot.background = element_blank(),
+          axis.title=element_blank(),axis.text=element_blank(),axis.ticks=element_blank(),
+          plot.margin=unit(c(.05,.05,.05,.05),"npc"))
+
+
+gg.pie = ggplot(data=stats.in.grids, aes(x=factor(1),y=p, fill = factor(cate_l1))) + 
+    geom_bar(stat="identity") +
+    facet_wrap( ~ uid.seq,ncol=cols,nrow=rows,as.table = FALSE) +
+    coord_polar(theta="y") +
+
+    theme(strip.background = element_blank(), strip.text = element_blank(),
+          panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
+#           panel.background = element_blank(), plot.background = element_blank(),
+          axis.title=element_blank(),axis.text=element_blank(),axis.ticks=element_blank(),
+          legend.title=element_blank(),legend.position="none",
+          plot.title = element_text(size=11),aspect.ratio = 1,plot.margin=unit(c(.05,.05,.05,.05),"npc"))
+
+png(paste0(basedir,"img\\Agile\\agile_map1.spgrids1.png"), width = 6*ppi, height = 6*ppi, res=ppi,bg = "transparent")
+gg.pie
+dev.off()
+png(paste0(basedir,"img\\Agile\\agile_map1.spgrids2.png"), width = 5*ppi, height = 4.5*ppi, res=ppi,bg = "white")
+gg.map
+dev.off()
+```
+
+
+
+#### spatial grid experiment (2): for single user, in cluster
+
+```{r,echo=FALSE}
+# cluster instead of grid
+
+##################################### FUNCTIONS ##############################################
+spatial.clustering = function(data){
+    # subsetting 
+    subset = data[,c("gid","lat.x","lon.x","cate_l1","cate_l2")]
+    
+    # get coordinates of unique locations
+    coords = unique(subset[,c("lat.x","lon.x")])
+   
+    # K-means clustering
+    ntotal = nrow(coords)
+    if(ntotal > 2){
+        # determine number of clusters based on the unique locations
+        wss <- (ntotal-1) * sum(apply(coords,2,var))
+        for (i in 2:(ntotal-1)) {
+            wss[i] <- sum(kmeans(coords,centers=i)$withinss)
+        }
+        ncls = length(wss[wss>0.05*wss[1]])+1
+        if(ncls > (ntotal-1)) ncls = ntotal-1
+#         ncls=8
+
+        # K-Means Cluster Analysis
+        kmcls <- kmeans(coords,ncls) # "kmcls" is a list of k-means clustering result
+
+        # record the clusters by latitude of cluster center
+        centers = data.frame("lat.center"=kmcls$centers[,1],
+                             "lon.center"=kmcls$centers[,2],
+                             "cid"=c(1:ncls),
+                             "size"=kmcls$size)
+        # reorder the clusters by lat
+        centers = centers[order(centers$lat.center),] # reorder the data frame
+        centers$cid.ordered = as.factor(c(1:ncls))  # this is the new cluster id
+        
+        # record the clusters of each unique location
+        coords.cls = data.frame(coords,"cid"=kmcls$cluster) 
+        coords.cls = merge(x=coords.cls,y=centers[,c("cid","cid.ordered")], all.X=TRUE)                    
+    }
+    else{
+        coords.cls <- data.frame(as.factor(c(1)),coords, coords, as.factor(c(1))) 
+    }
+    colnames(coords.cls) = c("cid","lat.x","lon.x","cid.ordered")
+
+    # join the clustered locations with the original data frame
+    list("point" = merge(x=subset, y=coords.cls, all.x=TRUE),
+      "centers" = centers,
+      "point.unique"= coords.cls)
+}
+
+category.in.clusters =  spatial.clustering(checkin.single)
+
+gg.map2<-ggplot() +
+    
+    geom_polygon(data=nycb.df,aes(long,lat,group=group),alpha=.1,color="grey") +
+
+    geom_point(data=category.in.clusters$centers,
+               aes(x=lon.center, y=lat.center, color=cid.ordered),size=12,alpha=.5)+
+    
+    geom_point(data=category.in.clusters$point.unique,
+               aes(x=lon.x, y=lat.x, color=cid.ordered),size=1)+
+
+    scale_color_brewer(palette="Set3") +
+    theme(#legend.position="none",
+          panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
+          panel.background = element_blank(), plot.background = element_blank(),
+          axis.title=element_blank(),axis.text=element_blank(),axis.ticks=element_blank())
+
+stats.in.clusters = as.data.frame(xtabs(data=category.in.clusters$point, 
+                                        ~cate_l1+cid.ordered))
+summary = aggregate(stats.in.clusters$Freq,by=list(stats.in.clusters$cid.ordered),FUN=sum)
+stats.in.clusters$sum = rep(summary$x, 
+                            each = length(levels(stats.in.clusters$cate_l1)))
+stats.in.clusters$p = stats.in.clusters$Freq / stats.in.clusters$sum
+
+gg.pie2 = ggplot(data=stats.in.clusters, aes(x=factor(1),y=p, fill = factor(cate_l1))) + 
+    geom_bar(stat="identity") +
+    facet_wrap( ~ cid.ordered,as.table = FALSE) +
+    coord_polar(theta="y") +
+
+    theme(strip.background = element_blank(), strip.text = element_blank(),
+          panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
+#           panel.background = element_blank(), plot.background = element_blank(),
+          axis.title=element_blank(),axis.text=element_blank(),axis.ticks=element_blank(),
+          legend.title=element_blank(),
+          plot.title = element_text(size=11))
+
+# png(paste0(basedir,"img\\Agile\\agile_map2.spcls1.png"), width = 6*ppi, height = 3*ppi, res=ppi,bg = "transparent")
+# gg.pie2
+# dev.off()
+# png(paste0(basedir,"img\\Agile\\agile_map2.spcls2.png"), width = 5.6*ppi, height = 4.4*ppi, res=ppi,bg = "transparent")
+gg.map2
+# dev.off()
+```
+
+
+
+
+# temporal experiment
+```{r,echo=FALSE}
+library(plotrix)
+
+# png(paste0(basedir,"img\\Agile\\agile_map3.time.png"), width = 10*ppi, height = 4*ppi, res=ppi,bg = "transparent")
+par(mfrow=c(2,5))
+temp = lapply(split(checkin.active,checkin.active$cate_l1), function(data){
+    data$isweekend = as.factor(ifelse( ( data$weekday>5 | data$weekday<1), 
+                                       "Weekend", "Workday"))
+    byweekend = lapply(split(data,data$isweekend),function(data2){
+        category.by.hour = as.data.frame(table(data2$hour))
+#         category.by.hour$p = category.by.hour$Freq /  sum(category.by.hour$Freq)
+        category.by.hour$hpi = as.numeric(category.by.hour$Var1)/12*pi
+        
+        category.by.hour
+    })
+    
+    datastation = c(byweekend[[1]]$Freq/2,byweekend[[2]]$Freq/5)
+
+    radial.lim = pretty(datastation)
+    radial.labels = c(rep("",length(radial.lim)-1),
+                           tail(radial.lim,1))
+
+    datastation.lab1 = rep("", 24)
+    datastation.lab1[which(byweekend[[1]]$Freq==max(byweekend[[1]]$Freq))]=round(max(byweekend[[1]]$Freq/2))
+    datastation.lab2 = rep("", 24)
+    datastation.lab2[which(byweekend[[2]]$Freq==max(byweekend[[2]]$Freq))]=round(max(byweekend[[2]]$Freq/5))
+
+
+    p.byweekend = t(matrix(data=datastation, ncol=2))
+    radial.plot(p.byweekend,
+                labels=c("00","","","03","","","06","","","09","","",
+                         "12","","","15","","","18","","","21","",""),
+                start=pi/2,clockwise=TRUE,
+                radial.lim = radial.lim, 
+#                 radial.labels=radial.labels,
+                radial.labels="",
+                rp.type="p",main=head(data$cate_l1,1),line.col=c("blue","red"))
+    radial.plot.labels(byweekend[[1]]$Freq/2,units="polar", start=pi/2,clockwise=TRUE,
+                       labels=datastation.lab1,col="blue" )
+    radial.plot.labels(byweekend[[2]]$Freq/5,units="polar", start=pi/2,clockwise=TRUE,
+                       labels=datastation.lab2,col="red")
+    NA
+    })
+
+rm(temp)
+# dev.off()
+
+```
+
+
+#### weather impact experiment
+
+```{r,echo=FALSE}
+tabs.conds = xtabs(data=checkin.active,~cate_l1+conds)
+tabs.conds.p = apply(tabs.conds,2,function(x){x/sum(x)})
+
+
+xy <- checkin.active[,c("conds","cate_l1")]
+hist_top <- ggplot(xy)+geom_histogram(aes(x=conds),fill="#FFBF00",alpha=.5)+
+    theme(axis.ticks = element_blank(), axis.text = element_blank(), # supress ticks
+          axis.title = element_blank(),# supress labels
+#           panel.background = element_blank(), plot.background = element_blank(),
+#           panel.grid.major = element_blank(), panel.grid.minor = element_blank()
+          plot.margin=unit(c(.05,.05,0,.42),"npc")
+          )
+hist_right <- ggplot(xy)+coord_flip()+
+    geom_histogram(aes(x=cate_l1),fill="#FFBF00",alpha=.5)+
+    theme(axis.ticks = element_blank(), axis.text = element_blank(), # supress ticks
+          axis.title = element_blank(),# supress labels
+#           panel.background = element_blank(), plot.background = element_blank(),
+#           panel.grid.major = element_blank(), panel.grid.minor = element_blank()
+          plot.margin=unit(c(.05,0.05,0.35,0),"npc"))
+empty <- ggplot()+geom_point(aes(1,1), colour="white")+
+         theme(axis.ticks=element_blank(), 
+              panel.background=element_blank(), 
+              axis.text.x=element_blank(), axis.text.y=element_blank(),           
+              axis.title.x=element_blank(), axis.title.y=element_blank(),
+              panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+
+
+image <- ggplot(melt(tabs.conds.p), aes(conds,Var1)) + 
+    geom_tile(aes(fill = as.factor(round(value*9/max(value)))),
+                  colour = "white") + 
+    scale_fill_manual(values=c("#FF0000","#FF4000","#FF6000","#FF8000","#FF9F00",
+                               "#FFBF00","#FFDF00","#FFFF00","#FFFF2A","#FFFFD5")) + 
+#     scale_fill_gradient(low = "red", high = "yellow",na.value = "grey50") + 
+    theme(axis.title = element_blank(),legend.position="none",
+          axis.text.y=element_text(size=6,color="black"),
+          axis.text.x  = element_text(angle=90, vjust=0.5, size=6,color="black"),
+          panel.background = element_blank(), plot.background = element_blank(),
+          panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+          plot.margin=unit(c(.05,.05,.05,.05),"npc"))
+
+# png(paste0(basedir,"img\\Agile\\agile_map4.wea1 .png"), width = 3.6*ppi, height = 3*ppi, res=ppi,bg = "white")
+grid.arrange(hist_top, empty, image, hist_right, ncol=2, nrow=2, 
+             widths=c(4, 1), heights=c(1, 4))
+# dev.off()
+
+# png(paste0(basedir,"img\\Agile\\agile_map4.wea2.png"), width = 4*ppi, height = 3*ppi, res=ppi,bg = "transparent")
+heatmap(tabs.conds.p,cexRow=0.65,cexCol=.65)
+# dev.off()
+
+
+```
+
+
+
+* correlation
+
+```{r}
+checkin.active.in.grids$ugrid.id = factor(checkin.active.in.grids$grid.id)
+
+# cramer's V in matrix
+# -|-------|-------|-------|-------|-------|-------
+# 7|   L2  |
+# 6|       |   L1  |
+# 5|       |       | hour  |
+# 4|       |       |       |weekend|
+# 3|       |       |       |       | conds |
+# 2|       |       |       |       |       |  grid |
+# 1|       |       |       |       |       |       |last_cate
+# -|---1---|---2---|---3---|---4---|---5---|---6---|---7---
+#
+cramer.mat = matrix(data=rep(NA,49),ncol=7)
+
+cramer.mat[5,1] = summary(assocstats(xtabs(~cate_l2 + hour.cid, 
+                                           data = checkin.active.in.grids)+0.0001))$object$cramer
+cramer.mat[5,2] = summary(assocstats(xtabs(~cate_l1 + hour.cid, 
+                                           data = checkin.active.in.grids)+0.0001))$object$cramer
+
+cramer.mat[4,1] = summary(assocstats(xtabs(~cate_l2 + isweekend, 
+                                           data = checkin.active.in.grids)+0.0001))$object$cramer
+cramer.mat[4,2] = summary(assocstats(xtabs(~cate_l1 + isweekend, 
+                                           data = checkin.active.in.grids)+0.0001))$object$cramer
+cramer.mat[4,3] = summary(assocstats(xtabs(~hour.cid + isweekend, 
+                                           data = checkin.active.in.grids)+0.0001))$object$cramer
+
+cramer.mat[3,1] = summary(assocstats(xtabs(~cate_l2 + conds, 
+                                           data = checkin.active.in.grids)+0.0001))$object$cramer
+cramer.mat[3,2] = summary(assocstats(xtabs(~cate_l1 + conds, 
+                                           data = checkin.active.in.grids)+0.0001))$object$cramer
+cramer.mat[3,3] = summary(assocstats(xtabs(~hour.cid + conds, 
+                                           data = checkin.active.in.grids)+0.0001))$object$cramer
+cramer.mat[3,4] = summary(assocstats(xtabs(~isweekend + conds, 
+                                           data = checkin.active.in.grids)+0.0001))$object$cramer
+
+cramer.mat[2,1] = summary(assocstats(xtabs(~cate_l2 + ugrid.id.cid, 
+                                           data = checkin.active.in.grids)+0.0001))$object$cramer
+cramer.mat[2,2] = summary(assocstats(xtabs(~cate_l1 + ugrid.id.cid, 
+                                           data = checkin.active.in.grids)+0.0001))$object$cramer
+cramer.mat[2,3] = summary(assocstats(xtabs(~hour + ugrid.id.cid, 
+                                           data = checkin.active.in.grids)+0.0001))$object$cramer
+cramer.mat[2,4] = summary(assocstats(xtabs(~isweekend + ugrid.id.cid, 
+                                           data = checkin.active.in.grids)+0.0001))$object$cramer
+cramer.mat[2,5] = summary(assocstats(xtabs(~conds + ugrid.id.cid, 
+                                           data = checkin.active.in.grids)+0.0001))$object$cramer
+
+cramer.mat[1,1] = summary(assocstats(xtabs(tweight~cate_l2 + last.cate_l1, 
+                                           data = checkin.active.in.grids)+0.0001))$object$cramer
+cramer.mat[1,2] = summary(assocstats(xtabs(tweight~cate_l1 + last.cate_l1, 
+                                           data = checkin.active.in.grids)+0.0001))$object$cramer
+cramer.mat[1,3] = summary(assocstats(xtabs(tweight~hour.cid + last.cate_l1, 
+                                           data = checkin.active.in.grids)+0.0001))$object$cramer
+cramer.mat[1,4] = summary(assocstats(xtabs(tweight~isweekend + last.cate_l1, 
+                                           data = checkin.active.in.grids)+0.0001))$object$cramer
+cramer.mat[1,5] = summary(assocstats(xtabs(tweight~conds + last.cate_l1, 
+                                           data = checkin.active.in.grids)+0.0001))$object$cramer
+cramer.mat[1,6] = summary(assocstats(xtabs(tweight~ugrid.id.cid + last.cate_l1, 
+                                           data = checkin.active.in.grids)+0.0001))$object$cramer
+
+colnames(cramer.mat)=c("L2","L1","hour","weekend","conds","grid","last.cate")
+rownames(cramer.mat)=c("last.cate","grid","conds","weekend","hour","L1","L2")
+
+cramer.melt = melt(t(cramer.mat))
+cramer.melt.nona = cramer.melt[!is.na(cramer.melt$value),]
+
+
+
+cramer.image <- ggplot(cramer.melt, aes(Var1,Var2)) + 
+    geom_point(aes(size = value),color = "steelblue",alpha=0.7 )  +
+    annotate("text", x = cramer.melt.nona$Var1, 
+             y = cramer.melt.nona$Var2, 
+             label=format(cramer.melt.nona$value,digits=1), 
+             size=sqrt(cramer.melt.nona$value+0.05)*5) +
+    annotate("text", label = c("Category\n Level 2","Category\n Level 1","Temporal\n Hour(Cls)",
+                               "Temporal\n Weekday","Weather\n Condition","Spatial\n Grid (Cls)","Last\n Place"),  
+             x = c("L2","L1","hour","weekend","conds","grid","last.cate"),
+             y = c("L2","L1","hour","weekend","conds","grid","last.cate"),
+             size = 1.8) +
+    geom_path(data=compose.grids.line(corners=c("left"=0.5,"right"=7.5,"top"=7.5,"bottom"=0.5),cols=7,rows=7),
+              aes(x=x, y=y,group=group),size=.1,color="grey90") +
+    theme(axis.title = element_blank(),legend.position="none",
+          axis.text=element_blank(),axis.ticks = element_blank(),
+          panel.background = element_blank(), plot.background = element_blank(),
+          panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+          plot.margin=unit(c(0,.05,.05,.05),"npc"))
+
+png(paste0(basedir,"img\\Agile\\agile_map5.correlation4.png"), width = 3*ppi, height = 2*ppi, res=ppi,bg = "transparent")
+cramer.image
+dev.off()  
+
+```
+
+
+#### multinomial logistic regression
+
+```{r}
+
+
+# lower the ranks 
+tabs.hour = xtabs(data=checkin.active.in.grids,~cate_l1+hour)
+tabs.hour.p = apply(tabs.hour,2,function(x){x/sum(x)})
+# png(paste0(basedir,"img\\Agile\\agile_map6.hour.cls1.png"), width = 8*ppi, height = 5*ppi, res=ppi,bg = "transparent")
+# heat.hour = heatmap(tabs.hour.p,cexRow=0.7,cexCol=.7,margins = c(2,0),asp=1.2)
+# dev.off() 
+# hour.cls = data.frame("hour"=levels(checkin.active.in.grids$hour)[heat.hour$colInd],
+#              "hour.cid"=c(rep(1,5),rep(2,1),rep(3,5),rep(4,3),rep(5,3),rep(6,7)))
+dendrogram.hour = as.dendrogram(hclust(dist(t(tabs.hour.p))))
+h = 0.3; clusters =cut(dendrogram.hour,h)$lower; nclusters=length(clusters)
+hour.cls = data.frame()
+test = sapply(1:nclusters, function(i){
+    if(!is.leaf(clusters[[i]])) nodes = unlist(clusters[[i]])
+    else nodes = as.numeric(clusters[[i]])
+    hour.cls <<- rbind(hour.cls, 
+                       data.frame("hour"=levels(checkin.active.in.grids$hour)[nodes],
+                         "hour.cid"=rep(i,length(nodes)))  )
+    NA
+})
+
+
+
+tabs.grid = xtabs(data=checkin.active.in.grids,~cate_l1+ugrid.id)
+tabs.grid.p = apply(tabs.grid,2,function(x){x/sum(x)})
+# png(paste0(basedir,"img\\Agile\\agile_map7.sp.cls1.png"), width = 20*ppi, height = 18*ppi, res=ppi,bg = "transparent")
+# heat.grid = heatmap(t(tabs.grid.p),cexRow=0.5,cexCol=.7,margins = c(2,2),asp=0.3)
+# dev.off() 
+dendrogram.grid = as.dendrogram(hclust(dist(t(tabs.grid.p))))
+h = 0.95; clusters =cut(dendrogram.grid,h)$lower; nclusters=length(clusters)
+grid.cls = data.frame()
+test = sapply(1:nclusters, function(i){
+    if(!is.leaf(clusters[[i]])) nodes = unlist(clusters[[i]])
+    else nodes = as.numeric(clusters[[i]])
+    grid.cls <<- rbind(grid.cls, 
+                       data.frame("ugrid.id"=levels(checkin.active.in.grids$ugrid.id)[nodes],
+                         "grid.cid"=rep(i,length(nodes)))  )
+    NA
+})
+# grid.cls = data.frame("ugrid.id"=levels(checkin.active.in.grids$ugrid.id)[heat.grid$colInd],
+#              "grid.cid"=c(rep(1,2),rep(2,2),rep(3,2),rep(4,3),rep(5,4),rep(6,1),
+#                           rep(7,3),rep(8,1),rep(9,7),rep(10,10),rep(11,3),rep(12,2),rep(13,9)))
+
+
+
+
+# clean the data
+venue.levels = levels(checkin.active$venue_id)
+checkin.active$last_venue = venue.levels[c(checkin.active[1,]$venue_id,checkin.active[1:nrow(checkin.active)-1,]$venue_id)]
+checkin.active$last_user = c(checkin.active[1,]$user_id,checkin.active[1:nrow(checkin.active)-1,]$user_id)
+checkin.active2 = checkin.active[which( (checkin.active$venue_id!=checkin.active$last_venue  &
+                                             checkin.active$user_id==checkin.active$last_user)),]
+# checkin.active2$last_cate_ref = as.factor(as.numeric(checkin.active2$last.cate_l1) )
+# checkin.active2$cate_relevel = checkin.active2$cate_l1
+# levels(checkin.active2$cate_relevel) <- c("Food","Shop & Service", "Professional & Other Places",
+#                                          "Redidence","outdoors & Recreation", "Travel & Transport",
+#                                          "Arts & Entertainment", "Nightlife Spot","Event","College & University") 
+# checkin.active2$last_cate_relevel = checkin.active2$last.cate_l1,
+# levels(checkin.active2$last_cate_relevel) <-c("Food","Shop & Service", "Professional & Other Places",
+#                                          "Redidence","outdoors & Recreation", "Travel & Transport",
+#                                          "Arts & Entertainment", "Nightlife Spot","Event","College & University")  
+tabs.last = xtabs(data=checkin.active2,tweight~cate_l1+last.cate_l1)
+tabs.last.p1 = apply(tabs.last,2,function(x){x/sum(x)}) # no scale
+# remove the inherit power. i.e. scale the row(the next category) sum to be 1
+tabs.last.p2 = apply(tabs.last,1,function(x){x/sum(x)})
+tabs.last.p2 = apply(tabs.last.p2,1,function(x){x/sum(x)})
+
+
+red=rgb(1,0.2,0.2); white=rgb(1,1,1); green = rgb(0,1,0);
+RtoWrange<-colorRampPalette(c(red, white ) )
+WtoGrange<-colorRampPalette(c( white,green) ) 
+
+p1<-ggplot(melt(tabs.last.p1), aes(Var1,last.cate_l1)) + 
+    geom_tile(aes(fill = log10(value)),
+                  colour = "white") + 
+    scale_fill_gradient2(low=RtoWrange(20),mid=WtoGrange(20),high=green,midpoint=-1,
+                         breaks=c(-5,-4,-3,-2,-1),name="Probability",
+                         labels=c(expression(10^-5),expression(10^-4),
+                                  expression(10^-3),expression(10^-2),
+                                  expression(10^-1)))+
+    xlab("(a)")+ylab("") + 
+    ggtitle("Unscaled")+
+#     scale_fill_manual(values=c("#FF0000","#FF4000","#FF6000","#FF8000","#FF9F00",
+#                                "#FFBF00","#FFDF00","#FFFF00","#FFFF2A","#FFFFD5")) +
+    theme(axis.title = element_text(size=10),
+          plot.title = element_text(size=10),#legend.position="none",
+          legend.title = element_text( size=6),legend.text = element_text(size = 6),
+          axis.text.y=element_text(size=7,color="black"),
+          axis.text.x  = element_text(angle=30, vjust=1, hjust = 1,size=7,color="black"),
+#           axis.text=element_blank(),
+          panel.background = element_blank(), plot.background = element_blank(),
+          panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+          plot.margin=unit(c(0,0,0,0),"npc"))
+p2<-ggplot(melt(tabs.last.p2), aes(Var1,Var2)) + 
+    geom_tile(aes(fill = log10(value)),
+                  colour = "white") + 
+    xlab("(b)")+ylab("") + 
+    ggtitle("Scaled")+
+    scale_fill_gradient2(low=RtoWrange(20),mid=WtoGrange(20),high=green,midpoint=-1,
+                         breaks=c(-5,-4,-3,-2,-1),name="Probability",
+                         labels=c(expression(10^-5),expression(10^-4),
+                                  expression(10^-3),expression(10^-2),
+                                  expression(10^-1)))+
+#     scale_fill_manual(values=c("#FF0000","#FF4000","#FF6000","#FF8000","#FF9F00",
+#                                "#FFBF00","#FFDF00","#FFFF00","#FFFF2A","#FFFFD5")) +
+    theme(axis.title = element_text(size=10),
+          plot.title = element_text(size=10),#legend.position="none",
+          legend.title = element_text( size=6),legend.text = element_text(size = 6),
+          axis.text.y=element_text(size=7,color="black"),
+          axis.text.x  = element_text(angle=30, vjust=1, hjust = 1,size=7,color="black"),
+#           axis.text=element_blank(),
+          panel.background = element_blank(), plot.background = element_blank(),
+          panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+          plot.margin=unit(c(0,0,0,0),"npc"))
+
+tiff(paste0(basedir,"img\\Agile\\agile_map8.last.cls1_v2.tif"), width = 9*ppi, height = 3*ppi, res=ppi,bg = "transparent")
+grid.arrange(p1,p2,ncol=2, nrow=1, widths=c(1,1))
+dev.off() 
+
+png(paste0(basedir,"img\\Agile\\agile_map8.last.cls2.png"), width = 3.5*ppi, height = 3.6*ppi, res=ppi,bg = "transparent")
+image(tabs.last.p)
+dev.off() 
+
+# merge with the original data frame
+checkin.active.in.grids = merge(x=checkin.active.in.grids,y=hour.cls)
+checkin.active.in.grids = merge(x=checkin.active.in.grids,y=grid.cls)
+checkin.active.in.grids$hour.cid = as.factor(checkin.active.in.grids$hour.cid)
+checkin.active.in.grids$grid.cid = as.factor(checkin.active.in.grids$grid.cid)
+
+data=unique(checkin.active.in.grids[,c("col.id","row.id","grid.cid")])
+png(paste0(basedir,"img\\Agile\\agile_map9.sp.cls1.png"), width = 5*ppi, height = 4.5*ppi, res=ppi,bg = "transparent")
+ggplot(data=data, aes(x=col.id,y=row.id)) + 
+    geom_tile(aes(fill=as.factor(grid.cid)),color="white")+
+    annotate("text", label = data$grid.cid,  
+             x = data$col.id, y = data$row.id,
+             size = 2) +
+    theme(legend.position="none",
+          panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
+          panel.background = element_blank(), plot.background = element_blank(),
+          axis.title=element_blank(),axis.text=element_blank(),axis.ticks=element_blank(),
+          plot.margin=unit(c(.05,.05,.05,.05),"npc"))
+dev.off()
+
+
+
+freq = as.data.frame(xtabs(~cate_l2+hour.cid+grid.cid+isweekend+last.cate_l1, 
+                                     data=checkin.active.in.grids))
+loglin.sat.cate.hour = glm(Freq~cate_l2*hour.cid*grid.cid*isweekend*last.cate_l1, 
+                           data=freq, family=poisson)
+summary(loglin.sat.cate.hour)
+anova(loglin.sat.cate.hour)
+
+
+library(nnet)
+tmodel1<-multinom(cate_l1~ hour.cid+grid.cid+isweekend+last.cate_l1,
+                      data=checkin.active.in.grids,maxit = 1000)
+
+# investigate into the coefficient
+tsummary1 = summary(tmodel1)
+z1 = tsummary1$coefficients/tsummary1$standard.errors
+p1 = (1 - pnorm(abs(z1), 0, 1)) * 2
+
+image<-ggplot(melt(p1), aes(Var2,Var1)) + 
+    geom_tile(aes(fill = sqrt(value)), colour = "white")+
+    scale_fill_gradient2(name="p value",midpoint = 0.2, high="red",low="green",
+                         breaks=c(0,sqrt(0.05),sqrt(0.1),sqrt(0.25),sqrt(1)),
+                         labels=c(0,0.05,0.1,0.25,1))+
+    theme(axis.title = element_blank(),legend.position="top",
+          axis.text.y=element_text(size=6,color="black"),
+          axis.text.x  = element_text(angle=45, vjust=1, hjust=1,size=5,color="black"),
+          legend.title = element_text( size=6),legend.text = element_text(angle=45,size = 6),
+#           axis.text=element_blank(),
+          panel.background = element_blank(), plot.background = element_blank(),
+          panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+          plot.margin=unit(c(.05,.05,.05,.05),"npc"))
+top <-ggplot(melt(p1))+geom_boxplot(aes(Var2,value),outlier.size=.5,outlier.colour="grey")+
+    scale_y_sqrt(breaks=c(0,0.05,0.1,0.25,1),labels=c(0,0.05,0.1,0.25,1))+
+    theme(axis.title = element_blank(),
+          axis.text.x=element_blank(),axis.text.y=element_text(size=5,color="black"),
+          plot.margin=unit(c(.05,.05,.05,.05),"npc"))
+right<-ggplot(melt(p1))+geom_boxplot(aes(Var1,value),outlier.size=.5,outlier.colour="grey")+
+    scale_y_sqrt( breaks=c(0,0.05,0.1,0.25,1),labels=c(0,0.05,0.1,0.25,1))+
+    theme(axis.title = element_blank(),
+          axis.text.y=element_blank(),axis.text.x=element_text(size=5,color="black",angle=35, vjust=1,hjust=1),
+          plot.margin=unit(c(.05,.05,.05,.05),"npc"))+
+    coord_flip()
+
+
+empty <- ggplot()+geom_point(aes(1,1), colour="white")+
+         theme(axis.ticks=element_blank(), 
+              panel.background=element_blank(), 
+              axis.text.x=element_blank(), axis.text.y=element_blank(),           
+              axis.title.x=element_blank(), axis.title.y=element_blank(),
+              panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+
+
+png(paste0(basedir,"img\\Agile\\agile_map10.p2.png"), width =5*ppi, height = 3.5*ppi, res=ppi,bg = "transparent")
+image
+dev.off()
+png(paste0(basedir,"img\\Agile\\agile_map10.p1.png"), width = 5*ppi, height = 3.5*ppi, res=ppi,bg = "transparent")
+grid.arrange(empty,top, empty, empty, empty,right,empty,empty, empty, ncol=3, nrow=3, 
+             widths=c(0.1,4, 0.9), heights=c(0.9,1.5,0.6))
+dev.off()
+
+
+# invesigate into the model
+prediction = apply(tmodel1$fitted.values, 1, FUN=function(i)which(i==max(i)))
+real=checkin.active.in.grids$cate_l1
+comparison = data.frame("real"=real,"prediction"=levels(real)[prediction])
+comparison$correct = ifelse(comparison$prediction==comparison$real,1,0)
+sum(comparison$correct)/nrow(comparison)
+
+rediduals = tmodel1$residuals
+png(paste0(basedir,"img\\Agile\\agile_map11.residuals.png"), width = 6*ppi, height = 3*ppi, res=ppi,bg = "white")
+ggplot(melt(rediduals))+geom_boxplot(aes(Var2,value),outlier.size=.5,outlier.colour="grey")+
+    ylab("Residuals")+
+#     scale_y_sqrt(breaks=c(0,0.05,0.1,0.25,1),labels=c(0,0.05,0.1,0.25,1))+
+    theme(#axis.title = element_blank(),
+          axis.title.x = element_blank(),
+          axis.text.y=element_text(size=6,color="black"),
+          axis.text.x  = element_text(angle=30, vjust=1, hjust = 1,size=6,color="black"),
+          plot.margin=unit(c(.05,.05,.05,.05),"npc"))
+dev.off()
+```
+

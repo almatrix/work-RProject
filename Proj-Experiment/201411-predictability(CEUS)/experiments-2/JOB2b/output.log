@@ -1,0 +1,52 @@
+[1] "successfully load the data"
+[1] "successfully arrange the data in 36 * 40 grids."
+[1] "The best h for the expected number of clusters is 0.3"
+[1] "successfully lower the ranks of $ hour into 6 clusters."
+[1] "The best h for the expected number of clusters is 0.82"
+[1] "successfully lower the ranks of $ ugrid.id into 14 clusters."
+[1] "Data preparation finished after 5.414 seconds"
+[2] "Data preparation finished after 0.095 seconds"
+[3] "Data preparation finished after 5.538 seconds"
+[4] "Data preparation finished after 0 seconds"    
+[5] "Data preparation finished after 0 seconds"    
+# weights:  310 (270 variable)
+initial  value 794794.809471 
+iter  10 value 610193.342861
+iter  20 value 591885.954073
+iter  30 value 586279.809627
+iter  40 value 583332.347409
+iter  50 value 580935.690600
+iter  60 value 579397.754088
+iter  70 value 577810.909308
+iter  80 value 576223.282331
+iter  90 value 573731.726104
+iter 100 value 570530.164233
+iter 110 value 567995.583354
+iter 120 value 566049.916613
+iter 130 value 565159.160871
+iter 140 value 564336.823837
+iter 150 value 563959.086557
+iter 160 value 563591.158423
+iter 170 value 563182.022465
+iter 180 value 563043.450757
+iter 190 value 562980.437206
+iter 200 value 562953.611732
+iter 210 value 562936.437737
+iter 220 value 562926.477045
+iter 230 value 562921.667926
+iter 240 value 562916.592743
+iter 250 value 562909.908929
+iter 260 value 562906.349919
+final  value 562906.042290 
+converged
+[1] "Regression model converged in 725.377 seconds"
+[2] "Regression model converged in 0.243 seconds"  
+[3] "Regression model converged in 725.698 seconds"
+[4] "Regression model converged in 0 seconds"      
+[5] "Regression model converged in 0 seconds"      
+[1] "Model summary finished after 2039.4 seconds"  
+[2] "Model summary finished after 3.445 seconds"   
+[3] "Model summary finished after 2042.856 seconds"
+[4] "Model summary finished after 0 seconds"       
+[5] "Model summary finished after 0 seconds"       
+[1] "142200 correct predictions out of 345175 . Rate: 0.411964945317593"

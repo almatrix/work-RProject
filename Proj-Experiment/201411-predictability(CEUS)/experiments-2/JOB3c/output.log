@@ -1,0 +1,57 @@
+[1] "successfully load the data"
+[1] "successfully arrange the data in 36 * 40 grids."
+[1] "The best h for the expected number of clusters is 0.3"
+[1] "successfully lower the ranks of $ hour into 6 clusters."
+[1] "The best h for the expected number of clusters is 0.624"
+[1] "successfully lower the ranks of $ ugrid.id into 30 clusters."
+[1] "Data preparation finished after 5.096 seconds"
+[2] "Data preparation finished after 0.072 seconds"
+[3] "Data preparation finished after 5.168 seconds"
+[4] "Data preparation finished after 0 seconds"    
+[5] "Data preparation finished after 0 seconds"    
+# weights:  470 (414 variable)
+initial  value 794794.809471 
+iter  10 value 611015.850785
+iter  20 value 591960.874056
+iter  30 value 583564.261918
+iter  40 value 579586.030133
+iter  50 value 576833.489690
+iter  60 value 574091.801761
+iter  70 value 572133.519615
+iter  80 value 570462.403775
+iter  90 value 568459.833067
+iter 100 value 564934.744709
+iter 110 value 562803.234880
+iter 120 value 561289.938033
+iter 130 value 560619.279920
+iter 140 value 560171.123349
+iter 150 value 559866.626416
+iter 160 value 559499.506124
+iter 170 value 559060.479107
+iter 180 value 558715.447017
+iter 190 value 558559.256217
+iter 200 value 558480.367207
+iter 210 value 558450.097820
+iter 220 value 558436.864580
+iter 230 value 558430.519863
+iter 240 value 558426.367854
+iter 250 value 558423.022008
+iter 260 value 558421.065373
+iter 270 value 558420.071005
+iter 280 value 558419.749446
+iter 290 value 558419.472728
+iter 300 value 558418.902645
+iter 310 value 558418.565189
+final  value 558418.479199 
+converged
+[1] "Regression model converged in 1009.326 seconds"
+[2] "Regression model converged in 0.321 seconds"   
+[3] "Regression model converged in 1009.854 seconds"
+[4] "Regression model converged in 0 seconds"       
+[5] "Regression model converged in 0 seconds"       
+[1] "Model summary finished after 4773.107 seconds"
+[2] "Model summary finished after 6.597 seconds"   
+[3] "Model summary finished after 4779.865 seconds"
+[4] "Model summary finished after 0 seconds"       
+[5] "Model summary finished after 0 seconds"       
+[1] "143035 correct predictions out of 345175 . Rate: 0.414384008111827"

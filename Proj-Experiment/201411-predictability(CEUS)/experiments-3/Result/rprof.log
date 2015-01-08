@@ -1,0 +1,7 @@
+memory profiling: sample.interval=20000
+:204401:389161:20733384:86:"lazyLoadDBfetch" "fetch" "fun" "lazyLoadDBexec" "<Anonymous>" ".getHelpFile" "prepare_Rd" "<Anonymous>" "example" 
+:193962:383066:18082680:2866:"psub" "remap" "strwrap" "paste0" "wr" "paste0" "writeLines" "WriteLines" "of1" "of0" "<Anonymous>" "example" 
+:204119:386440:19615736:2463:".External" "terms.formula" "terms" "model.frame.default" "<Anonymous>" "eval" "eval" "glm" "eval" "eval" "withVisible" "source" "example" 
+:237072:388652:22636208:4375:"getNamespace" "asNamespace" "get" ":::" "<Anonymous>" "eval" "eval" "withVisible" "source" "example" 
+:198792:409161:18383960:2014:".deparseOpts" "deparse" "eval" "match.arg" "format.default" "format" "printCoefmat" "print.summary.glm" "print" "source" "example" 
+:233954:410216:21471688:4434:"as.matrix" "data.matrix" "printCoefmat" "print.summary.glm" "print" "source" "example" 

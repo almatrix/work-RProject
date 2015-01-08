@@ -1,0 +1,112 @@
+---
+title: "PCA, Ca & MCA"
+author: "Ming Li"
+date: "Monday, August 11, 2014"
+output: html_document
+---
+
+```{r, echo=FALSE}
+library(FactoMineR)
+```
+
+
+**Content list**
+
+* Principal components analysis (PCA)
+* Correspondence analysis (CA)
+* Multiple correspondence analysis (MCA)
+
+
+### 1. Principal components analysis
+
+ref: http://factominer.free.fr/classical-methods/principal-components-analysis.html
+
+#### data
+
+```{r}
+data(decathlon)
+summary(decathlon)
+```
+
+#### objectives
+* PCA 可以描述、总结一个数据集，对数据集降维
+* 从行的角度：将每一行看成一个individual；通过观察individuals在各个variable上的得分是否接近来判断两个individual是否类似，进而可以对individuals进行分组；
+* 从列的角度：每一列都是一个viariable，要回答的问题是变量之间是否存在线性关系，进而能将变量合成为几个有限的变量？
+* 综合考虑：原本的相关矩阵是非常大的，要回答的问题是：能否找到几个合成变量(synthetic variables),可以让我们通过有限的几个维度来描述individuals，进而对individuals进行分组？
+
+##### a) active individuals and active variables
+
+```{r, fig.width=8, fig.height=4}
+par(mfrow=c(1,2))
+res.pca = PCA(decathlon[,1:10], scale.unit=TRUE, ncp=5, graph=T) 
+```
+
+* 基于active variables进行的分析
+* 得到的前两个维度占据了50%的total inertia (即数据集的总方差，亦即相关矩阵的秩)
+    + 坐标轴的解释：可以将第一个轴看作是速度相关，第二个轴看作是力量相关；
+    + 坐标轴对应到variables factor可以看到100m和速度相关，而掷铁饼(discus)等等和力量相关；
+    + 坐标轴对应到individual factor可以大致将运动员分为四组。
+
+##### b) supplementary variables 
+
+```{r, fig.width=8, fig.height=4}
+par(mfrow=c(1,2))
+res.pca = PCA(decathlon[,1:12], scale.unit=TRUE, ncp=5, quanti.sup=c(11: 12), graph=T) 
+```
+* 这种变量对主成分分析没有影响，他们是为了帮助解释dimensions of variability.
+* 解释：得分/名词速度相关的影响更大(受百米影响很大，几乎不受1500m的影响)
+
+##### c) supplementary individuals  
+
+如果不希望某些individual参与分析，就将该记录列为supplementary individual。那么这个individual将不会参与分析，但会提供额外的信息。方法是：
+```
+ind.sup
+```
+
+supplementary variables也可以是分类变量。
+
+```{r, fig.width=8, fig.height=4}
+par(mfrow=c(1,2))
+res.pca = PCA(decathlon, scale.unit=TRUE, ncp=5, quanti.sup=c(11: 12), quali.sup=13, graph=T) 
+```
+
+分类补充变量是画在individual的图上的，位置分别是它们各自的质心。也可以用颜色标注出来：
+```{r}
+plot.PCA(res.pca, axes=c(1, 2), choix="ind", habillage=13)
+```
+* olympics比Decastar在第一个轴上的位置更高，说明运动员在olympics上的成绩更好。
+
+
+对维度的描述：dimdesc函数计算某variable和轴之间的相关系数，并进行显著性检验。
+```{r}
+dimdesc(res.pca, axes=c(1,2))
+```
+
+
+### 2. Correspondence analysis
+
+
+### 3. Multiple correspondence analysis
+
+ref: http://factominer.free.fr/classical-methods/multiple-correspondence-analysis.html
+
+#### data
+```{r}
+data(tea)
+summary(tea)
+```
+
+#### objectives
+
+* individuals: two individuals are close to each other if they answered the questions the same way;=> are there groups of individuals?
+* categories: tow categories are close to each other if they are often taken together;
+* variables: looking for one or several continuous synthetical variables to summarize categorical ones
+
+```{r, echo=FALSE, fig.width=8, fig.height=4}
+par(mfrow=c(1,2))
+res.mca = MCA(tea, quanti.sup=19, quali.sup=c(20:36))
+plot.MCA(res.mca, invisible=c("var","quali.sup"), cex=0.7)
+plot.MCA(res.mca, invisible=c("ind","quali.sup"), cex=0.7)
+plot.MCA(res.mca, invisible=c("ind"), cex=0.7)
+plot.MCA(res.mca, invisible=c("ind", "var"), cex=0.7)
+```

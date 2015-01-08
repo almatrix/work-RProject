@@ -1,0 +1,64 @@
+[1] "successfully load the data"
+[1] "successfully arrange the data in 54 * 60 grids."
+[1] "The best h for the expected number of clusters is 0.3"
+[1] "successfully lower the ranks of $ hour into 6 clusters."
+[1] "The best h for the expected number of clusters is 0.624"
+[1] "successfully lower the ranks of $ ugrid.id into 40 clusters."
+[1] "Data preparation finished after 5.442 seconds"
+[2] "Data preparation finished after 0.097 seconds"
+[3] "Data preparation finished after 5.561 seconds"
+[4] "Data preparation finished after 0 seconds"    
+[5] "Data preparation finished after 0 seconds"    
+# weights:  570 (504 variable)
+initial  value 794794.809471 
+iter  10 value 580249.163236
+iter  20 value 565961.550850
+iter  30 value 560243.027916
+iter  40 value 556531.435504
+iter  50 value 553997.178983
+iter  60 value 550142.201718
+iter  70 value 547186.440747
+iter  80 value 544173.432978
+iter  90 value 540151.822407
+iter 100 value 537534.876067
+iter 110 value 534747.300790
+iter 120 value 532259.064638
+iter 130 value 530124.565430
+iter 140 value 529077.415482
+iter 150 value 528433.136888
+iter 160 value 527982.393013
+iter 170 value 527629.476690
+iter 180 value 527378.550617
+iter 190 value 527158.652797
+iter 200 value 526990.090984
+iter 210 value 526904.577242
+iter 220 value 526856.166765
+iter 230 value 526831.428635
+iter 240 value 526797.042217
+iter 250 value 526774.690249
+iter 260 value 526764.293098
+iter 270 value 526760.125005
+iter 280 value 526758.267880
+iter 290 value 526757.096279
+iter 300 value 526756.136030
+iter 310 value 526754.973972
+iter 320 value 526753.804063
+iter 330 value 526752.536185
+iter 340 value 526751.636285
+iter 350 value 526751.357109
+iter 360 value 526751.177879
+iter 370 value 526750.962986
+iter 370 value 526750.958578
+final  value 526750.883790 
+converged
+[1] "Regression model converged in 1396.739 seconds"
+[2] "Regression model converged in 0.36 seconds"    
+[3] "Regression model converged in 1397.294 seconds"
+[4] "Regression model converged in 0 seconds"       
+[5] "Regression model converged in 0 seconds"       
+[1] "Model summary finished after 5035.957 seconds"
+[2] "Model summary finished after 14.318 seconds"  
+[3] "Model summary finished after 5050.442 seconds"
+[4] "Model summary finished after 0 seconds"       
+[5] "Model summary finished after 0 seconds"       
+[1] "155065 correct predictions out of 345175 . Rate: 0.449235894835953"

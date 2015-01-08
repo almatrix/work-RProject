@@ -1,0 +1,503 @@
+---
+title: "Demonstration of Experiments (paper IJGI)"
+author: "Ming Li"
+date: "Tuesday, August 19, 2014"
+output: html_document
+---
+
+```{r, echo=FALSE, include=FALSE}
+library(scales)
+library(reshape2)
+library(ggplot2)
+library(TSA)
+library(ca)
+source("D:\\GitRepos\\work\\fun\\mathmatrixcal.R")
+source("D:\\GitRepos\\work\\fun\\TableOperations.R")
+source("D:\\GitRepos\\work\\fun\\GenerateStatsDataFrame.R")
+basedir = "D:\\Experiments\\R\\"
+ppi=300
+```
+
+First, we load the libraries, functions, and data into the workspace.Following is a summary of the dataset.
+```{r,eval=FALSE, echo=FALSE}
+## checkin data
+## nrows=529931 ~~ 19 weeks/133 days's data
+checkin.global = read.csv( paste0(basedir, "data\\allcheckins.csv"), 
+                       header=TRUE, sep=",", na.strings = "none",
+                       colClasses = c("numeric","numeric","factor","factor", "numeric","numeric",
+                                      "numeric","character","factor","factor")
+)
+checkin.global$datetime = strptime( strtrim(checkin.global$localtime,19), format="%Y-%m-%d %H:%M:%S")
+
+## weather data 
+weather = read.csv( paste0(basedir, "data\\weather.csv"), 
+                       header=TRUE, sep=",", na.strings = c("-9999","Unknown"),
+                       colClasses = c("numeric","numeric","numeric","character","numeric","factor",
+                                      "numeric","numeric","numeric","numeric","numeric","numeric",
+                                      "numeric","numeric")
+)
+## deal with logical data
+weather$fog=as.logical(weather$fog)
+weather$rain=as.logical(weather$rain)
+weather$snow=as.logical(weather$snow)
+weather$thunder=as.logical(weather$thunder)
+weather$tornado=as.logical(weather$tornado)
+
+generate.dataframe = function(checkin.global, weather){
+    ## join checkin data with weather data based on timestamps 
+    checkin.global = joindfsbytime(checkin.global, weather)
+    
+    ## deal with time 
+    checkin.global$hour = as.factor(format(checkin.global$datetime,"%H"))
+    checkin.global$yearday = format(checkin.global$datetime,"%j")
+    checkin.global$weekday = format(checkin.global$datetime,"%w")
+    checkin.global$isweekend = as.factor(ifelse( ( checkin.global$weekday>5 ), "Saturday", 
+        ifelse( ( checkin.global$weekday<1 ),"Sunday","Workday")))
+    
+    ## add record for last checkin
+    # checkin.global = copylastcheckinrec(checkin.global)
+    checkin.global = checkin.global[complete.cases(checkin.global$conds),]
+    
+    checkin.global
+}
+
+checkin.global = generate.dataframe(checkin.global, weather)
+```
+
+```{r,echo=FALSE}
+## save(checkin.global,file="D:\\Experiments\\R\\data\\checkin_global_0813.Rda")
+## the data from the above procedure has been saved for convenience.
+load("D:\\Experiments\\R\\data\\checkin_global_0813.Rda")
+summary(checkin.global)
+```
+
+
+### 1. Temporal analysis
+
+#### Frequency domain
+
+```{r, fig.width=8, fig.height=6, dpi=300}
+
+L_category = split(checkin.global, checkin.global$cate_l1)
+
+DF_date_hour_category = data.frame()
+temp = lapply(L_category, function(i){
+    df = stats_by_date_hour(i, category = i[1,"cate_l1"])
+    DF_date_hour_category <<- rbind(DF_date_hour_category,df)
+})
+
+L_date_hour_category=split(DF_date_hour_category,DF_date_hour_category$cate_l1)
+## plot
+# png(paste0(basedir,"img\\Agile\\agile_map3.freq.png"), width = 10*ppi, height = 4*ppi, res=ppi,bg = "transparent")
+par(mfrow=c(2,5))
+temp = lapply(seq_along(L_date_hour_category), function(i){
+    fre = spec.pgram(L_date_hour_category[[i]]$prop, plot=FALSE)
+    plot(fre[["freq"]][1:400], fre[["spec"]][1:400], 
+         type="l", main= names(L_date_hour_category[i]),
+         xlab="Frequency", ylab="Spectrum")
+    })
+rm(temp)
+# dev.off()
+```
+
+#### Probability distribution
+
+```{r, fig.width=8, fig.height=6, dpi=300}
+DF_hour_category = data.frame()
+temp = lapply(L_category, function(i){
+    df = stats_checkin_by_hour(i, category = i[1,"cate_l1"])
+    DF_hour_category <<- rbind(DF_hour_category,df)
+})
+rm(temp)
+## plot
+ggplot(DF_hour_category, aes(x=hour,y=prop)) + 
+    geom_bar(stat="identity") +
+    xlab("") +
+    facet_wrap(~cate_l1, ncol=4, nrow=3) +
+    coord_cartesian(ylim = c(0,0.13)) +
+    scale_y_continuous(labels  = percent) +
+    scale_x_discrete(breaks=levels(DF_hour_category$hour), 
+                     labels=c("0","","","3","","","6","","","9","","","12","","","15","","","18","","","21","","23"))
+
+```
+
+### 2. Meteorological analysis
+
+```{r, fig.width=8, fig.height=6}
+cate.conds = xtabs(~conds+cate_l1, data=checkin.global)
+#prop.table(cate.conds, 1) # row percentages
+#prop.table(cate.conds, 2) # column percentages
+fit <- ca(cate.conds)
+#print(fit) # basic results
+summary(fit) # extended results
+#plot(fit) # symmetric map
+plot(fit, mass = TRUE, contrib = "absolute", map ="rowgreen", 
+     arrows = c(TRUE, FALSE)) # asymmetric map
+
+```
+
+
+### 3. Model -  derivation and corresponding functions
+
+Under the assumption $H=i$ is independent from $W=j$
+$$P(C=k|H=i,W=j)=\frac{P(C=k,H=i,W=j)}{P(H=i,W=j)}=\frac{P(H=i,W=j|C=k)*P(C=k)}{P(H=i)*P(W=j)}  (1) $$ 
+
+
+since $H=i$ is independent from $W=j$,
+$$Exp[P(H=i,W=j|C=k)]=P(H=i|C=k)*P(W=j|C=k)  (2)$$
+
+therefore, 
+$$Exp[P(C=k|H=i,W=j)]=Exp[ \frac{P(H=i,W=j|C=k)*P(C=k)} {P(H=i)*P(W=j)}] \\\
+=\frac{P(H=i|C=k)*P(W=j|C=k)*P(C=k)}{P(H=i)*P(W=j)} \\\
+=\frac{\frac{P(H=i,C=k)}{P(C=k)}*\frac{P(W=j,C=k)}{P(C=k)}*P(C=k)}{P(H=i)*P(W=j)} \\\
+=\frac{P(C=k|H=i)*P(H=i)*P(C=k|W=j)*P(W=j)}{P(H=i)*P(W=j)*P(C=k)} \\\
+=\frac{P(C=k|H=i)*P(C=k|W=j)}{P(C=k)} (3)$$
+
+* relevance contextualized by temporal factor 
+
+$$P_{u}(C=k|H=i)=\frac{\Phi_{u}(C=k,H=i)}{\Phi_{u} (H=i)} (4)$$
+
+```{r}
+get.temporal.impact <- function(dataframe,hour){
+    # dataframe.in.hour = checkin.single[which(checkin.single$hour==hour),]
+    dataframe.in.hour = dataframe[which(dataframe$hour==hour),]
+    phi.h = nrow(dataframe.in.hour)
+    
+    list.category = split(dataframe.in.hour, dataframe.in.hour$cate_l2)
+    sapply(list.category, function(i){
+        nrow(i)/phi.h
+    })
+}
+
+```
+
+* relevance contextualized by (unweighted meteorological) factor 
+
+$$P_{u}(C=k|W=j)=\frac{Intercept(C=k,W=j)}{\sum Intercept(C,W=j)} (5)$$
+
+```{r}
+get.meteorological.impact <- function(fit,conds){
+    
+    conds.id = which(fit[["rownames"]]==conds)
+    ref.vec = fit[["rowcoord"]][conds.id,1:8]
+    cate.all = fit[["colcoord"]][,1:8]
+    
+    intercepts = apply(cate.all, 1, function(x){ 
+        (x[1]*ref.vec[1] + x[2]*ref.vec[2] + x[3]*ref.vec[3] + x[4]*ref.vec[4] +
+             x[5]*ref.vec[5] + x[6]*ref.vec[6] + x[7]*ref.vec[7] + x[8]*ref.vec[8] ) /
+            (ref.vec[1]^2 + ref.vec[2]^2 + ref.vec[3]^2 + ref.vec[4]^2 +
+                 ref.vec[5]^2 + ref.vec[6]^2 + ref.vec[7]^2 + ref.vec[8]^2 ) 
+        } )
+    
+#     vec = intercepts / sum(intercepts)  !!!wrong!!! intercetp can be negative
+    vec = (intercepts - min(intercepts)) / (max(intercepts)-min(intercepts)) # scale into [0,1]
+    names(vec) = fit[["colnames"]]
+    
+    vec
+}
+
+get.meteorological.impact2 <- function(dataframe,conds){
+    
+    dataframe.in.conds = dataframe[which(dataframe$conds==conds),]
+    phi.c = nrow(dataframe.in.conds)
+    
+    list.category = split(dataframe.in.conds, dataframe.in.conds$cate_l2)
+    sapply(list.category, function(i){
+        nrow(i)/phi.c
+    })
+}
+
+```
+
+
+* weighted meteorological factor 
+
+$$P_{u}^{*} (C=k|W=j)= w_{j}*[P_{u}(C=k|W=j)-\bar P_{u}]+\bar P_{u}$$
+
+```{r}
+
+get.weather.weight <- function(fit){
+    
+    conds.all = fit[["rowcoord"]][,1:2]
+    
+    mag = apply(conds.all, 1, function(x){ 
+        sqrt( (x[1]^2+x[2]^2) )
+        } )
+    
+    mag / sum(mag)
+}
+
+get.weighted.meteorological.impact <- function(fit, conds, weight){
+    
+#     cate.conds = xtabs(~conds+cate_l2, data=dataframe)
+#     fit <- ca(cate.conds)
+    
+    unweighted = get.meteorological.impact(fit,conds)
+#     weights = get.weather.weight(fit)
+    
+#     conds.id = which(fit[["rownames"]]==conds)
+    
+#     vec = weights[conds.id] * (unweighted-mean(unweighted)) + mean(unweighted)
+    vec = weight * (unweighted-mean(unweighted)) + mean(unweighted)
+    names(vec) = fit[["colnames"]]
+    
+    vec
+    
+}
+
+
+get.weighted.meteorological.impact2 <- function(dataframe, conds, weight){
+    
+    
+    unweighted = get.meteorological.impact2(dataframe, conds)
+
+    weight * (unweighted-mean(unweighted)) + mean(unweighted)
+    
+    
+}
+
+```
+
+* denominator (unweighted relevance)
+
+$$P(C=k)=\frac{\Phi_{u} (C=k) }{\Phi_{u} }$$
+
+
+```{r}
+get.denominator <- function(dataframe){
+    
+    phi.h = nrow(dataframe)
+    
+    list.category = split(dataframe, dataframe$cate_l2)
+    denominator = sapply(list.category, function(i){
+        nrow(i)/phi.h
+    })
+    
+    denominator
+
+    
+}
+```
+
+* the final result 
+
+$$E[P(C=k|H=i,W=j)]=\frac{P(C=k|H=i)*P(C=k|W=j)}{P(C=k)}$$
+
+**update @2014.09.04**
+
+* This equation has been somehow verified :
+    + although `p.k` has a relatively high performance, multipling it with others do not bringer a higher one; instead, dividing does.
+* There should be some problems in the meteorological impacts. 
+    + The performance based on calculation of interception is so poor that it totally brings down the whole performance. Instead, if just the simple probability distribution is adopted, the performance is getting better. 
+
+**update @2014.09.05**
+
+* problem has been found out. In the earlier function `get.meteorological.impact()`, I used `intercept/sum(intercept)`, where `intercept` can be negative, and the `sum(intercept)` can be nonsense. Now it is fixed to `(intercepts - min(intercepts)) / (max(intercepts)-min(intercepts)) ` to scale into [0,1].
+* besides, about the equation again:
+    + if `p.kj` is calculated by just using the probability distribution, then the equation `p.kij = p.ki * p.kj / p.k` is correct (which confirmes our derivation);
+    + if `p.kj` is calculated by personal CA, it should be noticed that the *scaled interception* does not describe *the probability of C=k under the condition W=j*. Instead, it describes the negative/positive impacts. Hence, the conditional probability should be the *scaled interception* multipled by the priori `p.k`. Therefore, here the final result should be `p.kij = p.ki * p.kj`.
+    + with a little differnt equations and different methods of getting `p.j`, the above two ways have very similar results (which is expected!).
+    
+
+```{r}
+get.overall.relevance <- function(dataframe,hour, conds){
+    
+    p.k = get.denominator(dataframe)
+    p.ki = get.temporal.impact(dataframe, hour)
+    cates.list = names(p.k)
+    
+    #cate.conds = xtabs(~conds+cate_l2, data=checkin.global)
+    cate.conds = xtabs(~conds+cate_l2, data=dataframe)
+    cate.conds = 100*cate.conds+1  # avoid 0s
+    fit = ca(cate.conds)
+    weight = get.weather.weight(fit)[which(fit[["rownames"]]==conds)]
+    
+    
+    p.kj = get.weighted.meteorological.impact(fit,conds,weight)[cates.list]
+    p.kij = p.ki * p.kj
+    
+#     p.kj = get.meteorological.impact2(dataframe, conds)
+#     p.kij = p.ki * p.kj / p.k
+     
+    list("init"=p.k, "overall"=p.kij)
+}
+```
+
+
+
+
+* generate prediction list for specified time (n-sized)
+
+```{r}
+generate.list = function(dataframe, hour, day){
+    
+    reference.data = dataframe[which(dataframe$hour==hour & dataframe$yearday == day),] 
+    conds = reference.data[1,"conds"]
+    
+    places.been.to = unique(reference.data$cate_l2)
+    
+    probs = get.overall.relevance(dataframe, hour, conds)
+    
+    probs.overall = probs[["overall"]]
+    probs.overall = probs.overall[probs.overall>0]
+    places.predicted.overall = names(probs.overall)[order(probs.overall,decreasing=TRUE)]
+    
+    probs.init = probs[["init"]]
+    probs.init = probs.init[probs.init>0]
+    places.predicted.init = names(probs.init)[order(probs.init,decreasing=TRUE)]
+    
+    
+#     probs = probs[probs>0]
+#     places.predicted = names(probs)[order(probs,decreasing=TRUE)]
+     
+    list("hour"=hour, "conds"=conds, "real"=places.been.to, 
+         "pred.init" =places.predicted.init,
+         "pred.overall" =places.predicted.overall)
+    
+}
+```
+
+
+* verification function
+
+```{r}
+evaluation.vec = function(gen.list, n){
+    
+    real = gen.list[["real"]]
+    pred.init = gen.list[["pred.init"]][1:n]
+    pred.init = pred.init[!is.na(pred.init)]
+    pred.overall = gen.list[["pred.overall"]][1:n]
+    pred.overall = pred.overall[!is.na(pred.overall)]
+
+    correct.init = 0; correct.overall=0
+    for(i in  1:length(pred.init)){
+        prediction = pred.init[i]
+        if(length(which(real==prediction)))
+            correct.init = correct.init+1
+    }
+    for(i in  1:length(pred.overall)){
+        prediction = pred.overall[i]
+        if(length(which(real==prediction)))
+            correct.overall = correct.overall+1
+    }
+    
+    real.count = length(real)
+    pred.init.count = length(pred.init)
+    pred.overall.count = length(pred.overall)
+
+    c("list.size"=n,"real"=real.count,
+      "pred.init"=pred.init.count,"cor.init"=correct.init,
+      "pred.overall"=pred.overall.count,"cor.overall"=correct.overall)
+    
+}
+```
+
+### Experiment
+
+
+```{r, echo=FALSE}
+
+checkin.single = read.csv( paste0(basedir, "data\\UserA.csv"), 
+                       header=TRUE, sep=",",  na.strings = "none",
+                       colClasses = c("numeric","numeric","factor","factor", "numeric","numeric",
+                                      "numeric","character","factor","factor")
+)
+checkin.single$datetime = strptime( strtrim(checkin.single$localtime,19), format="%Y-%m-%d %H:%M:%S")
+
+## weather data 
+weather = read.csv( paste0(basedir, "data\\weather.csv"), 
+                       header=TRUE, sep=",", na.strings = c("-9999","Unknown"),
+                       colClasses = c("numeric","numeric","numeric","character","numeric","factor",
+                                      "numeric","numeric","numeric","numeric","numeric","numeric",
+                                      "numeric","numeric")
+) 
+## deal with logical data
+weather$fog=as.logical(weather$fog)
+weather$rain=as.logical(weather$rain)
+weather$snow=as.logical(weather$snow)
+weather$thunder=as.logical(weather$thunder)
+weather$tornado=as.logical(weather$tornado)
+
+generate.dataframe = function(checkin.global, weather){
+    ## join checkin data with weather data based on timestamps 
+    checkin.global = joindfsbytime(checkin.global, weather)
+    
+    ## deal with time 
+    checkin.global$hour = as.factor(format(checkin.global$datetime,"%H"))
+    checkin.global$yearday = format(checkin.global$datetime,"%j")
+    checkin.global$weekday = format(checkin.global$datetime,"%w")
+    checkin.global$isweekend = as.factor(ifelse( ( checkin.global$weekday>5 ), "Saturday", 
+        ifelse( ( checkin.global$weekday<1 ),"Sunday","Workday")))
+    
+    ## add record for last checkin
+    # checkin.global = copylastcheckinrec(checkin.global)
+    checkin.global = checkin.global[complete.cases(checkin.global$conds),]
+    
+    checkin.global
+}
+
+checkin.single = generate.dataframe(checkin.single, weather)
+
+```
+
+* Experiment with a single user (with verification) 
+
+```{r, fig.width=8, fig.height=4, dpi=300}
+
+# random sample
+all.id = 1:nrow(checkin.single)
+size.tests = 100
+size.list = 10
+
+sample.id = sample(all.id, size.tests)
+
+performance = data.frame()
+    
+for (i in 1:size.tests){
+    id = sample.id[i]
+    hour = checkin.single[id,"hour"]
+    day = checkin.single[id,"yearday"]
+        
+    # prediction list
+    pred.list = generate.list(checkin.single, hour, day)
+        
+    for(n in 1:size.list){
+        performance=rbind(performance, evaluation.vec(pred.list,n))
+    }
+      
+}
+colnames(performance)=c("list.size","real","pred.init","cor.init","pred.overall","cor.overall")
+    
+
+performance.by.size = split(performance,performance$list.size)
+precision.recall = sapply(performance.by.size, function(i){
+    n = i[1,"list.size"]
+    precision.init = sum(i$cor.init) / sum(i$pred.init)
+    recall.init = sum(i$cor.init) / sum(i$real)
+    precision.overall = sum(i$cor.overall) / sum(i$pred.overall)
+    recall.overall = sum(i$cor.overall) / sum(i$real)
+    
+    c("n"=i[1,"list.size"],"precision.priori"=precision.init,"recall.priori"=recall.init,
+      "precision.contextualized"=precision.overall,"recall.contextualized"=recall.overall)    
+})
+
+precision.recall=as.data.frame(t(precision.recall))
+precision.recall= melt(precision.recall,id.vars="n")
+
+
+# plot
+# ppi=300
+# png(paste0(basedir,"img\\plot_precision_recall_userD.png"), width = 8*ppi, height = 4*ppi, res=ppi)
+# ggplot(data=precision.recall, aes(x=n, y=value, group = variable, colour = variable)) +
+#     geom_line() +
+#     geom_point( size=4, shape=21, fill="white")
+# dev.off()
+
+ggplot(data=precision.recall, aes(x=n, y=value, group = variable, colour = variable)) +
+    geom_line() +
+    geom_point( size=4, shape=21, fill="white")
+
+```
+
+
+

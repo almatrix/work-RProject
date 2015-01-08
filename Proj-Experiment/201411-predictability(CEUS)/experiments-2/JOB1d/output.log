@@ -1,0 +1,61 @@
+[1] "successfully load the data"
+[1] "successfully arrange the data in 36 * 40 grids."
+[1] "The best h for the expected number of clusters is 0.3"
+[1] "successfully lower the ranks of $ hour into 6 clusters."
+[1] "The best h for the expected number of clusters is 0.82"
+[1] "successfully lower the ranks of $ ugrid.id into 14 clusters."
+[1] "The best h for the expected number of clusters is 0.248"
+[1] "successfully lower the ranks of $ hour_isweekend into 10 clusters."
+[1] "The best h for the expected number of clusters is 0.724"
+[1] "successfully lower the ranks of $ grid_last into 20 clusters."
+[1] "Data preparation finished after 9.348 seconds"
+[2] "Data preparation finished after 0.112 seconds"
+[3] "Data preparation finished after 9.491 seconds"
+[4] "Data preparation finished after 0 seconds"    
+[5] "Data preparation finished after 0 seconds"    
+# weights:  590 (522 variable)
+initial  value 794794.809471 
+iter  10 value 617147.649931
+iter  20 value 597340.942850
+iter  30 value 592614.065478
+iter  40 value 588904.139030
+iter  50 value 584387.159559
+iter  60 value 579510.713353
+iter  70 value 575910.116389
+iter  80 value 573518.180176
+iter  90 value 572045.716891
+iter 100 value 570489.178029
+iter 110 value 568495.903423
+iter 120 value 566653.009425
+iter 130 value 564979.269367
+iter 140 value 563507.232271
+iter 150 value 562072.248696
+iter 160 value 561001.398507
+iter 170 value 560532.911324
+iter 180 value 560213.142109
+iter 190 value 559957.698967
+iter 200 value 559772.017195
+iter 210 value 559468.116993
+iter 220 value 559113.357188
+iter 230 value 558843.608657
+iter 240 value 558669.715039
+iter 250 value 558583.402384
+iter 260 value 558498.226022
+iter 270 value 558380.858906
+iter 280 value 558246.064246
+iter 290 value 558124.575537
+iter 300 value 557939.579020
+iter 310 value 557742.622872
+iter 320 value 557516.833450
+iter 330 value 557426.490282
+iter 340 value 557411.441435
+iter 350 value 557401.576201
+iter 360 value 557394.252596
+iter 370 value 557393.350016
+final  value 557393.243976 
+converged
+[1] "Regression model converged in 1373.369 seconds"
+[2] "Regression model converged in 0.367 seconds"   
+[3] "Regression model converged in 1373.886 seconds"
+[4] "Regression model converged in 0 seconds"       
+[5] "Regression model converged in 0 seconds"       

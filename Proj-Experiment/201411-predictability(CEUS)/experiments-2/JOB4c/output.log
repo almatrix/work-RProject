@@ -1,0 +1,58 @@
+[1] "successfully load the data"
+[1] "successfully arrange the data in 54 * 60 grids."
+[1] "The best h for the expected number of clusters is 0.3"
+[1] "successfully lower the ranks of $ hour into 6 clusters."
+[1] "The best h for the expected number of clusters is 0.688"
+[1] "successfully lower the ranks of $ ugrid.id into 30 clusters."
+[1] "Data preparation finished after 5.588 seconds"
+[2] "Data preparation finished after 0.096 seconds"
+[3] "Data preparation finished after 5.685 seconds"
+[4] "Data preparation finished after 0 seconds"    
+[5] "Data preparation finished after 0 seconds"    
+# weights:  470 (414 variable)
+initial  value 794794.809471 
+iter  10 value 582499.509426
+iter  20 value 568554.851543
+iter  30 value 564001.065535
+iter  40 value 561343.098080
+iter  50 value 558144.750574
+iter  60 value 554797.896524
+iter  70 value 551845.004208
+iter  80 value 547351.684506
+iter  90 value 544914.566507
+iter 100 value 542760.391346
+iter 110 value 539179.232313
+iter 120 value 536566.957045
+iter 130 value 534928.516625
+iter 140 value 533864.153714
+iter 150 value 533443.641622
+iter 160 value 533181.999359
+iter 170 value 532928.639447
+iter 180 value 532720.297980
+iter 190 value 532484.062095
+iter 200 value 532386.278299
+iter 210 value 532323.465838
+iter 220 value 532283.883006
+iter 230 value 532245.452450
+iter 240 value 532226.284062
+iter 250 value 532217.199848
+iter 260 value 532214.127683
+iter 270 value 532212.908378
+iter 280 value 532211.884935
+iter 280 value 532211.880243
+iter 290 value 532211.569230
+iter 300 value 532211.251734
+iter 310 value 532211.054554
+final  value 532210.923122 
+converged
+[1] "Regression model converged in 1119.567 seconds"
+[2] "Regression model converged in 0.301 seconds"   
+[3] "Regression model converged in 1120 seconds"    
+[4] "Regression model converged in 0 seconds"       
+[5] "Regression model converged in 0 seconds"       
+[1] "Model summary finished after 4799.127 seconds"
+[2] "Model summary finished after 4.372 seconds"   
+[3] "Model summary finished after 4803.519 seconds"
+[4] "Model summary finished after 0 seconds"       
+[5] "Model summary finished after 0 seconds"       
+[1] "153766 correct predictions out of 345175 . Rate: 0.445472586369233"

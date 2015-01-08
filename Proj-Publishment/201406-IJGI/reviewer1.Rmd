@@ -1,0 +1,83 @@
+---
+title: "Feedback to Reviewers' Comments"
+output: word_document
+date: "Friday, August 22, 2014"
+---
+
+## Review Report Form
+
+| | High | Average | Low | No Answer
+--------|------|---------|-----|---------
+Originality / Novelty|( )   |   (x) |     ( )  |    ( )     
+Significance of Content|( )   |   (x)  |    ( )  |    ( )     
+Quality of Presentation|( )   |   ( )  |    (x)   |   ( )     
+Scientific Soundness|( )    |  (x)   |   ( )    |  ( )     
+Interest to the readers|(x)   |   ( )    |  ( )  |    ( )     
+Overall Merit|( )  |    ( )    |  (x)   |   ( )  
+
+### English Language and Style
+
+( ) English language and style are fine
+
+( ) Minor spell check required
+
+(x) Extensive editing of English language and style required
+
+( ) I don't feel qualified to judge about the English Language and Style
+
+
+### Comments and Suggestions for Authors
+
+```
+The manuscript title suggests an important contribution. Some of the contribution is there, but I unfortunately find the extensive literature review fails to support the contribution and the English writing style obfuscates the text considerably. 
+```
+
+**Reply:**
+
+Thanks a lot for your comments. As the topics covered by the original manuscript are a bit too wide, it became somehow difficult to address the relevant literature with all these various topics. The problem has also been pointed out by other reviewers. Therefore, we decided to make our paper centralized in the first part (aka relevance evaluation of geographic information). The literature review has been accordingly rewritten in the revised version of the paper.
+
+As for the Engligh writing: sorry that we still have to improve our English as non-native English speakers. We have tried our best to modify the language in the revised version, meanwhile we have sent this revised version to a native speaker for proof-reading. Unfortunatelly, we cannot wait for their response now because of time restriction. If you are comfortable with the content of the paper while still not satisfied with the language, we believe you will feel better for our next version that will be furthur revised by the native spearker.
+
+----
+
+```
+The paper could be reduced in length to focus only on technical issues. Or the existing organization and length could remain, but with revised introduction. 
+```
+
+**Reply:**
+
+Thanks! The comment is quite reasonable. Yes, the paper is a bit too long because it has covered too many topics. Too many topics also make it difficult to concentrate on any specific issues. Therefore, we have changed the organization and reduced the length by focusing only on the relevance evaluation issue.
+
+----
+
+```
+The problem I see is that the approach you describe is novel, but the use of 'context' is very commonplace. Context doesn't just lead to UI customization, but that's what the approach you have does. Work on semantic interoperability seems relevant in thinking through the issues. Oder work in cartography from the 1970s on map use also is relevant. 
+```
+
+**Reply:**
+
+Thanks! Yes, we totally agree that the use of context should not just lead to UI customization. It is also not our intent way to use context in our previous manuscript. However, the utilization might have been blurred since the pervious version has covered too wide topics. In the revised version, you can notice the use of 'context' had led to other aspects (e.g. relevance evaluation) other than UI customization, since we have completely removed the visualization part. 
+
+----
+
+```
+The relevance for a revision is an open question. A focus on the venues approach would minimize the need to consider context issues. 
+```
+
+**Reply:**
+
+Thanks! As demonstrated in section 3.3 of the revised version, contexutal factors can impose greated impacts on human mobility and subsequently the relevance of geographic information to mobile users. The impacts may not be straightforwarded, but can be revealed with some statistical techniques.
+
+----
+
+```
+It's also important to have the review of a person working specifically on the visualization issues currently. 
+```
+
+**Reply:**
+
+We totally agree with your concern. It would be benificial that we hear from the comments from a visualization specialist for future reference. 
+
+Anyway, considering that our work on 3D visualization is still in an early-stage, we have decided that for this paper we will tie our focus on the relevance evaluation for mobile users. This part is regarded as a fondamental part for context-aware information retrieval and information visualization, which will be presented in other papers. We hope that with a more finegrained research focus, we can make a better contribution to the related research field. 
+
+Therefore, as you can noticed from the revised draft, we have removed the visualization part, and focus on discussing the possibilities and approaches to contextualize the relevance evaluation process with LBSN dataset.
