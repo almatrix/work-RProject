@@ -1,11 +1,24 @@
 ######################################################
+# description: 
+# This document deals with preparing the dataframe from 
+# a csv checkin data file or a half-cooked dataframe.
+# It includes a main function named "prepare.checkin",
+# as well as three supported functions "get.previous.record", 
+# "join.weather", and "set.temporal.range".
+######################################################
+
+
+######################################################
 # prepare the dataframe from the raw csv data or half done dataframe
 prepare.checkin = function(checkin.data, is.raw=FALSE, weather.data=NA, 
                            convert.time=FALSE, add.history=FALSE){
     
-    # read the text file if it is a raw data; otherwise just load the given data
+    # read the text file if it is a raw csv data; 
     if(is.raw){
-        print(paste(Sys.time(),": Preparing data frame from the raw data",checkin.data))
+        
+        print(paste(Sys.time(),
+                  ": Preparing data frame from the raw data",
+                  checkin.data))
         
         # read the data
         checkin = read.csv( checkin.data, 
@@ -16,9 +29,13 @@ prepare.checkin = function(checkin.data, is.raw=FALSE, weather.data=NA,
                                            "numeric","character","factor",
                                            "factor")
         )
+        
         print(paste(Sys.time(),": The raw checkin data loaded."))
-    } else {
-        print(paste(Sys.time(),": Preparing data frame from the already existed data frame."))
+    } 
+    # otherwise just load the given data
+    else {
+        print(paste(Sys.time(),
+                ": Preparing data frame from the already existed one."))
         checkin =  checkin.data
         print(paste(Sys.time(),": The base data loaded."))
     }
@@ -87,7 +104,8 @@ get.previous.record = function(checkin){
                        "last.cate_l1","last.cate_l2","last.user_id")
     checkin = cbind(checkin, copied)
     
-    # change the value of those who has "last.user_id"!="user_id"
+    # reset the record that has "last.user_id"!="user_id"
+    # which means the two records are created by different users
     wrongmatch = which(checkin$user_id!=checkin$last.user_id)
     checkin[wrongmatch,c("last.gid","last.timestamps")]=-1
     checkin[wrongmatch,c("last.venue_id","last.cate_l1",
@@ -103,7 +121,7 @@ get.previous.record = function(checkin){
 ######################################################
 # join the weather information with the checkin data based on time
 join.weather = function(checkin, weather){
-    ## the influence time of each weather record
+    # the influence time of each weather record
     weather = set.temporal.range(weather)
     
     checkin.time = checkin$timestamps
