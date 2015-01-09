@@ -11,8 +11,8 @@ library(ggplot2)
 library(reshape2)
 library(gridExtra)
 
-source("fun/prepare.checkin.R")  # load the functions for preparing data
-source("fun/plots.R")  # load the functions for statistical plotting
+source("../../global/functions/prepare.checkin.R")  # load the functions for preparing data
+source("../../global/functions/basic.stats.plots.R")  # load the functions for statistical plotting
 
 
 ppi=300 # quality of figures
