@@ -1,8 +1,23 @@
+#############################################################################
+# This document owns several plot functions.
+# 1) point.plot: plot the checkin data records with/without a base geographic 
+#     map;
+# 2) freq.plot: frequency domain analysis
+# 3) time.distribution.plot: simple plot of temporal distribution
+# 4) time.radial.plot: radial plot of temporal distribution
+# 5) transition.plot: plot the hotmap of transition pattern
+#
+# It further includes several supporting functions for basic statistics.
+
+
+#############################################################################
 library(rgdal) # Bindings for the Geospatial Data Abstraction Library
 library(grid) 
 library(plotrix) # radial plot
 library(reshape2)
 library(plyr) # for join
+
+
 
 ######################################################
 ## plot the checkin point data (on a base map)
@@ -84,7 +99,7 @@ freq.plot = function(checkin, plot.title="",cols=2, rows=5){
 
 
 ######################################################
-## plot the temporal aspects in the checkin data (radial plot)
+## plot the temporal aspects in the checkin data
 time.distribution.plot =  function(checkin, plot.title="", cols=2, rows=5){
     list.category = lapply(split(checkin,checkin$cate_l1), function(i){
         df = stats_checkin_by_hour(i, category = i[1,"cate_l1"])
@@ -206,7 +221,7 @@ transition.plot = function(checkin, from="last.cate_l1", to="cate_l1",
 }
 
 #########################################################
-## intermediate functions
+## supporting functions
 
 ## FUNCTION 
 ## description:     generat dataframe describing checkin counts aggregated by hour

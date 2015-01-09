@@ -5,7 +5,7 @@
 # It includes a main function named "prepare.checkin",
 # as well as three supported functions "get.previous.record", 
 # "join.weather", and "set.temporal.range".
-######################################################
+
 
 
 ######################################################
