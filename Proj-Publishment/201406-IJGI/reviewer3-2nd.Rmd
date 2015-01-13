@@ -1,0 +1,50 @@
+---
+title: "Feedback to the reviewers' comments"
+author: "ming"
+output: word_document
+---
+
+## Review Report Form 
+
+| | High | Average | Low | No Answer
+--------|------|---------|-----|---------
+Originality / Novelty    |        ( )   |   (x)  |    ( )  |    ( )      
+Significance of Content |	( )   |   (x)  |    ( )   |   ( )      
+Quality of Presentation |	( )   |   ( )  |    (x)   |   ( )      
+Scientific Soundness 	|	( )   |   ( )  |    (x)   |   ( )      
+Interest to the readers |		( )     | (x)   |   ( )   |   ( )      
+Overall Merit		|	( )    |  (x)  |    ( )  |    ( )      
+
+### English Language and Style 
+
+( ) English language and style are fine 
+
+( ) Minor spell check required 
+
+(x) Extensive editing of English language and style required 
+
+( ) I don't feel qualified to judge about the English Language and Style 
+
+### Comments and Suggestions for Authors 
+
+```
+This paper is taken as the revision of the original draft of “a conceptual framework towards context-adaptive 3d geovisualization using volunteered geographic information”, but was substantially rewritten and should be taken as a new submission. From quality view, this draft has much clearer structure and provides solid materials. The topic well matches the current research trend. A relevance evaluation model is proposed in this paper to rank interesting information for queries. Foursquare checkin sample data was used to validate the proposed method by incorporating time and weather, which justifies the importance of context relevance of positions.
+```
+
+**Reply:**
+This is reply.
+
+---
+
+```
+The paper could be improved after going through a professional English proof reading.
+```
+
+**Reply:**
+
+This is reply.
+---
+
+
+ 
+
