@@ -125,11 +125,35 @@ plots <- lapply(split(checkin.NY,checkin.NY$cate_l1),function(ci){
     
 })
 
-png("test.png",width=15*ppi,height=6*ppi,res=ppi)
+png("categorized_clustering.png",width=15*ppi,height=6*ppi,res=ppi)
 grid.arrange(plots[[1]],plots[[2]],plots[[3]],plots[[4]],
              plots[[5]],plots[[6]],plots[[7]],plots[[8]], 
              plots[[9]],plots[[10]],nrow=2, ncol=5)
 dev.off()
+
+## spatial clustering regardless of categories
+clusters = spatial.clustering(checkin.NY,wss.control = 0.01)
+venues = clusters[["point.unique"]]
+centers = clusters[["centers"]]
+venues.withcategory = merge(x=unique(checkin.NY[,c("cate_l1","lat","lon")]), y=venues, 
+      by.x=c("lat","lon"), by.y =c("lat.x","lon.x"), all.x=TRUE)
+
+centers.withcategory = 
+    lapply(split(venues.withcategory, venues.withcategory$cid.ordered),function(i){
+        center = centers[which(centers$cid.ordered == i[1,"cid.ordered"]),] 
+        # the most frequently occuring value
+        center$cate_l1 = as.factor(names(which.max(table(i$cate_l1 ))))
+        center
+    })
+
+centers.withcategory = do.call(rbind,centers.withcategory)
+png("test.png",height=6*ppi, width=6*ppi,res=ppi)
+ point.plot(centers.withcategory, x="lon.center",y="lat.center",
+                         color= "cate_l1", color.concrete=FALSE,
+                         point.size = 2, alpha = 0.7,
+                         basemap=basemap)
+dev.off()
+
 ```
 
 
