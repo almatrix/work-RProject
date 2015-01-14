@@ -131,27 +131,38 @@ grid.arrange(plots[[1]],plots[[2]],plots[[3]],plots[[4]],
              plots[[9]],plots[[10]],nrow=2, ncol=5)
 dev.off()
 
-## spatial clustering regardless of categories
-clusters = spatial.clustering(checkin.NY,wss.control = 0.01)
-venues = clusters[["point.unique"]]
-centers = clusters[["centers"]]
-venues.withcategory = merge(x=unique(checkin.NY[,c("cate_l1","lat","lon")]), y=venues, 
-      by.x=c("lat","lon"), by.y =c("lat.x","lon.x"), all.x=TRUE)
 
-centers.withcategory = 
-    lapply(split(venues.withcategory, venues.withcategory$cid.ordered),function(i){
-        center = centers[which(centers$cid.ordered == i[1,"cid.ordered"]),] 
-        # the most frequently occuring value
-        center$cate_l1 = as.factor(names(which.max(table(i$cate_l1 ))))
-        center
-    })
+## SpatialPointDataFrame from checkin dataset 
+checkin.spt = SpatialPointsDataFrame(coords=checkin.NY[,c("lon","lat")],
+                                     data=checkin.NY[,c("gid","cate_l1")], 
+                                     proj4string=CRS("+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"))
+# overlay the point data with zipcode polygon
+overlap = over(x=checkin.spt,
+                       y=readOGR(dsn="../../global/data/shapefiles",
+                                 layer="NYC_zipcode"))
+checkin.NY$zip = overlap$POSTAL
 
-centers.withcategory = do.call(rbind,centers.withcategory)
-png("test.png",height=6*ppi, width=6*ppi,res=ppi)
- point.plot(centers.withcategory, x="lon.center",y="lat.center",
-                         color= "cate_l1", color.concrete=FALSE,
-                         point.size = 2, alpha = 0.7,
-                         basemap=basemap)
+# plot the dominant category of each zipcode area
+zip.category = lapply(split(checkin.NY,checkin.NY$zip),
+                        function(i){
+    # the corresponding points in that zipcode
+    category = names(which.max(table(i$cate_l1)))
+    zip = i[1,"zip"]
+    data.frame("zip"=zip,"cate_l1"=category)
+})
+zip.category<- do.call(rbind,zip.category)
+shape = readOGR(dsn="../../global/data/shapefiles",layer="NYC_zipcode")
+shape@data$id = rownames(shape@data)
+shape@data = merge(shape@data,zip.category,by.x="POSTAL",by.y="zip",all.x=TRUE) 
+shape.points = fortify(shape, region="id")
+shape.df = join(shape.points, shape@data, by="id")
+
+png("test.png",height=6*ppi, width=8*ppi,res=ppi)
+ggplot() + 
+    geom_polygon(data=shape.df,aes(long,lat,group=group,fill=cate_l1))+
+    coord_map()+
+    theme(legend.title = element_text(size=8),
+          legend.text = element_text(size = 8))
 dev.off()
 
 ```
