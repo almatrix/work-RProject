@@ -19,67 +19,86 @@ library(plyr) # for join
 library(animation) # for gif creation
 
 
+
 ######################################################
-## plot the checkin point data (on a base map)
-point.plot = function(checkin, plot.x = "lon", plot.y="lat", 
-                    plot.color="#55B1F7", plot.alpha = 0.3,
-                    plot.size = 0.5, plot.title="",
-                    plot.xlim = NA, plot.ylim = NA,
-                    axis.size=8, title.size=10, legend.size=8,
-                    mapdir=NA, maplayer=NA, 
-                    map.alpha = 0.1, map.color="grey"){
+## plot the checkin point data 
+point.plot = function(checkin, x = "lon", y="lat", 
+                    color="#55B1F7", color.concrete=TRUE, alpha = 0.3,
+                    point.size = 0.5, axis.size=8, 
+                    title.size=10, legend.size=8,
+                    title="", xlim = NA, ylim = NA,
+                    basemap=NA,...){
     
-    if(is.na(plot.xlim)) 
-      plot.xlim=c(min(checkin[,plot.x]),max(checkin[,plot.x]))
-    if(is.na(plot.ylim)) 
-      plot.ylim=c(min(checkin[,plot.y]),max(checkin[,plot.y]))
-  
-    # print(c(plot.xlim,plot.ylim))
+    # regular the limits of axes
+    if(is.na(xlim)) 
+      xlim=c(min(checkin[,x]),max(checkin[,x]))
+    if(is.na(ylim)) 
+      ylim=c(min(checkin[,y]),max(checkin[,y]))
     
-    # plot the points
-    gg.map <- ggplot() 
+    # base map
+    if(is.na(basemap)){
+        gg.map <- ggplot()
+    }else{
+        gg.map <- basemap
+    }
     
-    if(is.character(plot.color)){
+    # plot the points    
+    if(color.concrete){
         gg.map <- gg.map +
             geom_point(data=checkin,
-                       aes_string(x=plot.x, y=plot.y),
-                       color = plot.color, 
-                       alpha = plot.alpha, 
-                       size= plot.size)
+                       aes_string(x=x, y=y),
+                       color = color, 
+                       alpha = alpha, 
+                       size = point.size,...)
     } else{
         gg.map <- gg.map +
             geom_point(data=checkin,
-                       aes_string(x=plot.x, y=plot.y, color=plot.color),
-                       alpha = plot.alpha, 
-                       size= plot.size)
+                       aes_string(x=x, y=y, color=color),
+                       alpha = alpha, 
+                       size = point.size,...)
     }
     
-    gg.map <- gg.map +
-        ggtitle(plot.title)+
+    gg.map +
+        ggtitle(title)+
         theme_bw() + # function unit requires library "grid") + 
         theme(axis.title=element_blank(),axis.text=element_text(size=axis.size),
               plot.title = element_text(size=title.size),#legend.position="none",
               legend.title = element_text(size=legend.size),
               legend.text = element_text(size = legend.size),
               plot.margin=unit(c(.05,.05,.05,.05),"npc")) + 
-        
-        coord_map(xlim=plot.xlim,ylim=plot.ylim)
+        coord_map(xlim=xlim,ylim=ylim)
+
+}
+
+##########################################################
+## plot geographical map from shapefile
+map.plot = function(mapdir=NA,maplayer=NA,mapdf=NA,basemap=NA,...){
     
-    # add the base map if necessary
-    if(!is.na(mapdir)&!is.na(maplayer)){
+    # get map data
+    if(!is.na(mapdf)){
+        shape.df = mapdf
+    } else if(!is.na(mapdir) && !is.na(maplayer)){
         shape.df = get.shape.df(mapdir, maplayer)
-        
-        gg.map <- gg.map +         
-            geom_polygon(data=shape.df,aes(long,lat,group=group),
-                         alpha=map.alpha,color=map.color,size=0.3) 
+    } else {
+        stop("map.plot() failed to find map data.")
+    }
     
+    # plot the geographic map
+    if(is.na(basemap)){
+        gg.map <- ggplot() + 
+            geom_polygon(data=shape.df,aes(long,lat,group=group),...)+
+            coord_map()
+    } else{
+        gg.map <- basemap + 
+            geom_polygon(data=shape.df,aes(long,lat,group=group),...)+
+            coord_map()
     }
     
     gg.map
     
 }
 
-
+## convert shapefiles to dataframe
 get.shape.df=function(mapdir,maplayer){
     shape = readOGR(dsn=mapdir, layer=maplayer)
     shape@data$id = rownames(shape@data)
@@ -87,25 +106,29 @@ get.shape.df=function(mapdir,maplayer){
     join(shape.points, shape@data, by="id")
 }
 
-point.animation.plot = function(checkin,plot.title="",...){
+
+###############################################################
+point.animation.plot = function(checkin, x = "lon", y="lat", 
+                                title="",basemap=NA,...){
   
-  plot.xlim = c(min(checkin[,plot.x]), max(checkin[,plot.x]))
-  plot.ylim = c(min(checkin[,plot.y]), max(checkin[,plot.y]))
+  # must be constrained in the same area
+  xlim = c(min(checkin[,x]), max(checkin[,x]))
+  ylim = c(min(checkin[,y]), max(checkin[,y]))
+  
   # slice the data
   checkin.slices = split(checkin,checkin$hour)
   
   lapply(checkin.slices,function(i){
-      a<-point.plot(i, 
-               plot.title=paste(plot.title,i[1,"hour"],": 00"), 
-               ...)
+      a<-point.plot( i, title=paste(title,i[1,"hour"],": 00"), 
+                     basemap=basemap, ... )
       print(a)
   })
-  
 }
+
 
 ######################################################
 ## plot the temporal aspects in the checkin data (frequency domain)
-freq.plot = function(checkin, plot.title="",cols=2, rows=5){
+freq.plot = function(checkin, title="",cols=2, rows=5){
     
     stats = lapply(split(checkin, checkin$cate_l1), function(checkin.cate){
         stats_by_date_hour(checkin.cate, category = checkin.cate[1,"cate_l1"])
@@ -127,7 +150,7 @@ freq.plot = function(checkin, plot.title="",cols=2, rows=5){
     ggplot(fre.combined) +
         geom_line(aes(x=freq,y=spec)) + 
         facet_wrap(~cate_l1, ncol=cols, nrow=rows) +
-        ggtitle(plot.title)+
+        ggtitle(title)+
         scale_y_log10(name="Spectral Density")+
         scale_x_log10(name="Frequency [1/Hour]",
                       breaks = c(1/168,1/24,1/12,1/6),
@@ -144,7 +167,7 @@ freq.plot = function(checkin, plot.title="",cols=2, rows=5){
 
 ######################################################
 ## plot the temporal aspects in the checkin data
-time.distribution.plot =  function(checkin, plot.title="", cols=2, rows=5){
+time.distribution.plot =  function(checkin, title="", cols=2, rows=5){
     list.category = lapply(split(checkin,checkin$cate_l1), function(i){
         df = stats_checkin_by_hour(i, category = i[1,"cate_l1"])
     })
@@ -155,7 +178,7 @@ time.distribution.plot =  function(checkin, plot.title="", cols=2, rows=5){
     ggplot(df, aes(x=hour,y=I(100*prop))) + 
         geom_bar(stat="identity") +
         facet_wrap(~cate_l1, ncol=cols, nrow=rows) +
-        ggtitle(plot.title)+
+        ggtitle(title)+
         coord_cartesian(ylim = c(0,13)) +
 #         scale_y_continuous(name="Probability [%]",labels  = percent) +
         scale_y_continuous(name="Probability [%]") +
@@ -258,7 +281,7 @@ time.radial.plot =  function(checkin, cols=5, rows=2,
 ######################################################
 ## plot the transition probability in the checkin data 
 transition.plot = function(checkin, from="last.cate_l1", to="cate_l1", 
-                           scaled=FALSE, plot.title=""){
+                           scaled=FALSE, title=""){
     ## clean the data. 
     # When we consider transition, the first record of each user cannot be used,
     # because it has no previous record. We also want to exclude the situation 
@@ -294,7 +317,7 @@ transition.plot = function(checkin, from="last.cate_l1", to="cate_l1",
                                       expression(10^-3),expression(10^-2),
                                       expression(10^-1)))+
         xlab("")+ylab("") + 
-        ggtitle(plot.title)+
+        ggtitle(title)+
         theme(axis.title = element_text(size=10),
               plot.title = element_text(size=10),#legend.position="none",
               legend.title = element_text( size=6),legend.text = element_text(size = 6),

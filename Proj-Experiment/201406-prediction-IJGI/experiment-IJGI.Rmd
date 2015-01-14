@@ -47,7 +47,7 @@ The analysis in the frequency domain reveals a strong harmonics with a period
 of 24 hours. Therefore, it is reasonable to 
 
 ```{r, fig.width=8, fig.height=6, dpi=300}
-freq.plot(checkin.NY,plot.title="New York City")
+freq.plot(checkin.NY,title="New York City")
 ```
 
 
@@ -56,7 +56,7 @@ freq.plot(checkin.NY,plot.title="New York City")
 The distribution of the check-in categories accross one period (24 hours).
 
 ```{r, fig.width=8, fig.height=6, dpi=300}
-time.distribution.plot(checkin.NY,plot.title="New York City")
+time.distribution.plot(checkin.NY,title="New York City")
 ```
 
 #### Temporal: Radial plot
@@ -72,9 +72,14 @@ time.radial.plot(checkin.NY)
 have a look at the intuitive visualizaiton...
 
 ```{r}
+basemap = map.plot("../../global/data/shapefiles", 
+                   "NYC_borough_boundaries_WGS84",
+                   alpha=0.1,size=0.3,color="grey")
+gif.source <- point.animation.plot(checkin.NY,title="New York City", 
+                                   basemap=basemap,axis.size=18,
+                                   title.size=24,legend.size=18,plot.size=3)
 saveGIF({
-  point.animation.plot(checkin.NY,plot.title="New York City",
-                       axis.size=18,title.size=24,legend.size=18,plot.size=3)
+  gif.source
 }, interval = 0.5, movie.name = "spatiotemporal.gif", 
 ani.width = 1500, ani.height = 1200)
 
@@ -87,6 +92,12 @@ categories, each clustering indicating the "hotspots" for that specific
 category.
 
 ```{r}
+if(!exists(basemap)){
+    basemap <- map.plot("../../global/data/shapefiles", 
+                   "NYC_borough_boundaries_WGS84",
+                   alpha=0.1,size=0.3,color="grey")
+}
+
 plots <- lapply(split(checkin.NY,checkin.NY$cate_l1),function(ci){
     # find out clusters for the type of category
     clusters = spatial.clustering(ci)
@@ -101,30 +112,17 @@ plots <- lapply(split(checkin.NY,checkin.NY$cate_l1),function(ci){
                   formatC(wss,digits=2,format="f"),
                   "(",format.percent(pct),")")
     
-    gg.map <- ggplot() +
-        geom_point(data=points,
-                   aes(x=lon.x,y=lat.x),size=1, alpha=0.05,color="#55B1F7") +
-        geom_point(data=centers,
-                   aes(x=lon.center,y=lat.center,color=cid.ordered),
-                   size=log(centers$size,5),
-                   alpha = 0.7)+
-        theme_bw() + # function unit requires library "grid") + 
-        theme(axis.title=element_blank(),axis.text=element_text(size=6),
-              plot.title = element_text(size=8),legend.position="none",
-              plot.margin=unit(c(.05,.05,.05,.05),"npc")) + 
-        geom_text(aes(x = -74.13, y = 40.87), label = lbl, size=3) +
-        ggtitle(ci[1,"cate_l1"]) +
-        coord_map()
+    gg.map <- point.plot(points,x="lon.x",y="lat.x",alpha=0.05, basemap=basemap)
+    gg.map <- point.plot(centers, x="lon.center",y="lat.center",
+                         color= "cid.ordered", color.concrete=FALSE,
+                         size = log(centers$size),alpha = 0.7,
+                         basemap=gg.map,
+                         xlim=range(checkin.NY$lon,finite=TRUE),
+                         ylim=range(checkin.NY$lat,finite=TRUE))
+    gg.map <- gg.map + ggtitle(ci[1,"cate_l1"]) +
+        theme(legend.position="none") + 
+        geom_text(aes(x = -74.13, y = 40.87), label = lbl, size=3) 
     
-    shape = readOGR(dsn="../../global/data/shapefiles", 
-                    layer="NYC_borough_boundaries_WGS84")
-        shape@data$id = rownames(shape@data)
-        shape.points = fortify(shape, region="id")
-        shape.df = join(shape.points, shape@data, by="id")
-        
-        gg.map <- gg.map +         
-            geom_polygon(data=shape.df,aes(long,lat,group=group),
-                         alpha=map.alpha,color=map.color,size=0.3) 
 })
 
 png("test.png",width=15*ppi,height=6*ppi,res=ppi)
