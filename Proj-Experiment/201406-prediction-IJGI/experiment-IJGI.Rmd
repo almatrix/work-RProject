@@ -5,123 +5,137 @@ date: "Tuesday, August 19, 2014"
 output: html_document
 ---
 
-```{r, echo=FALSE, include=FALSE}
+
+```{r,echo=FALSE,include=FALSE}
+library(rgeos)
 library(scales)
 library(reshape2)
 library(ggplot2)
-library(TSA)
+library(gridExtra)
+#library(TSA)
 library(ca)
-source("D:\\GitRepos\\work\\fun\\mathmatrixcal.R")
-source("D:\\GitRepos\\work\\fun\\TableOperations.R")
-source("D:\\GitRepos\\work\\fun\\GenerateStatsDataFrame.R")
-basedir = "D:\\Experiments\\R\\"
+
+source("../../global/functions/prepare.checkin.R")
+source("../../global/functions/basic.stats.plots.R")
+source("../../global/functions/spatial.analysis.R")
+source("../../global/functions/etc.R")
+
 ppi=300
 ```
 
-First, we load the libraries, functions, and data into the workspace.Following is a summary of the dataset.
-```{r,eval=FALSE, echo=FALSE}
-## checkin data
-## nrows=529931 ~~ 19 weeks/133 days's data
-checkin.global = read.csv( paste0(basedir, "data\\allcheckins.csv"), 
-                       header=TRUE, sep=",", na.strings = "none",
-                       colClasses = c("numeric","numeric","factor","factor", "numeric","numeric",
-                                      "numeric","character","factor","factor")
-)
-checkin.global$datetime = strptime( strtrim(checkin.global$localtime,19), format="%Y-%m-%d %H:%M:%S")
-
-## weather data 
-weather = read.csv( paste0(basedir, "data\\weather.csv"), 
-                       header=TRUE, sep=",", na.strings = c("-9999","Unknown"),
-                       colClasses = c("numeric","numeric","numeric","character","numeric","factor",
-                                      "numeric","numeric","numeric","numeric","numeric","numeric",
-                                      "numeric","numeric")
-)
-## deal with logical data
-weather$fog=as.logical(weather$fog)
-weather$rain=as.logical(weather$rain)
-weather$snow=as.logical(weather$snow)
-weather$thunder=as.logical(weather$thunder)
-weather$tornado=as.logical(weather$tornado)
-
-generate.dataframe = function(checkin.global, weather){
-    ## join checkin data with weather data based on timestamps 
-    checkin.global = joindfsbytime(checkin.global, weather)
-    
-    ## deal with time 
-    checkin.global$hour = as.factor(format(checkin.global$datetime,"%H"))
-    checkin.global$yearday = format(checkin.global$datetime,"%j")
-    checkin.global$weekday = format(checkin.global$datetime,"%w")
-    checkin.global$isweekend = as.factor(ifelse( ( checkin.global$weekday>5 ), "Saturday", 
-        ifelse( ( checkin.global$weekday<1 ),"Sunday","Workday")))
-    
-    ## add record for last checkin
-    # checkin.global = copylastcheckinrec(checkin.global)
-    checkin.global = checkin.global[complete.cases(checkin.global$conds),]
-    
-    checkin.global
-}
-
-checkin.global = generate.dataframe(checkin.global, weather)
-```
+First, we load the data into the workspace. 
 
 ```{r,echo=FALSE}
-## save(checkin.global,file="D:\\Experiments\\R\\data\\checkin_global_0813.Rda")
-## the data from the above procedure has been saved for convenience.
-load("D:\\Experiments\\R\\data\\checkin_global_0813.Rda")
-summary(checkin.global)
+checkin.NY = prepare.checkin("../../global/data/csv-raw/NewYorkCity.csv",
+                             is.raw=TRUE, 
+                             #weather.data="../../global/data/csv-raw/Weather_NY.csv", 
+                             convert.time=TRUE, add.history=TRUE)
+```
+
+Following is a summary of the dataset.
+
+```{r,echo=FALSE,include=FALSE}
+summary(checkin.NY)
 ```
 
 
-### 1. Temporal analysis
+### 1. Exploratory analysis 
 
-#### Frequency domain
+#### Temporal: Frequency domain
+
+The analysis in the frequency domain reveals a strong harmonics with a period 
+of 24 hours. Therefore, it is reasonable to 
 
 ```{r, fig.width=8, fig.height=6, dpi=300}
-
-L_category = split(checkin.global, checkin.global$cate_l1)
-
-DF_date_hour_category = data.frame()
-temp = lapply(L_category, function(i){
-    df = stats_by_date_hour(i, category = i[1,"cate_l1"])
-    DF_date_hour_category <<- rbind(DF_date_hour_category,df)
-})
-
-L_date_hour_category=split(DF_date_hour_category,DF_date_hour_category$cate_l1)
-## plot
-# png(paste0(basedir,"img\\Agile\\agile_map3.freq.png"), width = 10*ppi, height = 4*ppi, res=ppi,bg = "transparent")
-par(mfrow=c(2,5))
-temp = lapply(seq_along(L_date_hour_category), function(i){
-    fre = spec.pgram(L_date_hour_category[[i]]$prop, plot=FALSE)
-    plot(fre[["freq"]][1:400], fre[["spec"]][1:400], 
-         type="l", main= names(L_date_hour_category[i]),
-         xlab="Frequency", ylab="Spectrum")
-    })
-rm(temp)
-# dev.off()
+freq.plot(checkin.NY,plot.title="New York City")
 ```
 
-#### Probability distribution
+
+#### Temproal: Time domain 
+
+The distribution of the check-in categories accross one period (24 hours).
 
 ```{r, fig.width=8, fig.height=6, dpi=300}
-DF_hour_category = data.frame()
-temp = lapply(L_category, function(i){
-    df = stats_checkin_by_hour(i, category = i[1,"cate_l1"])
-    DF_hour_category <<- rbind(DF_hour_category,df)
-})
-rm(temp)
-## plot
-ggplot(DF_hour_category, aes(x=hour,y=prop)) + 
-    geom_bar(stat="identity") +
-    xlab("") +
-    facet_wrap(~cate_l1, ncol=4, nrow=3) +
-    coord_cartesian(ylim = c(0,0.13)) +
-    scale_y_continuous(labels  = percent) +
-    scale_x_discrete(breaks=levels(DF_hour_category$hour), 
-                     labels=c("0","","","3","","","6","","","9","","","12","","","15","","","18","","","21","","23"))
+time.distribution.plot(checkin.NY,plot.title="New York City")
+```
+
+#### Temporal: Radial plot
+
+The distribution of the check-in categories in 24 hours in radial plots.
+
+```{r, fig.width=10, fig.height=4, dpi=300}
+time.radial.plot(checkin.NY)
+```
+
+### Spatiotemporal
+
+have a look at the intuitive visualizaiton...
+
+```{r}
+saveGIF({
+  point.animation.plot(checkin.NY,plot.title="New York City",
+                       axis.size=18,title.size=24,legend.size=18,plot.size=3)
+}, interval = 0.5, movie.name = "spatiotemporal.gif", 
+ani.width = 1500, ani.height = 1200)
 
 ```
 
-### 2. Meteorological analysis
+<img src="spatiotemporal.gif" />
+
+What do the statistics say? We found differnt clusters under differnt 
+categories, each clustering indicating the "hotspots" for that specific 
+category.
+
+```{r}
+plots <- lapply(split(checkin.NY,checkin.NY$cate_l1),function(ci){
+    # find out clusters for the type of category
+    clusters = spatial.clustering(ci)
+    
+    centers = clusters[["centers"]]
+    
+    points = clusters[["point.unique"]]
+    
+    wss = clusters[["wss"]]
+    pct = clusters[["pct"]]
+    lbl = paste(nrow(centers),"clusters;\nWSS:",
+                  formatC(wss,digits=2,format="f"),
+                  "(",format.percent(pct),")")
+    
+    gg.map <- ggplot() +
+        geom_point(data=points,
+                   aes(x=lon.x,y=lat.x),size=1, alpha=0.05,color="#55B1F7") +
+        geom_point(data=centers,
+                   aes(x=lon.center,y=lat.center,color=cid.ordered),
+                   size=log(centers$size,5),
+                   alpha = 0.7)+
+        theme_bw() + # function unit requires library "grid") + 
+        theme(axis.title=element_blank(),axis.text=element_text(size=6),
+              plot.title = element_text(size=8),legend.position="none",
+              plot.margin=unit(c(.05,.05,.05,.05),"npc")) + 
+        geom_text(aes(x = -74.13, y = 40.87), label = lbl, size=3) +
+        ggtitle(ci[1,"cate_l1"]) +
+        coord_map()
+    
+    shape = readOGR(dsn="../../global/data/shapefiles", 
+                    layer="NYC_borough_boundaries_WGS84")
+        shape@data$id = rownames(shape@data)
+        shape.points = fortify(shape, region="id")
+        shape.df = join(shape.points, shape@data, by="id")
+        
+        gg.map <- gg.map +         
+            geom_polygon(data=shape.df,aes(long,lat,group=group),
+                         alpha=map.alpha,color=map.color,size=0.3) 
+})
+
+png("test.png",width=15*ppi,height=6*ppi,res=ppi)
+grid.arrange(plots[[1]],plots[[2]],plots[[3]],plots[[4]],
+             plots[[5]],plots[[6]],plots[[7]],plots[[8]], 
+             plots[[9]],plots[[10]],nrow=2, ncol=5)
+dev.off()
+```
+
+
+### Meteorological: Correspondence analysis
 
 ```{r, fig.width=8, fig.height=6}
 cate.conds = xtabs(~conds+cate_l1, data=checkin.global)

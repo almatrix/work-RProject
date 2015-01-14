@@ -16,7 +16,7 @@ library(grid)
 library(plotrix) # radial plot
 library(reshape2)
 library(plyr) # for join
-
+library(animation) # for gif creation
 
 
 ######################################################
@@ -24,30 +24,50 @@ library(plyr) # for join
 point.plot = function(checkin, plot.x = "lon", plot.y="lat", 
                     plot.color="#55B1F7", plot.alpha = 0.3,
                     plot.size = 0.5, plot.title="",
+                    plot.xlim = NA, plot.ylim = NA,
+                    axis.size=8, title.size=10, legend.size=8,
                     mapdir=NA, maplayer=NA, 
                     map.alpha = 0.1, map.color="grey"){
     
+    if(is.na(plot.xlim)) 
+      plot.xlim=c(min(checkin[,plot.x]),max(checkin[,plot.x]))
+    if(is.na(plot.ylim)) 
+      plot.ylim=c(min(checkin[,plot.y]),max(checkin[,plot.y]))
+  
+    # print(c(plot.xlim,plot.ylim))
+    
     # plot the points
-    gg.map <- ggplot() +
-        geom_point(data=checkin[,c(plot.x, plot.y)],
-                   aes_string(x=plot.x, y=plot.y),
-                   color = plot.color, alpha = plot.alpha, 
-                   size= plot.size) +
+    gg.map <- ggplot() 
+    
+    if(is.character(plot.color)){
+        gg.map <- gg.map +
+            geom_point(data=checkin,
+                       aes_string(x=plot.x, y=plot.y),
+                       color = plot.color, 
+                       alpha = plot.alpha, 
+                       size= plot.size)
+    } else{
+        gg.map <- gg.map +
+            geom_point(data=checkin,
+                       aes_string(x=plot.x, y=plot.y, color=plot.color),
+                       alpha = plot.alpha, 
+                       size= plot.size)
+    }
+    
+    gg.map <- gg.map +
         ggtitle(plot.title)+
-        theme_bw(base_size = 10) + # function unit requires library "grid") + 
-        theme(axis.title=element_blank(),axis.text=element_text(size=8),
-              plot.title = element_text(size=10),#legend.position="none",
-              legend.title = element_text(size=8),legend.text = element_text(size = 8),
+        theme_bw() + # function unit requires library "grid") + 
+        theme(axis.title=element_blank(),axis.text=element_text(size=axis.size),
+              plot.title = element_text(size=title.size),#legend.position="none",
+              legend.title = element_text(size=legend.size),
+              legend.text = element_text(size = legend.size),
               plot.margin=unit(c(.05,.05,.05,.05),"npc")) + 
         
-        coord_map()
+        coord_map(xlim=plot.xlim,ylim=plot.ylim)
     
     # add the base map if necessary
     if(!is.na(mapdir)&!is.na(maplayer)){
-        shape = readOGR(dsn=mapdir, layer=maplayer)
-        shape@data$id = rownames(shape@data)
-        shape.points = fortify(shape, region="id")
-        shape.df = join(shape.points, shape@data, by="id")
+        shape.df = get.shape.df(mapdir, maplayer)
         
         gg.map <- gg.map +         
             geom_polygon(data=shape.df,aes(long,lat,group=group),
@@ -57,6 +77,30 @@ point.plot = function(checkin, plot.x = "lon", plot.y="lat",
     
     gg.map
     
+}
+
+
+get.shape.df=function(mapdir,maplayer){
+    shape = readOGR(dsn=mapdir, layer=maplayer)
+    shape@data$id = rownames(shape@data)
+    shape.points = fortify(shape, region="id")
+    join(shape.points, shape@data, by="id")
+}
+
+point.animation.plot = function(checkin,plot.title="",...){
+  
+  plot.xlim = c(min(checkin[,plot.x]), max(checkin[,plot.x]))
+  plot.ylim = c(min(checkin[,plot.y]), max(checkin[,plot.y]))
+  # slice the data
+  checkin.slices = split(checkin,checkin$hour)
+  
+  lapply(checkin.slices,function(i){
+      a<-point.plot(i, 
+               plot.title=paste(plot.title,i[1,"hour"],": 00"), 
+               ...)
+      print(a)
+  })
+  
 }
 
 ######################################################
@@ -126,45 +170,87 @@ time.distribution.plot =  function(checkin, plot.title="", cols=2, rows=5){
 
 ######################################################
 ## plot the temporal aspects in the checkin data (radial plot)
-time.radial.plot =  function(checkin, cols=5, rows=2){
-#     par(mfrow=c(rows,cols))
+# weekday:  plot workday/weekend seperately/together
+# mark.peak: mark the peak of each radial line
+time.radial.plot =  function(checkin, cols=5, rows=2, 
+                             weekday=TRUE, mark.peak=TRUE){
+    par(mfrow=c(rows,cols))
     
     plots = lapply(split(checkin,checkin$cate_l1), function(data){
-        data$isweekend = as.factor(ifelse( ( data$weekday>5 | data$weekday<1), 
-                                           "Weekend", "Workday"))
-        byweekend = lapply(split(data,data$isweekend),function(data2){
-            category.by.hour = as.data.frame(table(data2$hour))
-            #         category.by.hour$p = category.by.hour$Freq /  sum(category.by.hour$Freq)
-            category.by.hour$hpi = as.numeric(category.by.hour$Var1)/12*pi
-            
-            category.by.hour
-        })
         
-        datastation = c(byweekend[[1]]$Freq/2,byweekend[[2]]$Freq/5)
+        if(weekday){
+            
+            data$isweekend = as.factor(ifelse( (data$weekday>5 | data$weekday<1), 
+                                           "Weekend", "Workday"))
+            byweekend = lapply(split(data,data$isweekend),function(i){
+                category.by.hour = as.data.frame(table(i$hour))
+                # category.by.hour$p = category.by.hour$Freq / sum(category.by.hour$Freq)
+                category.by.hour$hpi = as.numeric(category.by.hour$Var1)/12*pi
+            
+                category.by.hour
+            })
+            
+            datastation = c(byweekend[[1]]$Freq/2,byweekend[[2]]$Freq/5)
+            
+            p.data = t(matrix(data=datastation, ncol=2))
+            
+        } 
+        
+        else{
+            not.byweekend = as.data.frame(table(data$hour))
+            not.byweekend$hpi = as.numeric(not.byweekend$Var1)/12*pi
+            
+            datastation = not.byweekend$Freq/7
+            
+            p.data = t(matrix(data=datastation, ncol=1))
+
+        }
+        
         
         radial.lim = pretty(datastation)
         radial.labels = c(rep("",length(radial.lim)-1),
                           tail(radial.lim,1))
         
-        datastation.lab1 = rep("", 24)
-        datastation.lab1[which(byweekend[[1]]$Freq==max(byweekend[[1]]$Freq))]=round(max(byweekend[[1]]$Freq/2))
-        datastation.lab2 = rep("", 24)
-        datastation.lab2[which(byweekend[[2]]$Freq==max(byweekend[[2]]$Freq))]=round(max(byweekend[[2]]$Freq/5))
-        
-        
-        p.byweekend = t(matrix(data=datastation, ncol=2))
-        radial.plot(p.byweekend,
+        # plot the radial lines
+        radial.plot(p.data,
                     labels=c("00","","","03","","","06","","","09","","",
                              "12","","","15","","","18","","","21","",""),
                     start=pi/2,clockwise=TRUE,
                     radial.lim = radial.lim, 
-                    #                 radial.labels=radial.labels,
+                    # radial.labels=radial.labels,
                     radial.labels="",
                     rp.type="p",main=head(data$cate_l1,1),line.col=c("blue","red"))
-        radial.plot.labels(byweekend[[1]]$Freq/2,units="polar", start=pi/2,clockwise=TRUE,
-                           labels=datastation.lab1,col="blue" )
-        radial.plot.labels(byweekend[[2]]$Freq/5,units="polar", start=pi/2,clockwise=TRUE,
-                           labels=datastation.lab2,col="red")
+        
+        # mark the peak or not
+        if(weekday & mark.peak){
+            
+            datastation.lab1 = rep("", 24)
+            datastation.lab1[which(byweekend[[1]]$Freq==max(byweekend[[1]]$Freq))]=
+                round(max(byweekend[[1]]$Freq/2))
+            datastation.lab2 = rep("", 24)
+            datastation.lab2[which(byweekend[[2]]$Freq==max(byweekend[[2]]$Freq))]=
+                round(max(byweekend[[2]]$Freq/5))
+            
+            # mark the peak
+            radial.plot.labels(byweekend[[1]]$Freq/2,units="polar", 
+                               start=pi/2,clockwise=TRUE,
+                               labels=datastation.lab1,col="blue" )
+            radial.plot.labels(byweekend[[2]]$Freq/5,units="polar", 
+                               start=pi/2,clockwise=TRUE,
+                               labels=datastation.lab2,col="red")
+        }
+        else if(!weekday & mark.peak){
+            
+            datastation.lab1 = rep("", 24)
+            datastation.lab1[which(not.byweekend$Freq==max(not.byweekend$Freq))]=
+                round(max(not.byweekend$Freq/7))
+            print(datastation.lab1)
+            # mark the peak
+            radial.plot.labels(not.byweekend$Freq/7,units="polar", 
+                               start=pi/2,clockwise=TRUE,
+                               labels=datastation.lab1,col="blue" )
+        }
+        
     })
 }
 

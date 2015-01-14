@@ -63,7 +63,7 @@ prepare.checkin = function(checkin.data, is.raw=FALSE, weather.data=NA,
     ## merge with weather data 
     if(!is.na(weather.data)){
         ## load weather
-        weather = read.csv( weatherdata, 
+        weather = read.csv( weather.data, 
                             header=TRUE, sep=",", na.strings = c("-9999","Unknown"),
                             colClasses = c("numeric","numeric","numeric","character",
                                            "numeric","factor","numeric","numeric",
@@ -80,7 +80,7 @@ prepare.checkin = function(checkin.data, is.raw=FALSE, weather.data=NA,
         ## join checkin data with weather data based on timestamps 
         checkin = join.weather(checkin, weather)
         
-        checkin = checkin[complete.cases(checkin$conds),]
+        # checkin = checkin[complete.cases(checkin$conds),]
         
         print(paste(Sys.time(),": Mergeing with weather done."))
     }
@@ -96,18 +96,20 @@ get.previous.record = function(checkin){
     # order the dataframe by user and timestamps
     checkin = checkin[order(checkin$user_id,checkin$timestamps),]
     # copy columns
-    copied = rbind(c(-1,-1,NA,NA,NA,NA),
+    copied = rbind(c(-1,-1,NA,-1,-1,NA,NA,NA),
                    checkin[(1:(nrow(checkin)-1)),
                            c("gid","timestamps","venue_id",
+                             "lat","lon",
                              "cate_l1","cate_l2","user_id")])
     colnames(copied)=c("last.gid","last.timestamps","last.venue_id",
+                       "last.lat","last.lon",
                        "last.cate_l1","last.cate_l2","last.user_id")
     checkin = cbind(checkin, copied)
     
     # reset the record that has "last.user_id"!="user_id"
     # which means the two records are created by different users
     wrongmatch = which(checkin$user_id!=checkin$last.user_id)
-    checkin[wrongmatch,c("last.gid","last.timestamps")]=-1
+    checkin[wrongmatch,c("last.gid","last.timestamps","last.lat","last.lon")]=-1
     checkin[wrongmatch,c("last.venue_id","last.cate_l1",
                          "last.cate_l2","last.user_id")]=NA
     

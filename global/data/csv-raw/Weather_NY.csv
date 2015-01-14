@@ -1,4 +1,4 @@
-id,lat,lon,localtime,timestamps,conds,winddird,windspd,temperatur,fog,rain,snow,thunder,tornado
+id,latitude,longitude,localtime,timestamps,conds,winddird,windspd,temperatur,fog,rain,snow,thunder,tornado
 1,40.67,-73.94,2014/01/31 00:51,1391147460,Mostly Cloudy,0,0,-3.9,0,0,0,0,0
 2,40.67,-73.94,2014/01/31 01:51,1391151060,Clear,260,16.7,-3.3,0,0,0,0,0
 3,40.67,-73.94,2014/01/31 02:51,1391154660,Clear,280,9.3,-3.3,0,0,0,0,0
