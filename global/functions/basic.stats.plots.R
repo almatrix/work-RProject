@@ -112,15 +112,15 @@ point.animation.plot = function(checkin, x = "lon", y="lat",
                                 title="",basemap=NA,...){
   
   # must be constrained in the same area
-  xlim = c(min(checkin[,x]), max(checkin[,x]))
-  ylim = c(min(checkin[,y]), max(checkin[,y]))
+  xlim = range(checkin[,x], finite = TRUE)
+  ylim = range(checkin[,y], finite = TRUE)
   
   # slice the data
   checkin.slices = split(checkin,checkin$hour)
   
   lapply(checkin.slices,function(i){
       a<-point.plot( i, title=paste(title,i[1,"hour"],": 00"), 
-                     basemap=basemap, ... )
+                     basemap=basemap, xlim=xlim, ylim=ylim,... )
       print(a)
   })
 }

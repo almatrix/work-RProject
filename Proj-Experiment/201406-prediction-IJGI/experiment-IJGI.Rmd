@@ -75,11 +75,11 @@ have a look at the intuitive visualizaiton...
 basemap = map.plot("../../global/data/shapefiles", 
                    "NYC_borough_boundaries_WGS84",
                    alpha=0.1,size=0.3,color="grey")
-gif.source <- point.animation.plot(checkin.NY,title="New York City", 
-                                   basemap=basemap,axis.size=18,
-                                   title.size=24,legend.size=18,plot.size=3)
+
 saveGIF({
-  gif.source
+  point.animation.plot(checkin.NY,title="New York City", 
+                       basemap=basemap,axis.size=18,
+                       title.size=24,legend.size=18,plot.size=3)
 }, interval = 0.5, movie.name = "spatiotemporal.gif", 
 ani.width = 1500, ani.height = 1200)
 
@@ -115,13 +115,13 @@ plots <- lapply(split(checkin.NY,checkin.NY$cate_l1),function(ci){
     gg.map <- point.plot(points,x="lon.x",y="lat.x",alpha=0.05, basemap=basemap)
     gg.map <- point.plot(centers, x="lon.center",y="lat.center",
                          color= "cid.ordered", color.concrete=FALSE,
-                         size = log(centers$size),alpha = 0.7,
+                         point.size = log(centers$size,5),alpha = 0.7,
                          basemap=gg.map,
                          xlim=range(checkin.NY$lon,finite=TRUE),
                          ylim=range(checkin.NY$lat,finite=TRUE))
     gg.map <- gg.map + ggtitle(ci[1,"cate_l1"]) +
         theme(legend.position="none") + 
-        geom_text(aes(x = -74.13, y = 40.87), label = lbl, size=3) 
+        geom_text(aes(x = -74.13, y = 40.87), label = lbl, size=2) 
     
 })
 
