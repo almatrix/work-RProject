@@ -20,16 +20,22 @@ source("../../global/functions/basic.stats.plots.R")
 source("../../global/functions/spatial.analysis.R")
 source("../../global/functions/etc.R")
 
+# global variable
 ppi=300
+
+crs.wgs84.str = "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
+
 ```
 
 First, we load the data into the workspace. 
 
 ```{r,echo=FALSE}
-checkin.NY = prepare.checkin("../../global/data/csv-raw/NewYorkCity.csv",
-                             is.raw=TRUE, 
-                             #weather.data="../../global/data/csv-raw/Weather_NY.csv", 
-                             convert.time=TRUE, add.history=TRUE)
+# checkin.NY = prepare.checkin("../../global/data/csv-raw/NewYorkCity.csv",
+#                              is.raw=TRUE, 
+#                              weather.data="../../global/data/csv-raw/Weather_NY.csv", 
+#                              convert.time=TRUE, add.history=TRUE)
+# save(checkin.NY,file="../../global/data/Rda-saved/checkin.global.weather.NY.Rda")
+load(file="../../global/data/Rda-saved/checkin.global.weather.NY.Rda")
 ```
 
 Following is a summary of the dataset.
@@ -67,11 +73,11 @@ The distribution of the check-in categories in 24 hours in radial plots.
 time.radial.plot(checkin.NY)
 ```
 
-### Spatiotemporal
+### Spatial
 
-have a look at the intuitive visualizaiton...
+have a look at a intuitive spatiotemporal visualizaiton of the data...
 
-```{r}
+```{r,eval=FALSE}
 basemap = map.plot("../../global/data/shapefiles", 
                    "NYC_borough_boundaries_WGS84",
                    alpha=0.1,size=0.3,color="grey")
@@ -87,12 +93,14 @@ ani.width = 1500, ani.height = 1200)
 
 <img src="spatiotemporal.gif" />
 
-What do the statistics say? We found differnt clusters under differnt 
-categories, each clustering indicating the "hotspots" for that specific 
-category.
+What will the statistics say when we neglect the temporal factors?
+First of all, if we try to find spatial clusters 
+based on differnt checkin categories, the distribution of the founded clusters
+are quite differnt. It indicates that each category has differnt correlations
+with the geographic space.
 
 ```{r}
-if(!exists(basemap)){
+if(!exists("basemap")){
     basemap <- map.plot("../../global/data/shapefiles", 
                    "NYC_borough_boundaries_WGS84",
                    alpha=0.1,size=0.3,color="grey")
@@ -128,34 +136,47 @@ plots <- lapply(split(checkin.NY,checkin.NY$cate_l1),function(ci){
     
 })
 
-png("categorized_clustering.png",width=15*ppi,height=6*ppi,res=ppi)
+# png("categorized_clustering.png",width=15*ppi,height=6*ppi,res=ppi)
 grid.arrange(plots[[1]],plots[[2]],plots[[3]],plots[[4]],
              plots[[5]],plots[[6]],plots[[7]],plots[[8]], 
              plots[[9]],plots[[10]],nrow=2, ncol=5)
-dev.off()
+# dev.off()
 ```
 
 We could also see the most domimant categories in each part of the entire city.
 
 ```{r}
+# prepare polygon data
+SPDF = readOGR(dsn = "../../global/data/shapefiles", layer = "NYC_zipcode")
+# intersect the checkin data with the each postal code region
+checkin.NY = point.in.poly(checkin.NY, SPDF, copy.attr="POSTAL")
+# get the distribution of categories in each postal code region
+cate.distr=cate.distr.in.poly(checkin.NY)
+# and use that information to implement the SPDF
+SPDF = poly.with.category(SPDF, cate.distr=cate.distr, poly.attr="POSTAL")
 
+# plot
 
-
-
-# plot the dominant category of each zipcode area
-cate.spl.df = category.by.polygon(checkin.NY, 
-                         mapdir="../../global/data/shapefiles", 
-                         maplayer="NYC_zipcode")
-
-png("test.png",height=6*ppi, width=8*ppi,res=ppi)
-ggplot() +
-    geom_polygon(data=cate.spl.df,aes(long,lat,group=group,fill=Category_1),
-                     color="grey",alpha=0.9,size=0.3) + 
-    coord_map()+
+mapdf=df.from.spdf(SPDF)
+# mapdf$density=apply(mapdf,1,function(i){i[i["cate.dom"]]})
+# mapdf$density=as.numeric(formatC(mapdf$density,digits=1,format = "f"))
+png("main_category.png",height=6*ppi, width=16*ppi,res=ppi)
+grid.arrange(
+map.plot(mapdf=mapdf,
+         more.aes=aes_string(fill="Category.1st"),
+         color="grey",size=0.3,alpha=0.9)+
     theme_bw()+
     xlab("")+ylab("")+
     theme(legend.title = element_text(size=8),
-          legend.text = element_text(size = 8))
+          legend.text = element_text(size = 8)),
+map.plot(mapdf=mapdf,
+         more.aes=aes_string(fill="Category.2nd"),
+         color="grey",size=0.3,alpha=0.7)+
+    theme_bw()+
+    xlab("")+ylab("")+
+    theme(legend.title = element_text(size=8),
+          legend.text = element_text(size = 8)),
+nrow=1, ncol=2, widths=c(1,1) )
 dev.off()
 
 ```
@@ -164,7 +185,7 @@ dev.off()
 ### Meteorological: Correspondence analysis
 
 ```{r, fig.width=8, fig.height=6}
-cate.conds = xtabs(~conds+cate_l1, data=checkin.global)
+cate.conds = xtabs(~conds+cate_l1, data=checkin.NY)
 #prop.table(cate.conds, 1) # row percentages
 #prop.table(cate.conds, 2) # column percentages
 fit <- ca(cate.conds)

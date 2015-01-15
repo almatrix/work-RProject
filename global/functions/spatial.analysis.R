@@ -69,77 +69,91 @@ spatial.clustering = function(data,wss.control=0.1){
          "pct"=percentage)
 }
 
-# assign the checkin record within their belonging spatial polygon
-checkin.in.poly = function(checkin, mapdir, maplayer, poly.attr){
-    # make SpatialPointDataFrame from the checkin dataset
-    checkin.spt = SpatialPointsDataFrame(
-        coords=checkin.NY[,c("lon","lat")],
-        data=checkin.NY[,c("gid","cate_l1")], 
-        proj4string=CRS("+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"))
+
+
+####################################################################
+# Spatial Intersection
+
+##FUNCTION:
+# copy the information of spatial polygon to the intersecting points
+##PARAMETERS:
+# checkin: a point type dataframe with position information
+# crs.str: specifiy the CRS of the point data. Default is WGS84. 
+# SPDF: a SpatialPolygonDataFrame
+# poly.attr: the attributes in the polygon that need to be assigned to the point
+##OUTPUT:
+# the point data with additonal columns from the polygon
+point.in.poly = function(point, SPDF, copy.attr,
+                         point.position=c("lon","lat"),
+                         crs.str=crs.wgs84.str){
     
-    # make SpatialPolygonDataFrame from the shapefile
-    postal.spl = readOGR(dsn=mapdir,layer=maplayer)
+    # make SpatialPointDataFrame from the point dataset
+    spt = SpatialPointsDataFrame(coords=point[,point.position],
+                                  data=point[,c("gid","cate_l1")], 
+#                                   data=rownames(point),
+                                  proj4string=CRS(crs.str))
     print("Spatial data has been prepared.")
     
-    # intersect the two layers to find out which polygon (characterized 
-    # e.g. by POSTAL) each checkin point belongs to, and add that information 
-    # back to the checkin data
-    checkin[,poly.attr] = over(checkin.spt, postal.spl)[,poly.attr]
+    # intersect the two layers, and copy the information specified by 
+    # "copy.attr" from the intersecting polygon to the point
+    point[,copy.attr] = over(spt, SPDF)[,copy.attr]
     print("The information from the polygon has been assigned to the points.")
     
-    list("checkin"=checkin,"spl"=postal.spl)
+    point
 }
 
-# find out the most N dominant categories or probability for each polygon
-cate.distr.in.poly = function(checkin,mapdir, maplayer, cate.length=1,
-                              poly.attr="POSTAL",cate.attr="cate_l1",
-                              probability=FALSE){
+
+##FUNCTION:
+# find out the probability distribution of categories for each polygon
+# checkin: the point data frame
+# poly.attr: the name of the column that indicates polygon
+# cate.attr: the name of the column that indicates category
+##OUTPUT: 
+# a dataframe. Each row represents the probability distribution of all
+# category (column) in each polygon.
+cate.distr.in.poly = function(checkin, poly.attr="POSTAL",cate.attr="cate_l1"){
     
-    # get the belonging points of each category
-    in.poly = checkin.in.poly(checkin,mapdir, maplayer, poly.attr)
-    checkin = in.poly[["checkin"]]
-    
+    # computing for each polygon
     cate.poly = lapply(split(checkin,checkin[,poly.attr]),function(i){
         # the corresponding points (categories) in that polygon
-        categories = as.data.frame(table(i[,cate.attr]))
+        stats = as.data.frame(table(i[,cate.attr]))
         
-        if(!probability){
-            categories = categories[order(categories$Freq,
-                                          decreasing = TRUE),]
-            df = data.frame(i[1,poly.attr],categories$Var1[1:cate.length])
-            colnames(df)=c(poly.attr, paste0("Category_",c(1:cate.length)))
-            
-        }else{
-            # the probability distribution
-            df = data.frame(c(i[1,poly.attr],
-                            categories$Freq/sum(categories$Freq)))
-            colnames(df)=c(poly.attr, categories$Var1)
-        }
+        stats$probability = stats$Freq / sum(stats$Freq)
         
+        df = data.frame(t(stats$probability))
+        colnames(df) = stats$Var1
+
+        categoy.in.order = 
+            stats$Var1[order(stats$probability,decreasing = TRUE)]
+        df[1,"Category.1st"] = categoy.in.order[1] 
+        df[1,"Category.2nd"] = categoy.in.order[2]
+        df[1,"Category.3rd"] = categoy.in.order[3] 
+        df[1,poly.attr] = i[1,poly.attr]
         
         df
           
     })
     
-    df = do.call(rbind,cate.poly)
     print("The distribution of category has been assigned to each polygon.")
     
-    list("cate.in.poly"=df,"spl"=in.poly[["spl"]])
+    do.call(rbind,cate.poly)
 }
 
-category.by.polygon = function(checkin, poly.attr="POSTAL",...){
+
+
+##FUNCTION:
+# attach polygons in a shapefile with the distribution of checkin categories
+##PARAMETERS:
+# SPDF: a SpatialPolygonDataFrame
+# cate.distr: dataframe specifying how each polygon and categories are connected
+# poly.attr: name of the column for polygon 
+##OUTPUT
+# a new SPDF with the category information in its data
+poly.with.category = function(SPDF, cate.distr, poly.attr){
+    SPDF@data = merge(SPDF@data,cate.distr,
+                      by=poly.attr,all.x=TRUE) 
     
-    # find out the most dominant category for each polygon (POSTAL)
-    data = cate.distr.in.poly(checkin, poly.attr=poly.attr,...)
-    
-    cate.poly = data[["cate.in.poly"]]
-    postal.spl = data[["spl"]]
-    
-    # the information (dominant category) will be mapped to the polygon 
-    # data for plotting
-    postal.spl@data$id = rownames(postal.spl@data)
-    postal.spl@data = merge(postal.spl@data,cate.poly,
-                            by=poly.attr,all.x=TRUE) 
-    postal.spl.points = fortify(postal.spl, region="id")
-    join(postal.spl.points, postal.spl@data, by="id")
+    SPDF
 }
+
+

@@ -22,7 +22,7 @@ library(animation) # for gif creation
 
 ######################################################
 ## plot the checkin point data 
-point.plot = function(checkin, x = "lon", y="lat", 
+point.plot = function(checkin, x = "lon", y="lat",
                     color="#55B1F7", color.concrete=TRUE, alpha = 0.3,
                     point.size = 0.5, axis.size=8, 
                     title.size=10, legend.size=8,
@@ -72,13 +72,15 @@ point.plot = function(checkin, x = "lon", y="lat",
 
 ##########################################################
 ## plot geographical map from shapefile
-map.plot = function(mapdir=NA,maplayer=NA,mapdf=NA,basemap=NA,...){
+map.plot = function(mapdir=NA,maplayer=NA,mapdf=NA,basemap=NA,
+                    more.aes=NULL,...){
     
-    # get map data
+    # get map data either from a existing dataframe or a shapefile
     if(!is.na(mapdf)){
         shape.df = mapdf
     } else if(!is.na(mapdir) && !is.na(maplayer)){
-        shape.df = get.shape.df(mapdir, maplayer)
+        SPDF = readOGR(dsn = mapdir, layer = maplayer)
+        shape.df = df.from.spdf(SPDF)
     } else {
         stop("map.plot() failed to find map data.")
     }
@@ -90,20 +92,16 @@ map.plot = function(mapdir=NA,maplayer=NA,mapdf=NA,basemap=NA,...){
         gg.map <- basemap 
     }
     
+    # flexible aes
+    aes.list = c(aes(long,lat,group=group),more.aes)
+    class(aes.list) <- "uneval"
 
-    gg.map <- gg.map +
-        geom_polygon(data=shape.df,aes(long,lat,group=group),...) + 
+    gg.map<- gg.map + 
+        geom_polygon(data=shape.df,aes.list,...)+ 
         coord_map()
     
 }
 
-## convert shapefiles to dataframe
-get.shape.df=function(mapdir,maplayer){
-    shape = readOGR(dsn=mapdir, layer=maplayer)
-    shape@data$id = rownames(shape@data)
-    shape.points = fortify(shape, region="id")
-    join(shape.points, shape@data, by="id")
-}
 
 
 ###############################################################
@@ -506,5 +504,14 @@ insertcol = function(tab, position, vector=NA, name=NA){
     newtab
 }
 
+##FUNCTION;
+# convert SpatialPolygonDataFrame to a normal dataframe for plotting
+##PARAMETERS:
+# SDF: an object of SpatilPolygonDataFrame
+df.from.spdf=function(SPDF){
+    SPDF@data$id = rownames(SPDF@data)
+    SPDF.points = fortify(SPDF, region="id")
+    join(SPDF.points, SPDF@data, by="id")
+}
 
 
