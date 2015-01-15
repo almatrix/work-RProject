@@ -85,16 +85,15 @@ map.plot = function(mapdir=NA,maplayer=NA,mapdf=NA,basemap=NA,...){
     
     # plot the geographic map
     if(is.na(basemap)){
-        gg.map <- ggplot() + 
-            geom_polygon(data=shape.df,aes(long,lat,group=group),...)+
-            coord_map()
+        gg.map <- ggplot() 
     } else{
-        gg.map <- basemap + 
-            geom_polygon(data=shape.df,aes(long,lat,group=group),...)+
-            coord_map()
+        gg.map <- basemap 
     }
     
-    gg.map
+
+    gg.map <- gg.map +
+        geom_polygon(data=shape.df,aes(long,lat,group=group),...) + 
+        coord_map()
     
 }
 
@@ -329,6 +328,7 @@ transition.plot = function(checkin, from="last.cate_l1", to="cate_l1",
               plot.margin=unit(c(0,0,0,0),"npc"))
 }
 
+
 #########################################################
 ## supporting functions
 
@@ -505,3 +505,6 @@ insertcol = function(tab, position, vector=NA, name=NA){
     
     newtab
 }
+
+
+

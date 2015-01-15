@@ -103,22 +103,25 @@ plots <- lapply(split(checkin.NY,checkin.NY$cate_l1),function(ci){
     clusters = spatial.clustering(ci)
     
     centers = clusters[["centers"]]
-    
     points = clusters[["point.unique"]]
-    
     wss = clusters[["wss"]]
     pct = clusters[["pct"]]
     lbl = paste(nrow(centers),"clusters;\nWSS:",
                   formatC(wss,digits=2,format="f"),
                   "(",format.percent(pct),")")
     
+    # add basic points
     gg.map <- point.plot(points,x="lon.x",y="lat.x",alpha=0.05, basemap=basemap)
+    
+    # add cluster information
     gg.map <- point.plot(centers, x="lon.center",y="lat.center",
                          color= "cid.ordered", color.concrete=FALSE,
                          point.size = log(centers$size,5),alpha = 0.7,
                          basemap=gg.map,
                          xlim=range(checkin.NY$lon,finite=TRUE),
                          ylim=range(checkin.NY$lat,finite=TRUE))
+    
+    # some plot configuration
     gg.map <- gg.map + ggtitle(ci[1,"cate_l1"]) +
         theme(legend.position="none") + 
         geom_text(aes(x = -74.13, y = 40.87), label = lbl, size=2) 
@@ -130,37 +133,27 @@ grid.arrange(plots[[1]],plots[[2]],plots[[3]],plots[[4]],
              plots[[5]],plots[[6]],plots[[7]],plots[[8]], 
              plots[[9]],plots[[10]],nrow=2, ncol=5)
 dev.off()
+```
+
+We could also see the most domimant categories in each part of the entire city.
+
+```{r}
 
 
-## SpatialPointDataFrame from checkin dataset 
-checkin.spt = SpatialPointsDataFrame(coords=checkin.NY[,c("lon","lat")],
-                                     data=checkin.NY[,c("gid","cate_l1")], 
-                                     proj4string=CRS("+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"))
-# overlay the point data with zipcode polygon
-overlap = over(x=checkin.spt,
-                       y=readOGR(dsn="../../global/data/shapefiles",
-                                 layer="NYC_zipcode"))
-checkin.NY$zip = overlap$POSTAL
+
 
 # plot the dominant category of each zipcode area
-zip.category = lapply(split(checkin.NY,checkin.NY$zip),
-                        function(i){
-    # the corresponding points in that zipcode
-    category = names(which.max(table(i$cate_l1)))
-    zip = i[1,"zip"]
-    data.frame("zip"=zip,"cate_l1"=category)
-})
-zip.category<- do.call(rbind,zip.category)
-shape = readOGR(dsn="../../global/data/shapefiles",layer="NYC_zipcode")
-shape@data$id = rownames(shape@data)
-shape@data = merge(shape@data,zip.category,by.x="POSTAL",by.y="zip",all.x=TRUE) 
-shape.points = fortify(shape, region="id")
-shape.df = join(shape.points, shape@data, by="id")
+cate.spl.df = category.by.polygon(checkin.NY, 
+                         mapdir="../../global/data/shapefiles", 
+                         maplayer="NYC_zipcode")
 
 png("test.png",height=6*ppi, width=8*ppi,res=ppi)
-ggplot() + 
-    geom_polygon(data=shape.df,aes(long,lat,group=group,fill=cate_l1))+
+ggplot() +
+    geom_polygon(data=cate.spl.df,aes(long,lat,group=group,fill=Category_1),
+                     color="grey",alpha=0.9,size=0.3) + 
     coord_map()+
+    theme_bw()+
+    xlab("")+ylab("")+
     theme(legend.title = element_text(size=8),
           legend.text = element_text(size = 8))
 dev.off()
