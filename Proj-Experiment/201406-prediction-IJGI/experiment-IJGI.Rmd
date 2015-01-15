@@ -85,7 +85,7 @@ basemap = map.plot("../../global/data/shapefiles",
 saveGIF({
   point.animation.plot(checkin.NY,title="New York City", 
                        basemap=basemap,axis.size=18,
-                       title.size=24,legend.size=18,plot.size=3)
+                       title.size=24,legend.size=18,point.size=3)
 }, interval = 0.5, movie.name = "spatiotemporal.gif", 
 ani.width = 1500, ani.height = 1200)
 
