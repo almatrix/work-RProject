@@ -35,12 +35,12 @@ point.plot = function(point, x = "lon", y="lat", more.aes=NULL,
     gg.map <- with.basemap(basemap)
     
     # flexible aes
-    aes.list = append.aes(aes(x=x, y=y),more.aes)
+    aes.list = append.aes(aes_string(x=x, y=y),more.aes)
 
-    gg.map <- gg.map + geom_point(data=checkin,aes.list,...) +
+    gg.map + geom_point(data=point,aes.list,...) +
         theme_bw(base_size = 8)  + 
         coord_map(xlim=xlim,ylim=ylim)
-
+    
 }
 
 ##########################################################
@@ -66,8 +66,8 @@ map.plot = function(mapdir=NA,maplayer=NA,mapdf=NA,basemap=NA,
 
     gg.map<- gg.map + 
         geom_polygon(data=shape.df,aes.list,...) + 
-        theme_bw(base_size = 8)  +
-        coord_map()
+        theme_bw(base_size = 8)  + 
+        coord_map() 
     
 }
 
@@ -75,19 +75,21 @@ map.plot = function(mapdir=NA,maplayer=NA,mapdf=NA,basemap=NA,
 
 ###############################################################
 point.animation.plot = function(point, x = "lon", y="lat", split.attr="hour",
-                                basemap=NA, more.aes=NULL, ...){
+                                basemap=NA, more.aes=NULL, title="",...){
   
   # must be constrained in the same area
   xlim = range(point[,x], finite = TRUE)
   ylim = range(point[,y], finite = TRUE)
   
   # slice the data
-  checkin.slices = split(checkin,checkin$hour)
+  point.slices = split(point,point[,split.attr])
   
-  lapply(checkin.slices,function(i){
+  lapply(point.slices,function(i){
       a <- point.plot( i, x=x, y=y, basemap=basemap, more.aes=more.aes, 
                        xlim=xlim, ylim=ylim, ... ) +
-          ggtitle(paste(title, i[1,split.attr],": 00"))
+          ggtitle(paste(title, i[1,split.attr],": 00")) +
+          theme_bw(base_size=20) + 
+          xlab("") + ylab("") 
       
       print(a)
   })
@@ -98,7 +100,8 @@ point.animation.plot = function(point, x = "lon", y="lat", split.attr="hour",
 
 
 ###############################################################
-map.animation.plot(point,SPDF,basemap=NA,split.attr="hour",more.aes=NULL,...){
+map.animation.plot= function(point,SPDF,basemap=NA, title="",
+                             split.attr="hour",more.aes=NULL,...){
     
     xlim = range(point$lon, finite = TRUE)
     ylim = range(point$lat, finite=TRUE)
@@ -116,7 +119,9 @@ map.animation.plot(point,SPDF,basemap=NA,split.attr="hour",more.aes=NULL,...){
         # grid.arrange(
         a <- map.plot(mapdf = mapdf, more.aes = more.aes, 
                       basemap = basemap, ...)+
-            xlab("")+ylab("")
+            ggtitle(paste(title, i[1,split.attr],": 00")) +
+            theme_bw(base_size=20) + 
+            xlab("") + ylab("") 
         
         print(a)
         

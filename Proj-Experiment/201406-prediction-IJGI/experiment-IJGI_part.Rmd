@@ -92,8 +92,7 @@ basemap = map.plot("../../global/data/shapefiles",
 
 saveGIF({
   point.animation.plot(checkin.NY, more.aes=aes(color=cate_l1),
-                       basemap=basemap, size=3) + 
-      ggtile("New York City")
+                       basemap=basemap, size=3, title="New York City")
 }, interval = 0.5, movie.name = "spatiotemporal.gif", 
 ani.width = 1500, ani.height = 1200)
 
@@ -164,9 +163,10 @@ We could also see the most domimant categories in each part of the entire city.
 
 # prepare polygon data
 SPDF = readOGR(dsn = "../../global/data/shapefiles", layer = "NYC_zipcode")
-# classify the polygons in the SPDF by the overlapped point data 
-SPDF = classify.polygon.by.point(point=checkin.NY, SPDF, clsfy.attr="cate_l1")
-mapdf=df.from.spdf(SPDF)
+# classify the polygons in the SPDF by the overlapped point data, 
+# and convert the result to normal R dataframe for plotting
+mapdf=df.from.spdf(classify.polygon.by.point(point=checkin.NY, 
+                                             SPDF, clsfy.attr="cate_l1"))
         # mapdf$density=apply(mapdf,1,function(i){i[i["cate.dom"]]})
         # mapdf$density=as.numeric(formatC(mapdf$density,digits=1,format = "f"))
 
@@ -181,9 +181,15 @@ Such map can also be visualized with time to show the impact of both time and
 space...
 
 ```{r}
-map.animation.plot(point=checkin.NY,SPDF,more.aes=aes(fill=Category.1st))
-```
 
+saveGIF({
+  map.animation.plot(point=checkin.NY,SPDF,more.aes=aes(fill=Category.1st),
+                     color="grey",size=0.3,alpha=0.7)
+}, interval = 0.5, movie.name = "cateogrized.polygon.spatiotemporal.gif", 
+ani.width = 1500, ani.height = 1200)
+
+```
+<img src="cateogrized.polygon.spatiotemporal.gif" />
 
 ### Meteorological: Correspondence analysis
 
