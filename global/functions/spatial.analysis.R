@@ -136,7 +136,17 @@ cate.distr.in.poly = function(checkin, poly.attr="POSTAL",cate.attr="cate_l1"){
     
     print("The distribution of category has been assigned to each polygon.")
     
-    do.call(rbind,cate.poly)
+    cate.poly = do.call(rbind,cate.poly)
+    
+    # relevel
+    cate.poly$Category.1st = factor(cate.poly$Category.1st, 
+                                    levels=levels(checkin[,cate.attr]))
+    cate.poly$Category.2nd = factor(cate.poly$Category.1st, 
+                                    levels=levels(checkin[,cate.attr]))
+    cate.poly$Category.3rd = factor(cate.poly$Category.1st, 
+                                    levels=levels(checkin[,cate.attr]))
+    
+    cate.poly
 }
 
 
