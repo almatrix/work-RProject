@@ -21,51 +21,24 @@ library(animation) # for gif creation
 
 
 ######################################################
-## plot the checkin point data 
-point.plot = function(checkin, x = "lon", y="lat",
-                    color="#55B1F7", color.concrete=TRUE, alpha = 0.3,
-                    point.size = 0.5, axis.size=8, 
-                    title.size=10, legend.size=8,
-                    title="", xlim = NA, ylim = NA,
-                    basemap=NA,...){
+## plot the point type data 
+point.plot = function(point, x = "lon", y="lat", more.aes=NULL,
+                    xlim = NA, ylim = NA, basemap=NA, ...){
     
     # regular the limits of axes
     if(is.na(xlim)) 
-      xlim=c(min(checkin[,x]),max(checkin[,x]))
+      xlim=range(point[,x], finite = TRUE)
     if(is.na(ylim)) 
-      ylim=c(min(checkin[,y]),max(checkin[,y]))
+      ylim=range(point[,y], finite = TRUE)
     
     # base map
-    if(is.na(basemap)){
-        gg.map <- ggplot()
-    }else{
-        gg.map <- basemap
-    }
+    gg.map <- with.basemap(basemap)
     
-    # plot the points    
-    if(color.concrete){
-        gg.map <- gg.map +
-            geom_point(data=checkin,
-                       aes_string(x=x, y=y),
-                       color = color, 
-                       alpha = alpha, 
-                       size = point.size,...)
-    } else{
-        gg.map <- gg.map +
-            geom_point(data=checkin,
-                       aes_string(x=x, y=y, color=color),
-                       alpha = alpha, 
-                       size = point.size,...)
-    }
-    
-    gg.map +
-        ggtitle(title)+
-        theme_bw() + # function unit requires library "grid") + 
-        theme(axis.title=element_blank(),axis.text=element_text(size=axis.size),
-              plot.title = element_text(size=title.size),#legend.position="none",
-              legend.title = element_text(size=legend.size),
-              legend.text = element_text(size = legend.size),
-              plot.margin=unit(c(.05,.05,.05,.05),"npc")) + 
+    # flexible aes
+    aes.list = append.aes(aes(x=x, y=y),more.aes)
+
+    gg.map <- gg.map + geom_point(data=checkin,aes.list,...) +
+        theme_bw(base_size = 8)  + 
         coord_map(xlim=xlim,ylim=ylim)
 
 }
@@ -86,18 +59,14 @@ map.plot = function(mapdir=NA,maplayer=NA,mapdf=NA,basemap=NA,
     }
     
     # plot the geographic map
-    if(is.na(basemap)){
-        gg.map <- ggplot() 
-    } else{
-        gg.map <- basemap 
-    }
+    gg.map <- with.basemap(basemap)
     
     # flexible aes
-    aes.list = c(aes(long,lat,group=group),more.aes)
-    class(aes.list) <- "uneval"
+    aes.list = append.aes(aes(long,lat,group=group),more.aes)
 
     gg.map<- gg.map + 
-        geom_polygon(data=shape.df,aes.list,...)+ 
+        geom_polygon(data=shape.df,aes.list,...) + 
+        theme_bw(base_size = 8)  +
         coord_map()
     
 }
@@ -105,21 +74,54 @@ map.plot = function(mapdir=NA,maplayer=NA,mapdf=NA,basemap=NA,
 
 
 ###############################################################
-point.animation.plot = function(checkin, x = "lon", y="lat", 
-                                title="",basemap=NA,...){
+point.animation.plot = function(point, x = "lon", y="lat", split.attr="hour",
+                                basemap=NA, more.aes=NULL, ...){
   
   # must be constrained in the same area
-  xlim = range(checkin[,x], finite = TRUE)
-  ylim = range(checkin[,y], finite = TRUE)
+  xlim = range(point[,x], finite = TRUE)
+  ylim = range(point[,y], finite = TRUE)
   
   # slice the data
   checkin.slices = split(checkin,checkin$hour)
   
   lapply(checkin.slices,function(i){
-      a<-point.plot( i, title=paste(title,i[1,"hour"],": 00"), 
-                     basemap=basemap, xlim=xlim, ylim=ylim,... )
+      a <- point.plot( i, x=x, y=y, basemap=basemap, more.aes=more.aes, 
+                       xlim=xlim, ylim=ylim, ... ) +
+          ggtitle(paste(title, i[1,split.attr],": 00"))
+      
       print(a)
   })
+}
+
+
+
+
+
+###############################################################
+map.animation.plot(point,SPDF,basemap=NA,split.attr="hour",more.aes=NULL,...){
+    
+    xlim = range(point$lon, finite = TRUE)
+    ylim = range(point$lat, finite=TRUE)
+    
+    lapply(split(point,point[,split.attr]),function(i){# data by hour
+        
+        # classify the polygons in the SPDF by the overlapped point data 
+        SPDF = classify.polygon.by.point(point=i, SPDF, clsfy.attr="cate_l1")
+        
+        # plot
+        mapdf=df.from.spdf(SPDF)
+        # mapdf$density=apply(mapdf,1,function(i){i[i["cate.dom"]]})
+        # mapdf$density=as.numeric(formatC(mapdf$density,digits=1,format = "f"))
+        
+        # grid.arrange(
+        a <- map.plot(mapdf = mapdf, more.aes = more.aes, 
+                      basemap = basemap, ...)+
+            xlab("")+ylab("")
+        
+        print(a)
+        
+    })
+    
 }
 
 
@@ -504,7 +506,7 @@ insertcol = function(tab, position, vector=NA, name=NA){
     newtab
 }
 
-##FUNCTION;
+##FUNCTION:
 # convert SpatialPolygonDataFrame to a normal dataframe for plotting
 ##PARAMETERS:
 # SDF: an object of SpatilPolygonDataFrame
@@ -515,3 +517,41 @@ df.from.spdf=function(SPDF){
 }
 
 
+##FUNCTION:
+# common code for plotting something based on a base plot
+with.basemap = function(basemap){
+    if(is.na(basemap)){
+        gg.map <- ggplot()
+    }else{
+        gg.map <- basemap
+    }
+    
+    gg.map
+}
+
+
+##FUNCTION
+# common function for appending aes for plotting
+append.aes = function(aes,...){
+    aes.list = c(aes,...)
+    class(aes.list) <- "uneval"
+    
+    aes.list
+}
+
+##FUNCTION
+# the default settings of plotting
+plot.settings = function(settings){
+    # all the default settings for plotting
+    default = list(color="#55B1F7", alpha = 0.3,
+                   point.size = 0.5, axis.size=8, 
+                   title.size=10, legend.size=8,
+                   title="")
+    # if you want to reload some settings or add new settings
+    for (name in names(settings)){
+        # each attribute in the setting parameter
+        default[[name]] = settings[[name]]
+    }
+    
+    default
+}

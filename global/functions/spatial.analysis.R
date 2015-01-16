@@ -157,3 +157,18 @@ poly.with.category = function(SPDF, cate.distr, poly.attr){
 }
 
 
+##FUNCTION:
+# classify the polygons in a SPDF by the clsfy.attr in the point data
+classify.polygon.by.point = function(point, SPDF, 
+                                     poly.attr="POSTAL", clsfy.attr="cate_l1"){
+    # assign the attribute from SPDF to the point
+    point = point.in.poly(point, SPDF, copy.attr=poly.attr)
+    # get the distribution of categories in each postal code region
+    cate.distr = cate.distr.in.poly(point,poly.attr=poly.attr,
+                                    cate.attr=clsfy.attr)
+    # and use that information to implement the SPDF
+    SPDF = poly.with.category(SPDF, cate.distr=cate.distr, 
+                              poly.attr="POSTAL")
+    
+    SPDF
+}

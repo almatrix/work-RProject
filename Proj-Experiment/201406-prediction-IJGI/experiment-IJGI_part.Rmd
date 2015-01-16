@@ -58,7 +58,7 @@ summary(checkin.NY)
 
  
 
-```{r, fig.width=8, fig.height=6, dpi=300}
+```{r}
 freq.plot(checkin.NY,title="New York City")
 ```
 
@@ -91,10 +91,9 @@ basemap = map.plot("../../global/data/shapefiles",
                    alpha=0.1,size=0.3,color="grey")
 
 saveGIF({
-  point.animation.plot(checkin.NY,title="New York City", 
-                       color="cate_l1", color.concrete=FALSE,
-                       basemap=basemap,axis.size=18,
-                       title.size=24,legend.size=18,point.size=3)
+  point.animation.plot(checkin.NY, more.aes=aes(color=cate_l1),
+                       basemap=basemap, size=3) + 
+      ggtile("New York City")
 }, interval = 0.5, movie.name = "spatiotemporal.gif", 
 ani.width = 1500, ani.height = 1200)
 
@@ -132,11 +131,11 @@ plots <- lapply(split(checkin.NY,checkin.NY$cate_l1),function(ci){
     
     # add cluster information
     gg.map <- point.plot(centers, x="lon.center",y="lat.center",
-                         color= "cid.ordered", color.concrete=FALSE,
-                         point.size = log(centers$size,5),alpha = 0.7,
+                         more.aes = aes(color=cid.ordered),
                          basemap=gg.map,
                          xlim=range(checkin.NY$lon,finite=TRUE),
-                         ylim=range(checkin.NY$lat,finite=TRUE))
+                         ylim=range(checkin.NY$lat,finite=TRUE),
+                         size = log(centers$size,5),alpha = 0.7)
     
     # some plot configuration
     gg.map <- gg.map + ggtitle(ci[1,"cate_l1"]) +
@@ -145,49 +144,44 @@ plots <- lapply(split(checkin.NY,checkin.NY$cate_l1),function(ci){
     
 })
 
+
 # png("categorized_clustering.png",width=15*ppi,height=6*ppi,res=ppi)
-grid.arrange(plots[[1]],plots[[2]],plots[[3]],plots[[4]],
-             plots[[5]],plots[[6]],plots[[7]],plots[[8]], 
-             plots[[9]],plots[[10]],nrow=4, ncol=3)
+# grid.arrange(plots[[1]],plots[[2]],plots[[3]],plots[[4]],
+#              plots[[5]],plots[[6]],plots[[7]],plots[[8]], 
+#              plots[[9]],plots[[10]],nrow=4, ncol=3)
 # dev.off()
+
+plots[[1]];plots[[2]];plots[[3]];plots[[4]];plots[[5]];plots[[6]];plots[[7]];plots[[8]]; plots[[9]];plots[[10]]
 ```
 
 We could also see the most domimant categories in each part of the entire city.
 
 ```{r}
+
+# plot the map, and each polygon is filled with its dominant category
+# SPDF: a SpatialPolygonDataFrame, which should include the information for 
+# filling options
+
 # prepare polygon data
 SPDF = readOGR(dsn = "../../global/data/shapefiles", layer = "NYC_zipcode")
-# intersect the checkin data with the each postal code region
-checkin.NY = point.in.poly(checkin.NY, SPDF, copy.attr="POSTAL")
-# get the distribution of categories in each postal code region
-cate.distr=cate.distr.in.poly(checkin.NY)
-# and use that information to implement the SPDF
-SPDF = poly.with.category(SPDF, cate.distr=cate.distr, poly.attr="POSTAL")
-
-# plot
-
+# classify the polygons in the SPDF by the overlapped point data 
+SPDF = classify.polygon.by.point(point=checkin.NY, SPDF, clsfy.attr="cate_l1")
 mapdf=df.from.spdf(SPDF)
-# mapdf$density=apply(mapdf,1,function(i){i[i["cate.dom"]]})
-# mapdf$density=as.numeric(formatC(mapdf$density,digits=1,format = "f"))
-# png("main_category.png",height=6*ppi, width=16*ppi,res=ppi)
-grid.arrange(
-map.plot(mapdf=mapdf,
-         more.aes=aes_string(fill="Category.1st"),
-         color="grey",size=0.3,alpha=0.9)+
-    theme_bw()+
-    xlab("")+ylab("")+
-    theme(legend.title = element_text(size=8),
-          legend.text = element_text(size = 8)),
-map.plot(mapdf=mapdf,
-         more.aes=aes_string(fill="Category.2nd"),
-         color="grey",size=0.3,alpha=0.7)+
-    theme_bw()+
-    xlab("")+ylab("")+
-    theme(legend.title = element_text(size=8),
-          legend.text = element_text(size = 8)),
-nrow=1, ncol=2, widths=c(1,1) )
-# dev.off()
+        # mapdf$density=apply(mapdf,1,function(i){i[i["cate.dom"]]})
+        # mapdf$density=as.numeric(formatC(mapdf$density,digits=1,format = "f"))
 
+map.plot(mapdf = mapdf, more.aes = aes(fill=Category.1st),
+         color="grey",size=0.3,alpha=0.7)+
+    xlab("")+ylab("")
+
+
+```
+
+Such map can also be visualized with time to show the impact of both time and
+space...
+
+```{r}
+map.animation.plot(point=checkin.NY,SPDF,more.aes=aes(fill=Category.1st))
 ```
 
 
