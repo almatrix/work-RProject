@@ -5,13 +5,6 @@ date: "Thursday, January 15, 2015"
 output: html_document
 ---
 
----
-title: "Demonstration of Experiments (paper IJGI)"
-author: "Ming Li"
-date: "Tuesday, August 19, 2014"
-output: html_document
----
-
 
 ```{r,echo=FALSE,include=FALSE}
 library(rgeos)
@@ -94,6 +87,15 @@ saveGIF({
   point.animation.plot(checkin.NY, more.aes=aes(color=cate_l1),
                        basemap=basemap, size=3, title="New York City")
 }, interval = 0.5, movie.name = "spatiotemporal.gif", 
+ani.width = 1500, ani.height = 1200)
+
+user.id = names(which.max(table(checkin.NY$user_id)))
+checkin.user = checkin.NY[checkin.NY$user_id==user.id,
+                  c("lat","lon","yearday","hour","datetime","cate_l1")]
+saveGIF({
+  point.animation.plot(checkin.user, more.aes=aes(color=cate_l1),
+                       basemap=basemap, size=3, title="New York City")
+}, interval = 0.5, movie.name = "spatiotemporal.single.gif", 
 ani.width = 1500, ani.height = 1200)
 
 ```
