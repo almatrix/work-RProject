@@ -89,14 +89,6 @@ saveGIF({
 }, interval = 0.5, movie.name = "spatiotemporal.gif", 
 ani.width = 1500, ani.height = 1200)
 
-user.id = names(which.max(table(checkin.NY$user_id)))
-checkin.user = checkin.NY[checkin.NY$user_id==user.id,
-                  c("lat","lon","yearday","hour","datetime","cate_l1")]
-saveGIF({
-  point.animation.plot(checkin.user, more.aes=aes(color=cate_l1),
-                       basemap=basemap, size=3, title="New York City")
-}, interval = 0.5, movie.name = "spatiotemporal.single.gif", 
-ani.width = 1500, ani.height = 1200)
 
 ```
 
@@ -196,7 +188,7 @@ ani.width = 1500, ani.height = 1200)
 ### Meteorological: Correspondence analysis
 
 ```{r}
-cate.conds = xtabs(~conds+cate_l1, data=checkin.NY)
+cate.conds = xtabs(~conds+cate_l2, data=checkin.NY)
 #prop.table(cate.conds, 1) # row percentages
 #prop.table(cate.conds, 2) # column percentages
 fit <- ca(cate.conds)
@@ -230,42 +222,88 @@ $$Exp[P(C=k|H=i,W=j)]=Exp[ \frac{P(H=i,W=j|C=k)*P(C=k)} {P(H=i)*P(W=j)}] \\\
 $$P_{u}(C=k|H=i)=\frac{\Phi_{u}(C=k,H=i)}{\Phi_{u} (H=i)} (4)$$
 
 ```{r}
-get.temporal.impact <- function(dataframe,hour){
-    # dataframe.in.hour = checkin.single[which(checkin.single$hour==hour),]
-    dataframe.in.hour = dataframe[which(dataframe$hour==hour),]
-    phi.h = nrow(dataframe.in.hour)
+get.temporal.impact <- function(dataframe){
     
-    list.category = split(dataframe.in.hour, dataframe.in.hour$cate_l2)
-    sapply(list.category, function(i){
-        nrow(i)/phi.h
+    hours = formatC(c(0:23),width=2,flag="0")
+    
+    list.pr = lapply(hours, function(hour){
+        print(hour)
+        data.in.hour = dataframe[dataframe$hour==hour,]
+        freq.tab = as.data.frame(table(data.in.hour$cate_l2))
+        freq.df = data.frame(t(freq.tab$Freq / sum(freq.tab$Freq) ))
+        colnames(freq.df) = freq.tab$Var1
+        
+        freq.df
     })
+    
+    do.call(rbind,list.pr)
+#     dataframe.in.hour = dataframe[which(dataframe$hour==hour),]
+#     phi.h = nrow(dataframe.in.hour)
+#     
+#     list.category = split(dataframe.in.hour, dataframe.in.hour$cate_l2)
+#     sapply(list.category, function(i){
+#         nrow(i)/phi.h
+#     })
 }
 
+
+pr.t = get.temporal.impact(checkin.NY)
 ```
+
+
+* relevance contextualized by spatial factor
+```{r}
+cate.distr = cate.distr.in.poly(checkin.NY,poly.attr="POSTAL",
+                                    cate.attr="cate_l2")
+get.spatial.impact <- function(SPDF, lat, lon,poly.attr="POSTAL"){
+    spt = SpatialPointsDataFrame(coords=data.frame(x=lon,y=lat),
+                                  data=data.frame(lon=lon,lat=lat), 
+                                  proj4string=CRS(crs.wgs84.str))
+    
+    # intersect the two layers, and copy the information specified by 
+    # "copy.attr" from the intersecting polygon to the point
+    region.id = over(spt, SPDF)[,poly.attr]
+    cate.distr[region.id, ]
+}
+```
+
+
 
 * relevance contextualized by (unweighted meteorological) factor 
 
 $$P_{u}(C=k|W=j)=\frac{Intercept(C=k,W=j)}{\sum Intercept(C,W=j)} (5)$$
 
 ```{r}
-get.meteorological.impact <- function(fit,conds){
+get.meteorological.impact <- function(fit){
     
-    conds.id = which(fit[["rownames"]]==conds)
-    ref.vec = fit[["rowcoord"]][conds.id,1:8]
-    cate.all = fit[["colcoord"]][,1:8]
+    conds = fit[["rownames"]]
     
-    intercepts = apply(cate.all, 1, function(x){ 
+    pr.list = lapply(conds, function(cond){
+        conds.id = which(fit[["rownames"]]==conds)
+        ref.vec = fit[["rowcoord"]][conds.id,1:8]
+        cate.all = fit[["colcoord"]][,1:8]
+        
+        intercepts = apply(cate.all, 1, function(x){ 
         (x[1]*ref.vec[1] + x[2]*ref.vec[2] + x[3]*ref.vec[3] + x[4]*ref.vec[4] +
              x[5]*ref.vec[5] + x[6]*ref.vec[6] + x[7]*ref.vec[7] + x[8]*ref.vec[8] ) /
             (ref.vec[1]^2 + ref.vec[2]^2 + ref.vec[3]^2 + ref.vec[4]^2 +
                  ref.vec[5]^2 + ref.vec[6]^2 + ref.vec[7]^2 + ref.vec[8]^2 ) 
         } )
+        
+        # vec = intercepts / sum(intercepts)  !!!wrong!!! intercetp can be negative
+        # scale into [0,1]
+        vec = (intercepts - min(intercepts)) / (max(intercepts)-min(intercepts)) 
+
+        df = data.frame(t(vec))
+        colnames(df) = fit[["colnames"]]
+        rownames(df) = cond
+        
+        df
+    })
     
-#     vec = intercepts / sum(intercepts)  !!!wrong!!! intercetp can be negative
-    vec = (intercepts - min(intercepts)) / (max(intercepts)-min(intercepts)) # scale into [0,1]
-    names(vec) = fit[["colnames"]]
     
-    vec
+    do.call(rbind,pr.list)
+
 }
 
 get.meteorological.impact2 <- function(dataframe,conds){
@@ -289,27 +327,41 @@ $$P_{u}^{*} (C=k|W=j)= w_{j}*[P_{u}(C=k|W=j)-\bar P_{u}]+\bar P_{u}$$
 ```{r}
 
 get.weather.weight <- function(fit){
-    
     conds.all = fit[["rowcoord"]][,1:2]
     
     mag = apply(conds.all, 1, function(x){ 
         sqrt( (x[1]^2+x[2]^2) )
         } )
     
-    mag / sum(mag)
+    vec = mag / sum(mag)
+    names(vec) = fit[["rownames"]]
+    vec
 }
 
-get.weighted.meteorological.impact <- function(fit, conds, weight){
+get.weighted.meteorological.impact <- function(fit){
     
 #     cate.conds = xtabs(~conds+cate_l2, data=dataframe)
 #     fit <- ca(cate.conds)
+    conds = fit[["rownames"]]
     
-    unweighted = get.meteorological.impact(fit,conds)
-#     weights = get.weather.weight(fit)
+    unweighted = get.meteorological.impact(fit)
+    weights = get.weather.weight(fit)
     
 #     conds.id = which(fit[["rownames"]]==conds)
     
 #     vec = weights[conds.id] * (unweighted-mean(unweighted)) + mean(unweighted)
+    lapply(conds, function(cond){
+        weight = weights[cond]
+        unweighted.cond = unlist(unweighted[cond,])
+        vec = weight * (unweighted.cond-mean(unweighted.cond,na.rm = TRUE)) + 
+            mean(unweighted.cond)
+## here@!
+        df = data.frame(t(vec))
+        colnames(df) = fit[["colnames"]]
+        rownames(df) = cond
+        
+        df
+    })
     vec = weight * (unweighted-mean(unweighted)) + mean(unweighted)
     names(vec) = fit[["colnames"]]
     
@@ -338,22 +390,62 @@ $$P(C=k)=\frac{\Phi_{u} (C=k) }{\Phi_{u} }$$
 ```{r}
 get.denominator <- function(dataframe){
     
-    phi.h = nrow(dataframe)
+#     phi.h = nrow(dataframe)
+#     
+#     list.category = split(dataframe, dataframe$cate_l2)
+#     denominator = sapply(list.category, function(i){
+#         nrow(i)/phi.h
+#     })
+#     
+#     denominator
     
-    list.category = split(dataframe, dataframe$cate_l2)
-    denominator = sapply(list.category, function(i){
-        nrow(i)/phi.h
-    })
+    freq.tab = as.data.frame(table(dataframe$cate_l2))
     
-    denominator
-
+    df = data.frame(t(freq.tab$Freq / sum(freq.tab$Freq)))
+    colnames(df) = freq.tab$Var1
     
+    df
 }
 ```
 
 * the final result 
 
 $$E[P(C=k|H=i,W=j)]=\frac{P(C=k|H=i)*P(C=k|W=j)}{P(C=k)}$$
+
+1. global 
+
+```{r}
+# global matrix
+
+apply(checkin.NY[1:10,],1,function(i){
+    hour = i$hour
+    conds = i$conds
+    lat = i$lat
+    lon = i$lon
+    real = i$cate_l2
+    
+    
+    pr.s = get.spatial.impact(SPDF,lat=lat,lon=lon)
+    wgt.w = get.weather.weight(fit)
+    pr.w = get.weighted.meteorological.impact(checkin.NY,conds)
+    pr.d = get.denominator(checkin.NY)
+    
+    pr.ave = pr.t * pr.s * pr.w / pr.d
+    
+    pred = sort(pr.ave, decreasing = TRUE)[1:20]
+    
+    res = rep(0,20)
+    for (p in 1:20){
+        if (pred[p]==real)
+            {res[p]=1; break}
+    }
+    
+    res
+})
+
+```
+
+
 
 **update @2014.09.04**
 
