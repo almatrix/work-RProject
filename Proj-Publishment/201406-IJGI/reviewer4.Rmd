@@ -32,24 +32,15 @@ The topic discussed in the paper is interesting and pertinent to the journal. Th
 ```
 
 
-
----
-
 ```
 The selection of the context elements seems to be only driven by available data. No specific reason behind the selection of the two selected context element is provided. In general, it is hard to imagine that a large part of the population would run to a particular category of places just because of the time of the day and weather conditions. In fact most distributions in Figure 3 are quite similar in shape and values, and not particularly skwed, and even the results shown in Figure 5 do not suggest a strong impact of weather conditions on checkins -- despite maybe heavy snow.
 ```
 
 
-
----
-
 ```
 Despite discussing the relevance of geographic objects (shops, recreation centres, etc) and using data from location-based social network, no context element related to space is taken into account. This is related to the fact that the authors point at assessing the relevance of categories, rather than single geographic objects. The ultimate reason of this choice is not discussed.
 ```
 
-
-
----
 
 ```
 The algorithm compute global patterns and correlations relating time and weather with object category for the whole dataset of users and then apply the outcome to a single user. This is problematic in two ways:
@@ -60,22 +51,13 @@ The algorithm compute global patterns and correlations relating time and weather
 ```
 
 
-
----
-
 ```
 The algorithm is tested on a random sample of 200 checkin of one single user who produced 3925 checkins in 150 days. This is not a suitable choice, as this doesn't represent a typical user. Considering that the algorithm isn't in any way tailored to a user, nor account for previous checkins, there is no necessity to limit the test to a single user.
 ```
 
 
-
----
-
 ```
 The overall performance of the algorithm seems pretty low, but this outcome is not clearly reported in the conclusion. Contrariwise, the conclusion state that the presented algorithm "demonstrates the assumptions" that data from location-based social network can help solve the information filtering problem, which is not a conclusion that can be derived by the presented results.
 ```
 
-
-
----
 
