@@ -227,7 +227,6 @@ get.temporal.impact <- function(dataframe){
     hours = formatC(c(0:23),width=2,flag="0")
     
     list.pr = lapply(hours, function(hour){
-        print(hour)
         data.in.hour = dataframe[dataframe$hour==hour,]
         freq.tab = as.data.frame(table(data.in.hour$cate_l2))
         freq.df = data.frame(t(freq.tab$Freq / sum(freq.tab$Freq) ))
@@ -247,24 +246,18 @@ get.temporal.impact <- function(dataframe){
 }
 
 
-pr.t = get.temporal.impact(checkin.NY)
 ```
 
 
 * relevance contextualized by spatial factor
 ```{r}
-cate.distr = cate.distr.in.poly(checkin.NY,poly.attr="POSTAL",
-                                    cate.attr="cate_l2")
-get.spatial.impact <- function(SPDF, lat, lon,poly.attr="POSTAL"){
-    spt = SpatialPointsDataFrame(coords=data.frame(x=lon,y=lat),
-                                  data=data.frame(lon=lon,lat=lat), 
-                                  proj4string=CRS(crs.wgs84.str))
-    
-    # intersect the two layers, and copy the information specified by 
-    # "copy.attr" from the intersecting polygon to the point
-    region.id = over(spt, SPDF)[,poly.attr]
-    cate.distr[region.id, ]
+checkin.in.poly = point.in.poly(checkin, SPDF, copy.attr=poly.attr)
+get.spatial.impact <- function(checkin.in.poly, 
+                               poly.attr="POSTAL",cate.attr="cate_l2"){
+    mat = cate.distr.in.poly(checkin.in.poly, poly.attr=poly.attr,cate.attr=cate.attr)
+    mat[,1:(ncol(mat)-4)]
 }
+
 ```
 
 
@@ -350,7 +343,7 @@ get.weighted.meteorological.impact <- function(fit){
 #     conds.id = which(fit[["rownames"]]==conds)
     
 #     vec = weights[conds.id] * (unweighted-mean(unweighted)) + mean(unweighted)
-    lapply(conds, function(cond){
+    pr.list = lapply(conds, function(cond){
         weight = weights[cond]
         unweighted.cond = unlist(unweighted[cond,])
         vec = weight * (unweighted.cond-mean(unweighted.cond,na.rm = TRUE)) + 
@@ -362,11 +355,11 @@ get.weighted.meteorological.impact <- function(fit){
         
         df
     })
-    vec = weight * (unweighted-mean(unweighted)) + mean(unweighted)
-    names(vec) = fit[["colnames"]]
-    
-    vec
-    
+#     vec = weight * (unweighted-mean(unweighted)) + mean(unweighted)
+#     names(vec) = fit[["colnames"]]
+#     
+#     vec
+    do.call(rbind,pr.list)
 }
 
 
@@ -416,36 +409,71 @@ $$E[P(C=k|H=i,W=j)]=\frac{P(C=k|H=i)*P(C=k|W=j)}{P(C=k)}$$
 
 ```{r}
 # global matrix
-
-apply(checkin.NY[1:10,],1,function(i){
-    hour = i$hour
-    conds = i$conds
-    lat = i$lat
-    lon = i$lon
-    real = i$cate_l2
+pr.t.mat = get.temporal.impact(checkin.NY)
+pr.w.mat = get.weighted.meteorological.impact(fit)
+pr.s.mat = get.spatial.impact(checkin.in.poly)
+pr.d = unlist(get.denominator(checkin.NY))
+checkin.in.poly = na.omit(checkin.in.poly)
+result = lapply(1:nrow(checkin.in.poly),function(i){
+    if(i%%500==1)print(paste(Sys.time(),i))
     
+    checkin = checkin.in.poly[i,]
+    hour = checkin$hour
+    conds = checkin$conds
+    polygon = checkin$POSTAL
+    real = as.character(checkin$cate_l2)
     
-    pr.s = get.spatial.impact(SPDF,lat=lat,lon=lon)
-    wgt.w = get.weather.weight(fit)
-    pr.w = get.weighted.meteorological.impact(checkin.NY,conds)
-    pr.d = get.denominator(checkin.NY)
+    if (!is.na(hour)) {
+        pr.t = unlist(pr.t.mat[hour,])
+    } else {pr.t = pr.d}
+    if(!is.na(conds)) {
+        pr.w = unlist(pr.w.mat[conds,])
+    } else {pr.w = 1}
+    if(!is.na(polygon)) {
+        pr.s = unlist(pr.s.mat[polygon,])
+    } else {pr.s = pr.d}
     
     pr.ave = pr.t * pr.s * pr.w / pr.d
     
-    pred = sort(pr.ave, decreasing = TRUE)[1:20]
+    pred.d = sort(pr.d, decreasing = TRUE)[1:20]
+    pred.t = sort(pr.t, decreasing = TRUE)[1:20]
+    pred.s = sort(pr.s, decreasing = TRUE)[1:20]
+    pred.w = sort(pr.w, decreasing = TRUE)[1:20]
+    pred.all = sort(pr.ave, decreasing = TRUE)[1:20]
     
-    res = rep(0,20)
+    res = rep(0,100)
     for (p in 1:20){
-        if (pred[p]==real)
-            {res[p]=1; break}
+        if (names(pred.d[p])==real){res[p:20]=1}
+        if (names(pred.t[p])==real){res[(20+p):40]=1}
+        if (names(pred.s[p])==real){res[(40+p):60]=1}
+        if (names(pred.w[p])==real){res[(60+p):80]=1}
+        if (names(pred.all[p])==real){res[(80+p):100]=1}
     }
     
-    res
+    df = data.frame(t(res))
+    colnames(df)=c(paste("none",c(1:20),sep="_"),
+                   paste("time",c(1:20),sep="_"),
+                   paste("space",c(1:20),sep="_"),
+                   paste("weather",c(1:20),sep="_"),
+                   paste("all",c(1:20),sep="_"))
+    
+    df
 })
 
+result = do.call(rbind,result)
 ```
 
 
+compare the result with other results that did not consider or consider only
+one of the contextual factors
+
+```{r}
+test = apply(result,2,function(i){
+    sum(i) / nrow(checkin.in.poly)
+})
+
+ 
+```
 
 **update @2014.09.04**
 
