@@ -251,7 +251,7 @@ get.temporal.impact <- function(dataframe){
 
 * relevance contextualized by spatial factor
 ```{r}
-checkin.in.poly = point.in.poly(checkin, SPDF, copy.attr=poly.attr)
+checkin.in.poly = point.in.poly(checkin.NY, SPDF, copy.attr="POSTAL")
 get.spatial.impact <- function(checkin.in.poly, 
                                poly.attr="POSTAL",cate.attr="cate_l2"){
     mat = cate.distr.in.poly(checkin.in.poly, poly.attr=poly.attr,cate.attr=cate.attr)
@@ -414,14 +414,19 @@ pr.w.mat = get.weighted.meteorological.impact(fit)
 pr.s.mat = get.spatial.impact(checkin.in.poly)
 pr.d = unlist(get.denominator(checkin.NY))
 checkin.in.poly = na.omit(checkin.in.poly)
-result = lapply(1:nrow(checkin.in.poly),function(i){
-    if(i%%500==1)print(paste(Sys.time(),i))
+
+checkin.in.poly$flag = paste(checkin.in.poly$hour,checkin.in.poly$POSTAL,
+                             checkin.in.poly$conds)
+counting = 0
+prediction = lapply(split(checkin.in.poly, checkin.in.poly$flag),function(i){
+    counting <<- nrow(i)+counting
+    print(paste(Sys.time(),"processed",counting,"records."))
     
-    checkin = checkin.in.poly[i,]
-    hour = checkin$hour
-    conds = checkin$conds
-    polygon = checkin$POSTAL
-    real = as.character(checkin$cate_l2)
+    hour = i[1,"hour"]
+    conds = i[1,"conds"]
+    polygon = i[1,"POSTAL"]
+    
+    real.list = as.character(i$cate_l2)
     
     if (!is.na(hour)) {
         pr.t = unlist(pr.t.mat[hour,])
@@ -441,26 +446,35 @@ result = lapply(1:nrow(checkin.in.poly),function(i){
     pred.w = sort(pr.w, decreasing = TRUE)[1:20]
     pred.all = sort(pr.ave, decreasing = TRUE)[1:20]
     
-    res = rep(0,100)
-    for (p in 1:20){
-        if (names(pred.d[p])==real){res[p:20]=1}
-        if (names(pred.t[p])==real){res[(20+p):40]=1}
-        if (names(pred.s[p])==real){res[(40+p):60]=1}
-        if (names(pred.w[p])==real){res[(60+p):80]=1}
-        if (names(pred.all[p])==real){res[(80+p):100]=1}
-    }
-    
-    df = data.frame(t(res))
-    colnames(df)=c(paste("none",c(1:20),sep="_"),
+    do.call(rbind, lapply(real.list,function(real){
+        res = rep(0,100)
+        
+        p1 =  which(names(pred.d)==as.character(real))
+        p2 =  which(names(pred.t)==as.character(real))
+        p3 =  which(names(pred.s)==as.character(real))
+        p4 =  which(names(pred.w)==as.character(real))
+        p5 =  which(names(pred.all)==as.character(real))
+        
+        if(length(p1)) res[p1:20]=1
+        if(length(p2)) res[(p2+20):40]=1
+        if(length(p3)) res[(p3+40):60]=1
+        if(length(p4)) res[(p4+60):80]=1
+        if(length(p5)) res[(p5+80):100]=1
+        
+        df = data.frame(t(res))
+        colnames(df)=c(paste("none",c(1:20),sep="_"),
                    paste("time",c(1:20),sep="_"),
                    paste("space",c(1:20),sep="_"),
                    paste("weather",c(1:20),sep="_"),
                    paste("all",c(1:20),sep="_"))
+        
+        df
+    }))
     
-    df
+   
 })
 
-result = do.call(rbind,result)
+prediction = do.call(rbind,prediction)
 ```
 
 
@@ -468,12 +482,70 @@ compare the result with other results that did not consider or consider only
 one of the contextual factors
 
 ```{r}
-test = apply(result,2,function(i){
-    sum(i) / nrow(checkin.in.poly)
-})
+performance = data.frame( apply(prediction,2,function(i){
+    sum(i) / nrow(prediction)
+}))
+performance$group = rep(c("none","time","space","weather","all"),each=20)
+performance$length = rep(c(1:20),5)
+colnames(performance)[1]="value"
 
- 
+ggplot(data=performance,aes(x=length, y=value, group = group, colour = group)) +
+    geom_line() +
+    geom_point( size=4, shape=21, fill="white")
 ```
+
+
+analyze the relations between the performance and various factors
+
+```{r}
+# perforamnce (on length of 5) v.s. hour
+prediction$hour=checkin.in.poly[1:5000,"hour"]
+prediction$polygon=checkin.in.poly[1:5000,"POSTAL"]
+prediction$conds=checkin.in.poly[1:5000,"conds"]
+prediction$user=checkin.in.poly[1:5000,"user_id"]
+
+performance.vs.hour = lapply(split(prediction,prediction$hour),function(i){
+    data.frame("precision"=sum(i$all_5) / nrow(i),
+               "hour"=i[1,"hour"],
+               "massive"=nrow(i))
+})
+performance.vs.hour = do.call(rbind, performance.vs.hour)
+ggplot(performance.vs.hour,aes(x=massive,y=precision))+
+    geom_point()+
+    geom_text(aes(label=hour),hjust=0, vjust=0)
+
+
+performance.vs.space = lapply(split(prediction,prediction$polygon),function(i){
+    data.frame("precision"=sum(i$all_5) / nrow(i),
+               "polygon"=i[1,"polygon"],
+               "massive"=nrow(i))
+})
+performance.vs.space = do.call(rbind, performance.vs.space)
+ggplot(performance.vs.space,aes(x=massive,y=precision))+
+    geom_point()
+
+
+performance.vs.conds = lapply(split(prediction,prediction$conds),function(i){
+    data.frame("precision"=sum(i$all_5) / nrow(i),
+               "conds"=i[1,"conds"],
+               "massive"=nrow(i))
+})
+performance.vs.conds = do.call(rbind, performance.vs.conds)
+ggplot(performance.vs.conds,aes(x=massive,y=precision))+
+    geom_point()+
+    geom_text(aes(label=conds),hjust=0, vjust=0)
+
+performance.vs.user = lapply(split(prediction,prediction$user),function(i){
+    data.frame("precision"=sum(i$all_5) / nrow(i),
+               "user"=i[1,"user"],
+               "massive"=nrow(i))
+})
+performance.vs.user = do.call(rbind, performance.vs.user)
+ggplot(performance.vs.space,aes(x=massive,y=precision))+
+    geom_point()
+```
+
+
 
 **update @2014.09.04**
 
