@@ -8,3 +8,5 @@
 *.log
 
 bm_demo.gif
+
+*.history
