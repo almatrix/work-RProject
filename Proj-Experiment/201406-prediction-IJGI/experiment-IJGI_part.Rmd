@@ -226,23 +226,15 @@ get.temporal.impact <- function(dataframe){
     
     hours = formatC(c(0:23),width=2,flag="0")
     
-    list.pr = lapply(hours, function(hour){
+    do.call(rbind, lapply(hours, function(hour){
         data.in.hour = dataframe[dataframe$hour==hour,]
         freq.tab = as.data.frame(table(data.in.hour$cate_l2))
         freq.df = data.frame(t(freq.tab$Freq / sum(freq.tab$Freq) ))
         colnames(freq.df) = freq.tab$Var1
         
         freq.df
-    })
-    
-    do.call(rbind,list.pr)
-#     dataframe.in.hour = dataframe[which(dataframe$hour==hour),]
-#     phi.h = nrow(dataframe.in.hour)
-#     
-#     list.category = split(dataframe.in.hour, dataframe.in.hour$cate_l2)
-#     sapply(list.category, function(i){
-#         nrow(i)/phi.h
-#     })
+    }) )
+
 }
 
 
@@ -251,7 +243,7 @@ get.temporal.impact <- function(dataframe){
 
 * relevance contextualized by spatial factor
 ```{r}
-checkin.in.poly = point.in.poly(checkin.NY, SPDF, copy.attr="POSTAL")
+checkin.in.poly = na.omit(point.in.poly(checkin.NY, SPDF, copy.attr="POSTAL"))
 get.spatial.impact <- function(checkin.in.poly, 
                                poly.attr="POSTAL",cate.attr="cate_l2"){
     mat = cate.distr.in.poly(checkin.in.poly, poly.attr=poly.attr,cate.attr=cate.attr)
@@ -271,7 +263,7 @@ get.meteorological.impact <- function(fit){
     
     conds = fit[["rownames"]]
     
-    pr.list = lapply(conds, function(cond){
+    do.call(rbind, lapply(conds, function(cond){
         conds.id = which(fit[["rownames"]]==conds)
         ref.vec = fit[["rowcoord"]][conds.id,1:8]
         cate.all = fit[["colcoord"]][,1:8]
@@ -292,25 +284,19 @@ get.meteorological.impact <- function(fit){
         rownames(df) = cond
         
         df
-    })
-    
-    
-    do.call(rbind,pr.list)
+    }) )
 
 }
 
 get.meteorological.impact2 <- function(dataframe){
 
-    list.pr = lapply(split(dataframe,dataframe$conds), function(conds){
-#         data.in.conds = dataframe[dataframe$conds==conds,]
+    do.call(rbind, lapply(split(dataframe,dataframe$conds), function(conds){
         freq.tab = as.data.frame(table(conds$cate_l2))
         freq.df = data.frame(t(freq.tab$Freq / sum(freq.tab$Freq) ))
         colnames(freq.df) = freq.tab$Var1
         
         freq.df
-    })
-    
-    do.call(rbind,list.pr)
+    }) )
 }
 
 ```
@@ -346,23 +332,18 @@ get.weighted.meteorological.impact <- function(fit){
 #     conds.id = which(fit[["rownames"]]==conds)
     
 #     vec = weights[conds.id] * (unweighted-mean(unweighted)) + mean(unweighted)
-    pr.list = lapply(conds, function(cond){
+    do.call(rbind, lapply(conds, function(cond){
         weight = weights[cond]
         unweighted.cond = unlist(unweighted[cond,])
         vec = weight * (unweighted.cond-mean(unweighted.cond,na.rm = TRUE)) + 
             mean(unweighted.cond,na.rm = TRUE)
-## here@!
+
         df = data.frame(t(vec))
         colnames(df) = fit[["colnames"]]
         rownames(df) = cond
         
         df
-    })
-#     vec = weight * (unweighted-mean(unweighted)) + mean(unweighted)
-#     names(vec) = fit[["colnames"]]
-#     
-#     vec
-    do.call(rbind,pr.list)
+    }))
 }
 
 
@@ -386,15 +367,6 @@ $$P(C=k)=\frac{\Phi_{u} (C=k) }{\Phi_{u} }$$
 ```{r}
 get.denominator <- function(dataframe){
     
-#     phi.h = nrow(dataframe)
-#     
-#     list.category = split(dataframe, dataframe$cate_l2)
-#     denominator = sapply(list.category, function(i){
-#         nrow(i)/phi.h
-#     })
-#     
-#     denominator
-    
     freq.tab = as.data.frame(table(dataframe$cate_l2))
     
     df = data.frame(t(freq.tab$Freq / sum(freq.tab$Freq)))
@@ -411,20 +383,19 @@ $$E[P(C=k|H=i,W=j)]=\frac{P(C=k|H=i)*P(C=k|W=j)}{P(C=k)}$$
 1. global 
 
 ```{r}
+
 # global matrix
-pr.t.mat = get.temporal.impact(checkin.NY)
-# pr.w.mat = get.weighted.meteorological.impact(fit)
-pr.w.mat = get.meteorological.impact2(checkin.in.poly)
+pr.t.mat = get.temporal.impact(checkin.in.poly)
+pr.w.mat = get.weighted.meteorological.impact(fit)
+# pr.w.mat = get.meteorological.impact2(checkin.in.poly)
 pr.s.mat = get.spatial.impact(checkin.in.poly)
-pr.d = unlist(get.denominator(checkin.NY))
-checkin.in.poly = na.omit(checkin.in.poly)
+pr.d = unlist(get.denominator(checkin.in.poly))
 
 checkin.in.poly$flag = paste(checkin.in.poly$hour,checkin.in.poly$POSTAL,
                              checkin.in.poly$conds)
 flag.list = split(checkin.in.poly, checkin.in.poly$flag)
-
-counter = 0; prediction = data.frame()
-temp = lapply(flag.list,function(i){
+counter = 0 
+prediction = do.call(rbind, lapply(flag.list,function(i){
     counter <<- nrow(i)+counter
     print(paste(Sys.time(),"processed",counter,"records."))
     
@@ -442,7 +413,7 @@ temp = lapply(flag.list,function(i){
     } else {pr.t = pr.d}
     if(!is.na(conds)) {
         pr.w = unlist(pr.w.mat[conds,])
-    } else {pr.w = 1}
+    } else {pr.w = pr.d}
     if(!is.na(polygon)) {
         pr.s = unlist(pr.s.mat[polygon,])
     } else {pr.s = pr.d}
@@ -477,15 +448,12 @@ temp = lapply(flag.list,function(i){
     # additional information 
     df$user = i$user_id
     
-    prediction <<- rbind(prediction, df)
-    
-    NA
-})
+    df
+}))
 
-rm(temp)
-save(prediction,file="../../global/data/Rda-saved/prediction.records.weather2.Rda")
-save(prediction,file="../../global/data/Rda-saved/prediction.records.Rda")
+save(prediction,file="../../global/data/Rda-saved/prediction.records.weather1.Rda")
 print(Sys.time())
+
 ```
 
 
@@ -497,12 +465,14 @@ one of the contextual factors
 # density
 ggplot(melt(prediction[,1:5]))+
     stat_density(aes(x=value,group=variable,color=variable),
-                 size=1.2,fill="grey",alpha=0.4,position="identity")+
-    xlim(1,50)
+                 size=0.5,fill="grey",alpha=0.1,position="identity")+
+    xlim(0,50)+
+    xlab("Length to be correct")+
+    ylab("Density")
 
 
 # precision and recall
-rate = lapply(1:30, function(N){ # list length: N
+rate = do.call( rbind, lapply(1:30, function(N){ # list length: N
     # number of correct
     c1 = length(which(prediction$None<=N)) / nrow(prediction)
     c2 = length(which(prediction$Temporal<=N)) / nrow(prediction)
@@ -512,8 +482,7 @@ rate = lapply(1:30, function(N){ # list length: N
     
     data.frame("Length"=N,"None"=c1,"Temporal"=c2,"Spatial"=c3,
                "Meteorological"=c4,"All"=c5)
-})
-rate= do.call(rbind,rate)
+}) )
 
 ggplot(melt(rate,id="Length"),aes(x=Length,y=value,color=variable))+
     geom_line()+
@@ -526,71 +495,90 @@ analyze the relations between the performance and various factors
 
 ```{r}
 # perforamnce (on length of 5) v.s. hour
-performance.vs.hour = lapply(split(prediction,prediction$Hour),function(i){
-    data.frame("Precision"=length(which(prediction$All<=5)) / nrow(i),
+performance.vs.hour = do.call(rbind,lapply(split(prediction,prediction$Hour),
+                                           function(i){
+    rbind(data.frame("Precision"=length(which(i$All<=5)) / nrow(i),
                "Hour"=i[1,"Hour"],
-               "Massive"=nrow(i))
-})
-performance.vs.hour = do.call(rbind, performance.vs.hour)
-ggplot(performance.vs.hour,aes(x=Massive,y=Precision))+
+               "Massive"=nrow(i),
+               "Length"="5"),
+          data.frame("Precision"=length(which(i$All<=10)) / nrow(i),
+               "Hour"=i[1,"Hour"],
+               "Massive"=nrow(i),
+               "Length"="10"))
+}))
+ggplot(performance.vs.hour,aes(x=Massive,y=Precision,color=Length))+
     geom_point()+
     geom_text(aes(label=Hour),hjust=0, vjust=0)+
     ggtitle("Precision @ N=5 V.S. Time")
 
 
-performance.vs.space = lapply(split(prediction,prediction$Postal),function(i){
-    data.frame("Precision"=length(which(prediction$All<=5)) / nrow(i),
+performance.vs.space = do.call(rbind,lapply(split(prediction,prediction$Postal),
+                                            function(i){
+    rbind(data.frame("Precision"=length(which(i$All<=5)) / nrow(i),
                "Postal"=i[1,"Postal"],
-               "Massive"=nrow(i))
-})
-performance.vs.space = do.call(rbind, performance.vs.space)
-ggplot(performance.vs.space,aes(x=Massive,y=Precision))+
+               "Massive"=nrow(i),
+               "Length"="5"),
+          data.frame("Precision"=length(which(i$All<=10)) / nrow(i),
+               "Postal"=i[1,"Postal"],
+               "Massive"=nrow(i),
+               "Length"="10"))
+}))
+ggplot(performance.vs.space,aes(x=Massive,y=Precision,color=Length))+
     geom_point()+
     ggtitle("Precision @ N=5 V.S. Space")
 
 
-performance.vs.conds = lapply(split(prediction,prediction$Weather),function(i){
-    data.frame("Precision"=length(which(prediction$All<=5)) / nrow(i),
-               "Weather"=i[1,"conds"],
-               "Massive"=nrow(i))
-})
-performance.vs.conds = do.call(rbind, performance.vs.conds)
-ggplot(performance.vs.conds,aes(x=Massive,y=Precision))+
+performance.vs.conds = do.call(rbind,lapply(split(prediction,prediction$Weather),
+                                            function(i){
+    rbind(data.frame("Precision"=length(which(i$All<=5)) / nrow(i),
+               "Weather"=i[1,"Weather"],
+               "Massive"=nrow(i),
+               "Length"="5"),
+          data.frame("Precision"=length(which(i$All<=10)) / nrow(i),
+               "Weather"=i[1,"Weather"],
+               "Massive"=nrow(i),
+               "Length"="10"))
+}))
+ggplot(performance.vs.conds,aes(x=Massive,y=Precision,color=Length))+
     geom_point()+
     geom_text(aes(label=Weather),hjust=0, vjust=0)+
     ggtitle("Precision @ N=5 V.S. Weather")
 
-performance.vs.user = lapply(split(prediction,prediction$user),function(i){
-    rbind(data.frame("Precision"=length(which(prediction$All<=5)) / nrow(i),
+
+
+performance.vs.user = do.call(rbind, lapply(split(prediction,prediction$user),
+                                            function(i){
+    rbind(data.frame("Precision"=length(which(i$All<=5)) / nrow(i),
                "User"=i[1,"user"],
                "Massive"=nrow(i),
                "Length"="5"),
-          data.frame("Precision"=length(which(prediction$All<=10)) / nrow(i),
+          data.frame("Precision"=length(which(i$All<=10)) / nrow(i),
                "User"=i[1,"user"],
                "Massive"=nrow(i),
                "Length"="10"))
-})
-performance.vs.user = do.call(rbind, performance.vs.user)
+}))
 ggplot(performance.vs.user,aes(x=Massive,y=Precision,color=Length))+
-    geom_point()+
+    geom_point(alpha=.7)+
     ggtitle("Precision @ N=5, 10 V.S. User")+
+    xlim(0,1000)+
     scale_x_log10()
 
 
-performance.vs.cate = lapply(split(prediction,prediction$Category),function(i){
-    rbind(data.frame("Precision"=length(which(prediction$All<=5)) / nrow(i),
-               "Category"=i[1,"cate"],
+performance.vs.cate = do.call(rbind,lapply(split(prediction,prediction$Category),
+                                           function(i){
+    rbind(data.frame("Precision"=length(which(i$All<=5)) / nrow(i),
+               "Category"=i[1,"Category"],
                "Massive"=nrow(i),
                "Length"="5"),
-          data.frame("Precision"=length(which(prediction$All<=10)) / nrow(i),
-               "Category"=i[1,"cate"],
+          data.frame("Precision"=length(which(i$All<=10)) / nrow(i),
+               "Category"=i[1,"Category"],
                "Massive"=nrow(i),
                "Length"="10"))
-})
-performance.vs.cate = do.call(rbind, performance.vs.cate)
+}))
 ggplot(performance.vs.cate,aes(x=Massive,y=Precision,color=Length))+
     geom_point()+
-    ggtitle("Precision @ N=5 V.S. Cateogry")
+    ggtitle("Precision @ N=5 V.S. Cateogry")+
+    scale_x_log10()
 ```
 
 
