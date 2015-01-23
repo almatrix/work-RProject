@@ -475,6 +475,9 @@ prediction = lapply(split(checkin.in.poly, checkin.in.poly$flag),function(i){
 })
 
 prediction = do.call(rbind,prediction)
+
+save(prediction,file="../../global/data/Rda-saved/prediction.records.Rda")
+print(Sys.time())
 ```
 
 
@@ -499,10 +502,11 @@ analyze the relations between the performance and various factors
 
 ```{r}
 # perforamnce (on length of 5) v.s. hour
-prediction$hour=checkin.in.poly[1:5000,"hour"]
-prediction$polygon=checkin.in.poly[1:5000,"POSTAL"]
-prediction$conds=checkin.in.poly[1:5000,"conds"]
-prediction$user=checkin.in.poly[1:5000,"user_id"]
+prediction$hour=checkin.in.poly[,"hour"]
+prediction$polygon=checkin.in.poly[,"POSTAL"]
+prediction$conds=checkin.in.poly[,"conds"]
+prediction$user=checkin.in.poly[,"user_id"]
+prediction$cate=checkin.in.poly[,"cate_l2"]
 
 performance.vs.hour = lapply(split(prediction,prediction$hour),function(i){
     data.frame("precision"=sum(i$all_5) / nrow(i),
@@ -512,7 +516,8 @@ performance.vs.hour = lapply(split(prediction,prediction$hour),function(i){
 performance.vs.hour = do.call(rbind, performance.vs.hour)
 ggplot(performance.vs.hour,aes(x=massive,y=precision))+
     geom_point()+
-    geom_text(aes(label=hour),hjust=0, vjust=0)
+    geom_text(aes(label=hour),hjust=0, vjust=0)+
+    ggtitle("Precision @ N=5 V.S. Time")
 
 
 performance.vs.space = lapply(split(prediction,prediction$polygon),function(i){
@@ -522,7 +527,8 @@ performance.vs.space = lapply(split(prediction,prediction$polygon),function(i){
 })
 performance.vs.space = do.call(rbind, performance.vs.space)
 ggplot(performance.vs.space,aes(x=massive,y=precision))+
-    geom_point()
+    geom_point()+
+    ggtitle("Precision @ N=5 V.S. Space")
 
 
 performance.vs.conds = lapply(split(prediction,prediction$conds),function(i){
@@ -533,16 +539,40 @@ performance.vs.conds = lapply(split(prediction,prediction$conds),function(i){
 performance.vs.conds = do.call(rbind, performance.vs.conds)
 ggplot(performance.vs.conds,aes(x=massive,y=precision))+
     geom_point()+
-    geom_text(aes(label=conds),hjust=0, vjust=0)
+    geom_text(aes(label=conds),hjust=0, vjust=0)+
+    ggtitle("Precision @ N=5 V.S. Weather")
 
 performance.vs.user = lapply(split(prediction,prediction$user),function(i){
-    data.frame("precision"=sum(i$all_5) / nrow(i),
+    rbind(data.frame("precision"=sum(i$all_5) / nrow(i),
                "user"=i[1,"user"],
-               "massive"=nrow(i))
+               "massive"=nrow(i),
+               "length"="5"),
+          data.frame("precision"=sum(i$all_10) / nrow(i),
+               "user"=i[1,"user"],
+               "massive"=nrow(i),
+               "length"="10"))
 })
 performance.vs.user = do.call(rbind, performance.vs.user)
-ggplot(performance.vs.space,aes(x=massive,y=precision))+
-    geom_point()
+ggplot(performance.vs.user,aes(x=massive,y=precision,color=length))+
+    geom_point()+
+    ggtitle("Precision @ N=5, 10 V.S. User")+
+    scale_x_log10()
+
+
+performance.vs.cate = lapply(split(prediction,prediction$cate),function(i){
+    rbind(data.frame("precision"=sum(i$all_5) / nrow(i),
+               "category"=i[1,"cate"],
+               "massive"=nrow(i),
+               "length"="5"),
+          data.frame("precision"=sum(i$all_10) / nrow(i),
+               "category"=i[1,"cate"],
+               "massive"=nrow(i),
+               "length"="10"))
+})
+performance.vs.cate = do.call(rbind, performance.vs.cate)
+ggplot(performance.vs.cate,aes(x=massive,y=precision,color=length))+
+    geom_point()+
+    ggtitle("Precision @ N=5 V.S. Cateogry")
 ```
 
 
