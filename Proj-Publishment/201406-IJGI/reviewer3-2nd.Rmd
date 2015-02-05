@@ -1,6 +1,5 @@
 ---
 title: "Feedback to the reviewers' comments"
-author: "ming"
 output: word_document
 ---
 
@@ -29,21 +28,13 @@ Overall Merit		|	( )    |  (x)  |    ( )  |    ( )
 
 ```
 This paper is taken as the revision of the original draft of “a conceptual framework towards context-adaptive 3d geovisualization using volunteered geographic information”, but was substantially rewritten and should be taken as a new submission. From quality view, this draft has much clearer structure and provides solid materials. The topic well matches the current research trend. A relevance evaluation model is proposed in this paper to rank interesting information for queries. Foursquare checkin sample data was used to validate the proposed method by incorporating time and weather, which justifies the importance of context relevance of positions.
-```
 
-**Reply:**
-This is reply.
-
----
-
-```
 The paper could be improved after going through a professional English proof reading.
 ```
 
 **Reply:**
+Thank you very much for your positive feedback! We however still have some major revisions on the manuscript, as we improved our algorithms and redesigned our experiment to better support our conclusion. We couldn't send the paper to a professional English proof reading this time since it is still a major revision. However, if you are all fine with this revision, we will definitely send it to proof reading before final acceptance. Thanks a lot for understanding!
 
-This is reply.
----
 
 
  

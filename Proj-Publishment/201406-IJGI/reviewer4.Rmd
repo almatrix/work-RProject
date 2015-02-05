@@ -1,6 +1,5 @@
 ---
 title: "Feedback to the reviewers' comments"
-author: "ming"
 output: word_document
 ---
 
@@ -31,15 +30,16 @@ Overall Merit		|	( )    |  ( )  |    (x)  |    ( )
 The topic discussed in the paper is interesting and pertinent to the journal. The paper discuss a relevance evaluation algorithm based on two context elements (namely time and weather conditions). The algorithm hestimates the relevance of categories of objects based on common trends found in location-based social networks.
 ```
 
-**Reply:**
-
----
-
 ```
 The selection of the context elements seems to be only driven by available data. No specific reason behind the selection of the two selected context element is provided. In general, it is hard to imagine that a large part of the population would run to a particular category of places just because of the time of the day and weather conditions. In fact most distributions in Figure 3 are quite similar in shape and values, and not particularly skwed, and even the results shown in Figure 5 do not suggest a strong impact of weather conditions on checkins -- despite maybe heavy snow.
 ```
 
-**Reply**
+**Reply:**
+Thanks. You covered several questions here, and we will answer it one by one. 
+
+First, you mentioned the context we adopted, namely time and weather. We didn’t choose these two for no reason. Time represents the internal context (included directly in the check-in dataset) while Weather represents the external context which is not available in Foursquare but can be combined from other sources (Weatherground in this case). However, we reconsidered our choice after reading your comments. As you also mentioned later, spatial context should definitely be an important contextual aspect. Therefore, we stick to the internal Time and Space context, and redesign our experiment and rewrite the manuscript. 
+
+The distribution in the original Figure 3 (temporal distribution of check-in category) might seem all similar to you and also other readers because people might get lost in too many bars. Hence, we replace the histogram chart into another kind of representation in radial plot (Figure 2 in current version). With the same underlying data, the differences in both shapes and values are quite distinct with this new representation, thus the temporal impact on human’s check-in categories are more clear to readers.
 
 ---
 
@@ -47,7 +47,10 @@ The selection of the context elements seems to be only driven by available data.
 Despite discussing the relevance of geographic objects (shops, recreation centres, etc) and using data from location-based social network, no context element related to space is taken into account. This is related to the fact that the authors point at assessing the relevance of categories, rather than single geographic objects. The ultimate reason of this choice is not discussed.
 ```
 
-**Reply**
+**Reply:**
+Thanks. It is really a good point. Spatial aspect is definitely a crucial part for mobile users, and we really appreciate that you pointed it out. We didn’t include this element because we wanted to use Time to represent the internal contexts. However, in the revised version, we integrate the spatial context into the experiments. The integration of spatial context has largely improved our result, which argues its importance by itself. 
+
+Besides, if you are curious why we add the spatial context and remove our original weather context, here is the reason. Our experiments show that although weather information can improve the temporal-contextualized result, it does not really improve a lot on the spatiotemporal-contextualized result. We think it is because the precision has really been raised up by the spatial context. Since both spatial and temporal context are internal, we decided to stick into these two to keep the Conciseness of the manuscript by avoiding the external one.
 
 ---
 
@@ -59,7 +62,10 @@ The algorithm compute global patterns and correlations relating time and weather
 2) correlation is not causation.
 ```
 
-**Reply**
+**Reply:**
+Thanks. It is really a good point. Spatial aspect is definitely a crucial part for mobile users, and we really appreciate that you pointed it out. We didn’t include this element because we wanted to use Time to represent the internal contexts. However, in the revised version, we integrate the spatial context into the experiments. The integration of spatial context has largely improved our result, which argues its importance by itself. 
+
+Besides, if you are curious why we add the spatial context and remove our original weather context, here is the reason. Our experiments show that although weather information can improve the temporal-contextualized result, it does not really improve a lot on the spatiotemporal-contextualized result. We think it is because the precision has really been raised up by the spatial context. Since both spatial and temporal context are internal, we decided to stick into these two to keep the Conciseness of the manuscript by avoiding the external one.
 
 ---
 
@@ -67,12 +73,18 @@ The algorithm compute global patterns and correlations relating time and weather
 The algorithm is tested on a random sample of 200 checkin of one single user who produced 3925 checkins in 150 days. This is not a suitable choice, as this doesn't represent a typical user. Considering that the algorithm isn't in any way tailored to a user, nor account for previous checkins, there is no necessity to limit the test to a single user.
 ```
 
-**Reply**
+**Reply:**
+Thanks again. After reconsideration, it is not a suitable choice to us either. At first, we made the choice because Figure 1 says only 1.1% of the user has on average one checkin per day, and we need sufficient personal history to learn individual patterns. The problem is we failed to give a reasonable criterion with which one user is believed to have sufficient data and can apply our appraoch.
+
+Since we have adapted our algorithms to both global and individual pattern, the experiment is not contained by learning data any more. Therefore, we use the first four months’ data as learning data, and all the last 30 days’ 95,359 records without any filtering to make predictions and thereby verifying our approach.
 
 ---
 
 ```
 The overall performance of the algorithm seems pretty low, but this outcome is not clearly reported in the conclusion. Contrariwise, the conclusion state that the presented algorithm "demonstrates the assumptions" that data from location-based social network can help solve the information filtering problem, which is not a conclusion that can be derived by the presented results.
 ```
+Thanks. The main point we wanted to make is that integrating contextual information can improve the performance, and location-based social networks contain some contextual information to better describe the human behavior. 
+
+Based on your comments, we have improved our algorithms and redesigned our experiment to better explain our points. The algorithms now can be used for both users with plenty of learning data and new user with no learning data. The experiment is no longer constrained, and we just make predictions for the data of an entire month. 35% of the 95,538 predictions are already correct with their very first predicting attempt with the integration of contextual information; even many users in the 95,538 records may just be a first-time user.  We think our conclusions can be better supported with the improved algorithms and results. 
 
 
