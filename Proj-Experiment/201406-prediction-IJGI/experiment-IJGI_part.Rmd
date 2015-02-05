@@ -30,12 +30,12 @@ crs.wgs84.str = "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0
 First, we load the data into the workspace. 
 
 ```{r,echo=FALSE}
-# checkin.NY = prepare.checkin("../../global/data/csv-raw/NewYorkCity.csv",
-#                              is.raw=TRUE, 
+checkin.NY = prepare.checkin("../../global/data/csv-raw/NewYorkCity.csv",
+                             is.raw=TRUE, 
 #                              weather.data="../../global/data/csv-raw/Weather_NY.csv", 
-#                              convert.time=TRUE, add.history=TRUE)
+                             convert.time=TRUE, add.history=FALSE)
 # save(checkin.NY,file="../../global/data/Rda-saved/checkin.global.weather.NY.Rda")
-load(file="../../global/data/Rda-saved/checkin.global.weather.NY.Rda")
+# load(file="../../global/data/Rda-saved/checkin.global.weather.NY.Rda")
 ```
 
 Following is a summary of the dataset.
@@ -244,14 +244,27 @@ get.temporal.impact <- function(dataframe){
 * relevance contextualized by spatial factor
 ```{r}
 checkin.in.poly = na.omit(point.in.poly(checkin.NY, SPDF, copy.attr="POSTAL"))
-get.spatial.impact <- function(checkin.in.poly, 
+get.spatial.impact <- function(point.in.poly, 
                                poly.attr="POSTAL",cate.attr="cate_l2"){
-    mat = cate.distr.in.poly(checkin.in.poly, poly.attr=poly.attr,cate.attr=cate.attr)
+    mat = cate.distr.in.poly(point.in.poly, poly.attr=poly.attr,cate.attr=cate.attr)
     mat[,1:(ncol(mat)-4)]
 }
 
 ```
 
+* relevance contextualized by previous visiting 
+```{r}
+get.previous.impact <- function(dataframe){
+
+    # weight by time interval
+    dataframe$weight = 2^(-1* dataframe$time.interval / 3600)
+    
+    tabs = xtabs(weight ~ last.cate_l2 + cate_l2, data=dataframe)
+
+    as.data.frame.matrix( t(apply(tabs,1, function(i){i/(sum(i)+1E-6)})))
+}
+
+```
 
 
 * relevance contextualized by (unweighted meteorological) factor 
@@ -380,221 +393,364 @@ get.denominator <- function(dataframe){
 
 $$E[P(C=k|H=i,W=j)]=\frac{P(C=k|H=i)*P(C=k|W=j)}{P(C=k)}$$
 
-1. global 
+1. global & individual
 
 ```{r}
 
-# global matrix
-pr.t.mat = get.temporal.impact(checkin.in.poly)
-pr.w.mat = get.weighted.meteorological.impact(fit)
-# pr.w.mat = get.meteorological.impact2(checkin.in.poly)
-pr.s.mat = get.spatial.impact(checkin.in.poly)
-pr.d = unlist(get.denominator(checkin.in.poly))
+# order the data by timestamps
+checkin.in.poly = checkin.in.poly[order(checkin.in.poly$timestamps),]
 
-checkin.in.poly$flag = paste(checkin.in.poly$hour,checkin.in.poly$POSTAL,
-                             checkin.in.poly$conds)
-flag.list = split(checkin.in.poly, checkin.in.poly$flag)
-counter = 0 
-prediction = do.call(rbind, lapply(flag.list,function(i){
-    counter <<- nrow(i)+counter
-    print(paste(Sys.time(),"processed",counter,"records."))
-    
-    # common information 
-    hour = i[1,"hour"]
-    conds = i[1,"conds"]
-    polygon = i[1,"POSTAL"]
-    
-    # real checkin category
-    real.list = as.character(i$cate_l2)
-    
-    # get the vector
-    if (!is.na(hour)) {
-        pr.t = unlist(pr.t.mat[hour,])
-    } else {pr.t = pr.d}
-    if(!is.na(conds)) {
-        pr.w = unlist(pr.w.mat[conds,])
-    } else {pr.w = pr.d}
-    if(!is.na(polygon)) {
-        pr.s = unlist(pr.s.mat[polygon,])
-    } else {pr.s = pr.d}
-    
-    # the average evaluation
-    pr.ave = pr.t * pr.s * pr.w / pr.d ^ 2 
-    
-    # order the probability vector (get first 30)
-    pred.d = sort(pr.d, decreasing = TRUE)
-    pred.t = sort(pr.t, decreasing = TRUE)
-    pred.s = sort(pr.s, decreasing = TRUE)
-    pred.w = sort(pr.w, decreasing = TRUE)
-    pred.all = sort(pr.ave, decreasing = TRUE)
-    
-    df = do.call(rbind, lapply(real.list,function(real){
+# using the data from the first four months as learning data
+learning.length = length(which(checkin.in.poly$yearday<152))
+learning.all.data = checkin.in.poly[1:learning.length,]
+# and the data from the last month as prediction data
+experiment.data = checkin.in.poly[(learning.length+1):nrow(checkin.in.poly),]
+# add a flag for spatiotemporal context in the prediction data 
+experiment.data$flag = paste(experiment.data$hour,experiment.data$POSTAL)
+
+# get the global matrix
+pr.t.mat.global = get.temporal.impact(learning.all.data)
+pr.s.mat.global = get.spatial.impact(learning.all.data)
+pr.d.global = unlist(get.denominator(learning.all.data))+ 1E-6
+
+# making predictions (both globally and individually) for each record
+counter = 0; counter2=0;
+prediction= do.call(rbind, lapply(
+    split(experiment.data,experiment.data$user_id),function(user){
         
-        # find the correct position
-        p1 =  which(names(pred.d)==as.character(real))
-        p2 =  which(names(pred.t)==as.character(real))
-        p3 =  which(names(pred.s)==as.character(real))
-        p4 =  which(names(pred.w)==as.character(real))
-        p5 =  which(names(pred.all)==as.character(real))
+        # information output
+        counter <<- counter + nrow(user); counter2 <<- counter2 +1;
+        print(paste(Sys.time(),"User",counter2,"; Finished", counter,"records."))
+        
+        # leaning from the historical data of the individual
+        user.id = user[1,"user_id"]
+        # is there any learning data for this individual?
+        learning = learning.all.data[which(learning.all.data$user_id==user.id),]
+        learning.length = nrow(learning)
+        if(learning.length==0){ # using global matrix 
+            pr.t.mat.indiv = pr.t.mat.global
+            pr.s.mat.indiv = pr.s.mat.global
+            pr.d.indiv = pr.d.global
+        }else{ # using his individual matrix
+            pr.t.mat.indiv = get.temporal.impact(learning) 
+            pr.s.mat.indiv = get.spatial.impact(learning) 
+            pr.d.indiv = unlist(get.denominator(learning)) * 0.7 + 0.3 * pr.d.global
+        }
+        
+        # making predictions
+        do.call(rbind, lapply(split(user, user$flag),function(i){
+            # context information
+            hour = i[1,"hour"]
+            polygon = i[1,"POSTAL"]
+            # the real checkin category
+            real.list = i$cate_l2
+            
+            # get the vector
+            pr.t.global = unlist(pr.t.mat.global[hour,]) # global information
+            if(is.na(pr.t.mat.indiv[hour,1])){ # no information for that hour
+                pr.t.indiv = pr.t.global # using the global information
+                flag.t = FALSE
+            }else{
+                pr.t.indiv = unlist(pr.t.mat.indiv[hour,]) * 0.7 + 0.3 * pr.t.global
+                flag.t = TRUE
+            }
+            # get the vector
+            pr.s.global = unlist(pr.s.mat.global[polygon,]) # global informaiton
+            if(is.na(pr.s.mat.indiv[polygon,1])){ # no information for that place
+                pr.s.indiv = pr.s.global # using the global information 
+                flag.s = FALSE
+            }else{
+                pr.s.indiv = unlist(pr.s.mat.indiv[polygon,]) * 0.7 + 0.3 * pr.s.global
+                flag.s = TRUE
+            }
+            
+            # the average evaluation
+            pr.st.global = pr.t.global * pr.s.global / pr.d.global 
+            if(flag.s + flag.t == 2) {
+                pr.st.indiv = pr.t.indiv * pr.s.indiv / pr.d.indiv
+                pr.st.indiv2 = pr.st.indiv
+                pr.st.indiv3 = pr.st.indiv
+                }
+            if(flag.s + flag.t == 1){
+                pr.st.indiv = pr.t.indiv * pr.s.indiv 
+                pr.st.indiv2 = pr.t.indiv * pr.s.indiv / pr.d.global
+                pr.st.indiv3 = pr.t.indiv * pr.s.indiv / pr.d.indiv
+                 }
+            if(flag.s + flag.t == 0){
+                pr.st.indiv = pr.t.indiv * pr.s.indiv / pr.d.global
+                pr.st.indiv2 = pr.st.indiv
+                pr.st.indiv3 = pr.st.indiv
+                }
+            # order the probability vector            
+            pred.d.global = sort(pr.d.global, decreasing = TRUE)
+            pred.t.global = sort(pr.t.global, decreasing = TRUE)
+            pred.s.global = sort(pr.s.global, decreasing = TRUE)
+            pred.st.global = sort(pr.st.global, decreasing = TRUE)
+            
+            pred.d.indiv = sort(pr.d.indiv, decreasing = TRUE)
+            pred.t.indiv = sort(pr.t.indiv, decreasing = TRUE)
+            pred.s.indiv = sort(pr.s.indiv, decreasing = TRUE)
+            pred.st.indiv = sort(pr.st.indiv, decreasing = TRUE)
+            pred.st.indiv2 = sort(pr.st.indiv2, decreasing = TRUE)
+            pred.st.indiv3 = sort(pr.st.indiv3, decreasing = TRUE)
+            
+            df = do.call(rbind, lapply(real.list,function(real){
+                
+                # find the correct position (required length to be correct)
+                p1 =  which(names(pred.d.global)==as.character(real))
+                p2 =  which(names(pred.t.global)==as.character(real))
+                p3 =  which(names(pred.s.global)==as.character(real))
+                p4 =  which(names(pred.st.global)==as.character(real))
+                
+                p5 =  which(names(pred.d.indiv)==as.character(real))
+                p6 =  which(names(pred.t.indiv)==as.character(real))
+                p7 =  which(names(pred.s.indiv)==as.character(real))
+                p8 =  which(names(pred.st.indiv)==as.character(real))
+                p9 =  which(names(pred.st.indiv2)==as.character(real))
+                p10 =  which(names(pred.st.indiv3)==as.character(real))
+          
+                data.frame("None.Global"=p1,
+                           "None.Individual"=p5,
+                           "Temporal.Global"=p2,
+                           "Temporal.Individual"=p6,
+                           "Spatial.Global"=p3,
+                           "Spatial.Individual"=p7,
+                           "ST.Global"=p4,
+                           "ST.Individual"=p8,
+                           "ST.Individual2"=p9,
+                           "ST.Individual3"=p10,
+                           "Hour"=hour,
+                           "Postal"=polygon,
+                           "Real.Category"=real,
+                           "Learning.Length"=learning.length,
+                           "Learning.T"=flag.t,
+                           "Learning.S"=flag.s)
 
-        df = data.frame("None"=p1,"Temporal"=p2,"Spatial"=p3,
-                        "Meteorological"=p4,"All"=p5,
-                        "Hour"=hour,"Weather"=conds,"Postal"=polygon,
-                        "Category"=real)
-
-        df
+            }))
+            
+            # additional information 
+            df$user = user.id
+            df$gid = i$gid
+            
+            df
     }))
     
-    # additional information 
-    df$user = i$user_id
-    
-    df
 }))
 
-save(prediction,file="../../global/data/Rda-saved/prediction.records.weather1.Rda")
-print(Sys.time())
+
 
 ```
 
+
+
+2. Analysis
 
 compare the result with other results that did not consider or consider only
 one of the contextual factors
 
 ```{r}
 
-# density
-ggplot(melt(prediction[,1:5]))+
-    stat_density(aes(x=value,group=variable,color=variable),
-                 size=0.5,fill="grey",alpha=0.1,position="identity")+
-    xlim(0,50)+
-    xlab("Length to be correct")+
-    ylab("Density")
+# show how context can improve prediction
+prediction.melt = melt(prediction[,c(1,2,7,9)])
+prediction.melt$Context = rep(c("No Context","With Context"),each=nrow(prediction)*2)
+prediction.melt$Context = factor(prediction.melt$Context,
+                                 levels = c("No Context","With Context"))
+prediction.melt$Group = rep(rep(c("Global","Individual"),each=nrow(prediction)),2)
+
+png("group.comparision.png",width=6*ppi,height=3*ppi,res=ppi)
+ggplot(prediction.melt,aes(x=value))+
+    geom_histogram(aes(y=..density..),binwidth=1,fill=NA, color="#666666")+
+    geom_density()+
+    theme_gray(base_size=8)+
+    xlim(1,30)+
+    xlab("Length of Prediction List for Correct Prediction")+
+    ylab("Count")+
+    facet_grid(Group~Context)
+dev.off()
 
 
-# precision and recall
 rate = do.call( rbind, lapply(1:30, function(N){ # list length: N
     # number of correct
-    c1 = length(which(prediction$None<=N)) / nrow(prediction)
-    c2 = length(which(prediction$Temporal<=N)) / nrow(prediction)
-    c3 = length(which(prediction$Spatial<=N)) / nrow(prediction)
-    c4 = length(which(prediction$Meteorological<=N)) / nrow(prediction)
-    c5 = length(which(prediction$All<=N)) / nrow(prediction)
-    
-    data.frame("Length"=N,"None"=c1,"Temporal"=c2,"Spatial"=c3,
-               "Meteorological"=c4,"All"=c5)
-}) )
+    c1 = length(which(prediction$None.Global<=N)) / nrow(prediction)
+    c2 = length(which(prediction$None.Individual<=N)) / nrow(prediction)
+    c3 = length(which(prediction$ST.Global<=N)) / nrow(prediction)
+#     c4 = length(which(prediction$ST.Individual<=N)) / nrow(prediction)
+    c5 = length(which(prediction$ST.Individual2<=N)) / nrow(prediction)
+#     c6 = length(which(prediction$ST.Individual3<=N)) / nrow(prediction)
 
-ggplot(melt(rate,id="Length"),aes(x=Length,y=value,color=variable))+
+    data.frame("Length"=c(N,N,N,N),"value"=c(c1,c2,c3,c5),
+               "Group"=c("NoContext.Global","NoContext.Individual",
+                         "Context.Global","Context.Individual"))
+}) )
+rate$Group = factor(rate$Group,levels=c("Context.Individual","Context.Global",
+                                        "NoContext.Individual","NoContext.Global" ))
+# png("precision.png",width=6*ppi,height=3*ppi,res=ppi)
+gg0<-ggplot(rate,aes(x=Length,y=value,color=Group))+
     geom_line()+
-    geom_point( size=4, shape=21, fill="white")
+    geom_point(shape=21,fill="white")+
+    theme_gray(base_size = 12)+
+    ylab("Precision")
+# dev.off()
+
+# show that the approach is effective to users without learning data
+# prediction$Learning.T.str = ifelse(prediction$Learning.T, 
+#                                "Temporal Learning",
+#                                "No Temporal Learning")
+# prediction$Learning.S.str = ifelse(prediction$Learning.S, 
+#                                "Spatial Learning",
+#                                "No Spatial Learning")
+# png("learning.length.comparision.png",width=6*ppi,height=3*ppi,res=ppi)
+# ggplot(prediction,aes(x=ST.Individual2))+
+#     geom_histogram(binwidth=1,fill=NA, color="#666666")+
+# 
+#     theme_gray(base_size=8)+
+#     xlim(1,30)+
+#     xlab("Length of Prediction List for Correct Prediction")+
+#     ylab("Count")+
+#     facet_grid(Learning.S.str~Learning.T.str)
+# dev.off()
+
+group1 = prediction[prediction$Learning.T + prediction$Learning.S==2,]
+group2 = prediction[prediction$Learning.T + prediction$Learning.S==1,]
+group3 = prediction[prediction$Learning.T + prediction$Learning.S==0,]
+rate2 = do.call( rbind, lapply(1:30, function(N){ # list length: N
+    # number of correct
+    c1 = length(which(group1$ST.Individual2<=N)) / nrow(group1)
+    c2 = length(which(group2$ST.Individual2<=N)) / nrow(group2)
+    c3 = length(which(group3$ST.Individual2<=N)) / nrow(group3)
+
+    data.frame("Length"=c(N,N,N),"value"=c(c1,c2,c3),
+               "Individual.Available.Context"=c("Both","One","None"))
+}) )
+rate2$Individual.Available.Context = factor(rate2$Individual.Available.Context,
+                                            levels=c("Both","One","None"))
+# png("precision.learning.length.png",width=6*ppi,height=3*ppi,res=ppi)
+gg1<-ggplot()+
+    geom_point(data=rate2,
+               aes(x=Length,y=value,shape=Individual.Available.Context),size=1.2)+
+    geom_line(data=rate2,aes(x=Length,y=value,group=Individual.Available.Context),size=.3)+
+    geom_line(data=rate[rate$Group %in% c("NoContext.Individual","Context.Individual"),],
+              aes(x=Length,y=value,color=Group))+
+    theme_gray(base_size = 12)+
+    ylab("Precision")
+# dev.off()
+
+png("precision.combined.png",width=12*ppi,height=3*ppi,res=ppi)
+grid.arrange(gg0,gg1,ncol=2)
+dev.off()
+
+# performance.vs.learning = do.call(rbind, lapply(split(prediction,prediction$user),
+#                                             function(i){
+#    data.frame("Precision"=length(which(i$ST.Individual<=5)) / nrow(i),
+#               "User"=i[1,"user"],
+#               "Learning.length"=i[1,"Learning.Length"])
+# }))
+# 
+# ggplot(performance.vs.learning,aes(x=Learning.length,y=Precision))+
+#     geom_point(alpha=.5,size=0.7)+
+#     theme_gray(base_size=6)+
+#     geom_smooth(method=glm)+
+#     ggtitle("Precision @ N=5 V.S. Learning Length")+
+#     scale_x_sqrt(breaks=c(0,1,25,100,200,400,800),limit=c(0,750))
+
+# show how the performance is related with the popularity of a category
+performance.vs.cate = do.call(rbind,
+                              lapply(split(prediction,prediction$Real.Category),
+                                     function(i){
+                                         counter<<-counter+1
+                                         print(counter)
+    if(!is.na(i[1,"Real.Category"])){
+        data.frame("Precision"=length(which(i$ST.Individual2<=5)) / nrow(i),
+               "Real.Category"=i[1,"Real.Category"],
+                "Massive.predicting"=nrow(i),
+               "Massive.Learning"=length(which(learning.all.data$cate_l2==
+                                                   i[1,"Real.Category"])))}
+}))
+# png("precision.caetgory.popularity.png",width=6*ppi,height=3*ppi,res=ppi)
+gg2<-ggplot(performance.vs.cate,aes(x=Massive.Learning,y=Massive.predicting))+
+    geom_point(shape=21,fill="white",aes(color=Precision))+
+    scale_x_log10()+
+    scale_y_log10()+
+    theme_gray(base_size=10)+
+    scale_color_gradient2(midpoint = 0.25)+
+    ggtitle("Precision Along Category (Length=5)")
+# dev.off()
+
+
 
 ```
 
+We might consider: are there any connections between the precision and the variance (for a 
+specific hour or polygon). Then we wonder: is it possible to quantify the "variance"
+of each hour/polygon like what we did for numeric variables?
 
-analyze the relations between the performance and various factors
+The anwser is found in this paper: Kadar & Perry: Variability for categorical variables
+
+We implement their algorithms in the following function.
+
+```{r}
+unalikeability <- function(observations){
+    n <- length(observations)
+    pi <- sapply(unique(observations),function(category.i){
+        length(which(observations==category.i)) /  n 
+    })
+    
+    1 - sum(pi ^2)
+}
+```
+
 
 ```{r}
 # perforamnce (on length of 5) v.s. hour
-performance.vs.hour = do.call(rbind,lapply(split(prediction,prediction$Hour),
-                                           function(i){
-    rbind(data.frame("Precision"=length(which(i$All<=5)) / nrow(i),
-               "Hour"=i[1,"Hour"],
-               "Massive"=nrow(i),
-               "Length"="5"),
-          data.frame("Precision"=length(which(i$All<=10)) / nrow(i),
-               "Hour"=i[1,"Hour"],
-               "Massive"=nrow(i),
-               "Length"="10"))
+performance.vs.hour = do.call(rbind,lapply(split(prediction,prediction$Hour),function(i){
+    
+    hour = i[1,"Hour"]
+    # learning data in that hour
+    learning.sub = learning.all.data[learning.all.data$hour==hour,]
+    data.frame("Precision"=length(which(i$ST.Individual2<=5)) / nrow(i),
+               "Hour"=hour,
+               "Unalikeability" = unalikeability(learning.sub$cate_l2),
+               "Massive.predicting"=nrow(i),
+               "Massive.Learning"=nrow(learning.sub))
 }))
-ggplot(performance.vs.hour,aes(x=Massive,y=Precision,color=Length))+
-    geom_point()+
-    geom_text(aes(label=Hour),hjust=0, vjust=0)+
-    ggtitle("Precision @ N=5 V.S. Time")
 
-
-performance.vs.space = do.call(rbind,lapply(split(prediction,prediction$Postal),
-                                            function(i){
-    rbind(data.frame("Precision"=length(which(i$All<=5)) / nrow(i),
-               "Postal"=i[1,"Postal"],
-               "Massive"=nrow(i),
-               "Length"="5"),
-          data.frame("Precision"=length(which(i$All<=10)) / nrow(i),
-               "Postal"=i[1,"Postal"],
-               "Massive"=nrow(i),
-               "Length"="10"))
+performance.vs.space = do.call(rbind,lapply(split(prediction,prediction$Postal), function(i){
+    
+    polygon = i[1,"Postal"]
+    if(!is.na(polygon)){
+        learning.sub = learning.all.data[learning.all.data$POSTAL==polygon,]
+        data.frame("Precision"=length(which(i$ST.Individual2<=5)) / nrow(i),
+               "Postal"=polygon,
+               "Unalikeability" = unalikeability(learning.sub$cate_l2),
+               "Massive.predicting"=nrow(i),
+               "Massive.Learning"=nrow(learning.sub))
+    }
 }))
-ggplot(performance.vs.space,aes(x=Massive,y=Precision,color=Length))+
-    geom_point()+
-    ggtitle("Precision @ N=5 V.S. Space")
 
+# png("precision.t.png",width=6*ppi,height=3*ppi,res=ppi)
+gg3<-ggplot(performance.vs.hour,aes(x=Massive.Learning,y=Unalikeability))+
+    geom_point(shape=21,fill="white",aes(color=Precision))+
+    geom_text(aes(label=Hour),hjust=-0.3, vjust=0,size=3)+
+    ggtitle("Precision Along Time (Length=5)")+
+    theme_gray(base_size=10)+
+    scale_color_gradient2(midpoint = 0.6)
+# dev.off()
 
-performance.vs.conds = do.call(rbind,lapply(split(prediction,prediction$Weather),
-                                            function(i){
-    rbind(data.frame("Precision"=length(which(i$All<=5)) / nrow(i),
-               "Weather"=i[1,"Weather"],
-               "Massive"=nrow(i),
-               "Length"="5"),
-          data.frame("Precision"=length(which(i$All<=10)) / nrow(i),
-               "Weather"=i[1,"Weather"],
-               "Massive"=nrow(i),
-               "Length"="10"))
-}))
-ggplot(performance.vs.conds,aes(x=Massive,y=Precision,color=Length))+
-    geom_point()+
-    geom_text(aes(label=Weather),hjust=0, vjust=0)+
-    ggtitle("Precision @ N=5 V.S. Weather")
+# png("precision.s.png",width=6*ppi,height=3*ppi,res=ppi)
+gg4<-ggplot(performance.vs.space,aes(x=Massive.Learning,y=Unalikeability))+
+    geom_point(shape=21,fill="white",aes(color=Precision))+
+    ggtitle("Precision Along Space (Length=5)")+
+    ylim(0.7,0.98)+
+#     scale_x_sqrt()+
+#     geom_smooth(method=glm)+
+    scale_x_log10(breaks=c(10,100,1000,10000))+
+    theme_gray(base_size=10)+
+    scale_color_gradient2(midpoint = 0.6)
+# dev.off()
 
-
-
-performance.vs.user = do.call(rbind, lapply(split(prediction,prediction$user),
-                                            function(i){
-    rbind(data.frame("Precision"=length(which(i$All<=5)) / nrow(i),
-               "User"=i[1,"user"],
-               "Massive"=nrow(i),
-               "Length"="5"),
-          data.frame("Precision"=length(which(i$All<=10)) / nrow(i),
-               "User"=i[1,"user"],
-               "Massive"=nrow(i),
-               "Length"="10"))
-}))
-ggplot(performance.vs.user,aes(x=Massive,y=Precision,color=Length))+
-    geom_point(alpha=.7)+
-    ggtitle("Precision @ N=5, 10 V.S. User")+
-    xlim(0,1000)+
-    scale_x_log10()
-
-
-performance.vs.cate = do.call(rbind,lapply(split(prediction,prediction$Category),
-                                           function(i){
-    rbind(data.frame("Precision"=length(which(i$All<=5)) / nrow(i),
-               "Category"=i[1,"Category"],
-               "Massive"=nrow(i),
-               "Length"="5"),
-          data.frame("Precision"=length(which(i$All<=10)) / nrow(i),
-               "Category"=i[1,"Category"],
-               "Massive"=nrow(i),
-               "Length"="10"))
-}))
-ggplot(performance.vs.cate,aes(x=Massive,y=Precision,color=Length))+
-    geom_point()+
-    ggtitle("Precision @ N=5 V.S. Cateogry")+
-    scale_x_log10()
+png("performance.combined.png",width=12*ppi,height=3*ppi,res=ppi)
+grid.arrange(gg2,gg3,gg4,ncol=3,nrow=1)
+dev.off()
 ```
 
-
-
-**update @2014.09.04**
-
-* This equation has been somehow verified :
-    + although `p.k` has a relatively high performance, multipling it with others do not bringer a higher one; instead, dividing does.
-* There should be some problems in the meteorological impacts. 
-    + The performance based on calculation of interception is so poor that it totally brings down the whole performance. Instead, if just the simple probability distribution is adopted, the performance is getting better. 
-
-**update @2014.09.05**
-
-* problem has been found out. In the earlier function `get.meteorological.impact()`, I used `intercept/sum(intercept)`, where `intercept` can be negative, and the `sum(intercept)` can be nonsense. Now it is fixed to `(intercepts - min(intercepts)) / (max(intercepts)-min(intercepts)) ` to scale into [0,1].
-* besides, about the equation again:
-    + if `p.kj` is calculated by just using the probability distribution, then the equation `p.kij = p.ki * p.kj / p.k` is correct (which confirmes our derivation);
-    + if `p.kj` is calculated by personal CA, it should be noticed that the *scaled interception* does not describe *the probability of C=k under the condition W=j*. Instead, it describes the negative/positive impacts. Hence, the conditional probability should be the *scaled interception* multipled by the priori `p.k`. Therefore, here the final result should be `p.kij = p.ki * p.kj`.
-    + with a little differnt equations and different methods of getting `p.j`, the above two ways have very similar results (which is expected!).
     
