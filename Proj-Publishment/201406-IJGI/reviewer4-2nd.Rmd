@@ -1,0 +1,36 @@
+---
+title: "Feedback to the reviewers' comments"
+output: word_document
+---
+
+
+
+### Comments and Suggestions for Authors 
+
+I would like to congratulate with the authors for the significant improvement on the new manuscript. 
+```
+**Reply:**
+
+```
+The study as currently presented is much more clear. The explanation of the results is however still not quite clear, especially in its last part, where the authors discuss Figure 5 and the measure of unalikeability. The latter should be briefly explained, as the reader might not be familiar with the concept. 
+```
+**Reply:**
+
+```
+The interpretation of the results in the second paragraph of page 11 is a bit concerning, although it might be more a question of language rather the substance. As the results obtained for the two groups not taking into account the “individual patterns” are always better than the results obtained by the other two groups, the phrase “the power of the collective wisdom in the global pattern” is disproportionate. As far as I can guess, the group taking into account the global pattern and no context performs just better than random chance — which should be taken into account as baseline and shown on graph 4 (b) for completeness. The comparison with random selection of a category might support the subsequent statement “it is common for people to believe before the experiments that…”, which provides instead no reference — while recommendations based on global patterns are actually common practice (from tv advertisement to “who to follow” suggestion at first creation of a twitter account). The authors might also want to rephrase “Figure 4 proves”, as a figure might illustrate a finding or evidence, but it can’t be considered proof in itself.
+```
+**Reply:**
+
+```
+To improve readability, the authors might want to use more intuitive naming of variables in formulas (e.g., S and T for space and time, instead of H and P). I would also suggest a revision of the language (e.g., the authors frequently use “assumption” where they probably mean “hypothesis”).
+```
+**Reply:**
+
+```
+I particularly like the ingenious use of the radar charts in Figure 2, which provide a nice and clear understanding of the underlying data. Figure 3 instead, seems to have been created in R without projecting the data. The same map could also be improved using a different color scheme (e.g., using a qualitative scheme from the RColorBrewer package, see also colorbrewer2.org), as the current scheme is difficult to read and colors become completely unintelligible when printed in black/white. 
+```
+**Reply:**
+
+```
+Figure 5 results particularly difficult to read in its current form. First, the symbolization for “Correctness” should be the same across the three graphs, to make them comparable. Second, the use of color could be improved by filling the symbol instead of just colouring the border, and a single-hue color scheme might be used. However, I might suggest that the figure might result more readable if “Correctness” is represented using size instead of color — e.g., a bubble chart, with black border and no fill color to minimise occlusion.
+```
