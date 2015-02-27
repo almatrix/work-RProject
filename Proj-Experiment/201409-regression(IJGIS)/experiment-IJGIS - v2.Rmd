@@ -55,6 +55,8 @@ checkin.poly.NY = na.omit(point.in.poly(checkin.NY, SPDF.NY, copy.attr="POSTAL")
 checkin.poly.LA = na.omit(point.in.poly(checkin.LA, SPDF.LA, copy.attr="Zip_Num"))
 checkin.poly.CH = na.omit(point.in.poly(checkin.CH, SPDF.CH, copy.attr="ZIP"))
 
+checkin.poly.list=list(checkin.poly.NY,checkin.poly.LA,checkin.poly.CH)
+
 tiff("plots/checkin_points_cities.png", width = 12*ppi, height = 4*ppi, 
      res=ppi,bg = "white")
 grid.arrange(
@@ -64,7 +66,7 @@ grid.arrange(
                                   size=0.4,color="grey",fill=NA))+
         ggtitle("New York City")+
         xlab("Longitude")+ylab("Latitude")+
-        annotate("text",x=-74.12,y=40.82,size=2.5,label="Area: 468.9 sq mi\nPopulation: 8,405,837(2013)\nCheck-ins: 579,786"),
+        annotate("text",x=-74.22,y=40.82,size=2.5,hjust=0,label="Area: 468.9 sq mi\nPopulation: 8,405,837(2013)\nCheck-ins: 579,786"),
     
     point.plot(checkin.LA,alpha=0.3,size=1,shape=21,fill="white",
                basemap = map.plot(mapdir="../../global/data/shapefiles", 
@@ -72,7 +74,7 @@ grid.arrange(
                                   size=0.4,color="grey",fill=NA))+
         ggtitle("Los Angeles City")+
         xlab("Longitude")+ylab("Latitude")+
-        annotate("text",x=-118.5,y=33.82,size=2.5,label="Area:503 sq mi\nPopulation:3,884,307(2013)\nCheck-ins:138,211"),
+        annotate("text",x=-118.62,y=33.82,size=2.5,hjust=0,label="Area:503 sq mi\nPopulation:3,884,307(2013)\nCheck-ins:138,211"),
     
     point.plot(checkin.CH,alpha=0.3,size=1,shape=21,fill="white",
                basemap = map.plot(mapdir="../../global/data/shapefiles", 
@@ -80,7 +82,7 @@ grid.arrange(
                                   size=0.4,color="grey",fill=NA))+
         ggtitle("Chicago City")+
         xlab("Longitude")+ylab("Latitude")+
-        annotate("text",x=-87.83,y=41.7,size=2.5,label="Area:234.0 sq mi\nPopulation:2,695,598(2010)\nCheck-ins:183,837"),
+        annotate("text",x=-87.92,y=41.7,size=2.5,hjust=0,label="Area:234.0 sq mi\nPopulation:2,695,598(2010)\nCheck-ins:183,837"),
              nrow=1, ncol=3, widths=c(1.2,0.8,1))
 dev.off()
 ```
@@ -90,36 +92,75 @@ dev.off()
 The check-in dataset, like other social media datasets, is sparse. Most of the records are created by only a small propotion of user. 
 
 ```{r}
-user.freq = as.data.frame(table(checkin.poly.CH$user_id))
-colnames(user.freq)=c("User","Freq")
-count.freq = as.data.frame(table(user.freq$Freq))
-colnames(count.freq)=c("Freq","Freq.Freq")
-count.freq$Freq=as.integer(as.character(count.freq$Freq))
-count.freq$Prob=count.freq$Freq.Freq/sum(count.freq$Freq.Freq)
-
-model.personal.checkin = glm(data=count.freq,formula=Prob~log(Freq),
-                             family=gaussian(link = 'log'))
-a=model.personal.checkin$coefficients[1]
-k=model.personal.checkin$coefficients[2]
-model.summary1=as.character(as.expression(substitute(italic(y) == a %.% italic(x)^k,
-                     list(a = format(model.personal.checkin$coefficients[1], digits = 3), 
-                          k = format(model.personal.checkin$coefficients[2], digits = 3)))))
-model.summary2="ANOVA: 
----------------------------------------------------------------------
-                  Df    Deviance    Resid.Df    Resid.Dev    Pr(>Chi)
-NULL                                          244      0.143432              
-log(Freq)    1      0.14299           243      0.000438    < 2.2e-16 ***
----------------------------------------------------------------------
-Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1"
-ggplot(count.freq,aes(x=Freq,y=Prob))+
-    geom_point()+scale_x_log10()+scale_y_continuous(labels=percent)+
-    geom_smooth(formula=y~x,method=glm,family=gaussian(link = 'log'))+
-    xlab("Personal Number of Check-ins [x]")+
-    ylab("Probability [y=Pr(x)]")+
-    geom_text(aes(x=50,y=0.3,label=model.summary1),parse = TRUE,hjust=0)+
-#     annotation_custom(grob=tableGrob(test),xmin=1,xmax=3,ymin=0.1,ymax=0.25)
-    geom_text(aes(x=50,y=0.2,label=model.summary2),hjust=0)
+gg.personal.stat<-lapply(checkin.poly.list,function(checkin){
+    user.freq = as.data.frame(table(checkin$user_id))
+    colnames(user.freq)=c("User","Freq")
+    count.freq = as.data.frame(table(user.freq$Freq))
+    colnames(count.freq)=c("Freq","Freq.Freq")
+    count.freq$Freq=as.integer(as.character(count.freq$Freq))
+#     count.freq$Prob=count.freq$Freq.Freq/sum(count.freq$Freq.Freq)
     
+    model = glm(data=count.freq,formula=Freq.Freq~log(Freq),
+                             family=gaussian(link = 'log'))
+    print(summary(model))
+    print(anova(model,test="Chisq"))
+    
+    a=model$coefficients[1]
+    k=model$coefficients[2]
+    
+    gg<-ggplot(count.freq,aes(x=Freq,y=Freq.Freq))+
+        geom_point(shape=21,fill="white",alpha=.5)+
+        scale_x_log10()+
+        geom_smooth(formula=y~x,method=glm,family=gaussian(link = 'log'))+
+        xlab("Number of Check-ins [x]")+
+        ylab("Number of Users\nHaving x Check-ins [y=f(x)]")+
+        theme_grey(base_size = 10)
+    list(gg,a=a,k=k)
+})
+model.summary.NY1=as.character(as.expression(substitute(italic(y) == e^a %.% italic(x)^k,
+                         list(a = format(gg.personal.stat[[1]]$a, digits = 3), 
+                              k = format(gg.personal.stat[[1]]$k, digits = 3)))))
+model.summary.NY2 = "ANOVA: 
+--------------------------------------------------------------------------------
+            Df    Deviance    Resid.Df    Resid.Dev    Pr(>Chi)
+NULL                                   356     177403499              
+log(x)     1  175119543         355         2283955     < 2.2e-16 ***
+--------------------------------------------------------------------------------
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1"
+model.summary.LA1=as.character(as.expression(substitute(italic(y) == e^a %.% italic(x)^k,
+                         list(a = format(gg.personal.stat[[2]]$a, digits = 3), 
+                              k = format(gg.personal.stat[[2]]$k, digits = 3)))))
+model.summary.LA2 = "ANOVA: 
+--------------------------------------------------------------------------------
+            Df    Deviance    Resid.Df    Resid.Dev    Pr(>Chi)
+NULL                                    181      51559695              
+log(x)     1    51169528          180          390166    < 2.2e-16 ***
+--------------------------------------------------------------------------------
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1"
+model.summary.CH1=as.character(as.expression(substitute(italic(y) == e^a %.% italic(x)^k,
+                         list(a = format(gg.personal.stat[[3]]$a, digits = 3), 
+                              k = format(gg.personal.stat[[3]]$k, digits = 3)))))
+model.summary.CH2 = "ANOVA: 
+--------------------------------------------------------------------------------
+            Df    Deviance    Resid.Df    Resid.Dev    Pr(>Chi)
+NULL                                    244      36737034              
+log(x)     1   36624722           243          112311    < 2.2e-16 ***
+--------------------------------------------------------------------------------
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1"
+
+tiff("plots/user.count.stat.tiff",width=12*ppi,height=3*ppi,res=ppi)
+grid.arrange(gg.personal.stat[[1]][[1]]+ggtitle("New York City")+
+                 geom_text(aes(x=5,y=10500,label=model.summary.NY1),parse = TRUE,hjust=0,size=3)+
+                 geom_text(aes(x=5,y=6000,label=model.summary.NY2),hjust=0,size=2),
+             gg.personal.stat[[2]][[1]]+ggtitle("Los Angeles City")+
+                 geom_text(aes(x=5,y=6000,label=model.summary.LA1),parse = TRUE,hjust=0,size=3)+
+                 geom_text(aes(x=5,y=3500,label=model.summary.LA2),hjust=0,size=2),
+             gg.personal.stat[[3]][[1]]+ggtitle("Chicago City")+
+                 geom_text(aes(x=5,y=5000,label=model.summary.CH1),parse = TRUE,hjust=0,size=3)+
+                 geom_text(aes(x=5,y=3000,label=model.summary.CH2),hjust=0,size=2),
+             ncol=3,widths=c(1,1,1)
+             )
+dev.off()
 ```
 
 
@@ -176,7 +217,7 @@ gg.usercls <- lapply(nr.clusters,function(i){
 #         scale_x_log10(breaks=c(1,10,30,xintercepts[idx],100,1000),limits=c(2,3000))+
         scale_x_log10(breaks=c(10,30,100,1000),limits=c(2,3000))+
         scale_y_continuous(limits=c(0,1.8))+
-        xlab("Number of Records in One Cluster")+
+        xlab("Number of Check-ins in One Cluster")+
         ylab("Probability Density")+
         theme(axis.text.x=element_text(face=c("plain","bold","plain","plain")))+
 #         geom_vline(xintercept=xintercepts[idx])+
@@ -194,7 +235,7 @@ gg.usercls <- lapply(nr.clusters,function(i){
 
 gg.stat <- ggplot(melt(data=stats,id.vars="Clusters"),aes(x=Clusters,y=value))+
     geom_line(aes(group=variable))+geom_point(aes(shape=variable,group=variable))+
-    theme_grey(base_size = 10)+
+#     theme_grey(base_size = 10)+
     ggtitle("Trend")+
     xlab("Number of Clusters")+
     ylab("Proportion")+
@@ -340,7 +381,7 @@ entropies = cbind("Random"=entropy.rand,"Uncorrelated"=entropy.unc,
                   })))
 
 ## plotting
-tiff("plots/entropies.tiff",width=12*ppi,height=4*ppi,res=ppi)
+tiff("plots/entropies.tiff",width=12*ppi,height=6*ppi,res=ppi)
 data=melt(entropies,id.vars = c("records","unique.venues"))
 grid.arrange(
     ggplot(data)+
@@ -363,7 +404,7 @@ grid.arrange(
         scale_y_log10(breaks=c(10,100,1000))+
 #         theme(axis.text.y=element_text(face=c("plain","bold","plain","plain")))+
         facet_wrap(~variable,ncol=5),
-    nrow=2,heights=c(1,1.2))
+    nrow=2,heights=c(1,1.1))
 dev.off()
 
 tiff("plots/entropy.residual.tiff",width=12*ppi,height=6*ppi,res=ppi)
