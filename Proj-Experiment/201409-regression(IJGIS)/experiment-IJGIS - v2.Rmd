@@ -25,20 +25,6 @@ source("../../global/functions/basic.stats.plots.R")
 source("../../global/functions/spatial.analysis.R")
 source("../../global/functions/etc.R")
 
-# ###########
-# other aid functions 
-counter.print = function(interval){
-    if(counter %% interval ==0) print(paste(Sys.time(),counter))
-    counter <<- counter+1
-}
-
-counter.reset = function(){counter <<- 1}
-
-time.print = function(ts_now, ts_last, str_desc){
-    print(paste(ts_now, str_desc, 
-                as.integer(ts_now)-as.integer(ts_last), "seconds.") )
-}
-
 # ############
 # global variable
 ppi=300
@@ -99,8 +85,45 @@ grid.arrange(
 dev.off()
 ```
 
+##### 1.2 Data sparsity 
 
-##### 1.2 User similarity
+The check-in dataset, like other social media datasets, is sparse. Most of the records are created by only a small propotion of user. 
+
+```{r}
+user.freq = as.data.frame(table(checkin.poly.CH$user_id))
+colnames(user.freq)=c("User","Freq")
+count.freq = as.data.frame(table(user.freq$Freq))
+colnames(count.freq)=c("Freq","Freq.Freq")
+count.freq$Freq=as.integer(as.character(count.freq$Freq))
+count.freq$Prob=count.freq$Freq.Freq/sum(count.freq$Freq.Freq)
+
+model.personal.checkin = glm(data=count.freq,formula=Prob~log(Freq),
+                             family=gaussian(link = 'log'))
+a=model.personal.checkin$coefficients[1]
+k=model.personal.checkin$coefficients[2]
+model.summary1=as.character(as.expression(substitute(italic(y) == a %.% italic(x)^k,
+                     list(a = format(model.personal.checkin$coefficients[1], digits = 3), 
+                          k = format(model.personal.checkin$coefficients[2], digits = 3)))))
+model.summary2="ANOVA: 
+---------------------------------------------------------------------
+                  Df    Deviance    Resid.Df    Resid.Dev    Pr(>Chi)
+NULL                                          244      0.143432              
+log(Freq)    1      0.14299           243      0.000438    < 2.2e-16 ***
+---------------------------------------------------------------------
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1"
+ggplot(count.freq,aes(x=Freq,y=Prob))+
+    geom_point()+scale_x_log10()+scale_y_continuous(labels=percent)+
+    geom_smooth(formula=y~x,method=glm,family=gaussian(link = 'log'))+
+    xlab("Personal Number of Check-ins [x]")+
+    ylab("Probability [y=Pr(x)]")+
+    geom_text(aes(x=50,y=0.3,label=model.summary1),parse = TRUE,hjust=0)+
+#     annotation_custom(grob=tableGrob(test),xmin=1,xmax=3,ymin=0.1,ymax=0.25)
+    geom_text(aes(x=50,y=0.2,label=model.summary2),hjust=0)
+    
+```
+
+
+##### 1.3 User similarity
 
 1. each user is represented by a N-dimension vector describing the venues he/she has been to.
 2. clustering the points in the N-dimension space
@@ -115,12 +138,14 @@ point.vectors = sapply(user.list.all,function(user){
     table(user$cate_l2)
 })
 time.print(Sys.time(), time0, "creating user vectors takes")
-
+```
+```{r}
 # now we should discuss how we decide the number of clusters.
 # It should be a compromise between the between_variances and 
 # the records in each cluster. We should keep as much variance 
 # as possible, while make sure there are still enough records
 # in each cluster for valid statistics.
+# ! computational heavy !
 nr.clusters = lapply(c(200,500,1000,2000,3000,4000,5000,6000),function(i){
    time0=Sys.time();
    clusters = kmeans(t(point.vectors),centers=i,iter.max = 1000)
@@ -136,24 +161,28 @@ nr.clusters = lapply(c(200,500,1000,2000,3000,4000,5000,6000),function(i){
         
    list(clusters,pct.ss,agg.sizes)
 })
-
-xintercepts = c(500,280,140,55,33,20,13,10);idx=0;
+save(nr.clusters,file="data/nr.clusters.CH.Rda")
+load("data/nr.clusters.CH.Rda")
+```
+```{r}
+# xintercepts = c(500,280,140,55,33,20,13,10);idx=0;
 stats=data.frame()
 gg.usercls <- lapply(nr.clusters,function(i){
-    idx<<-idx+1
+#     idx<<-idx+1
     
     gg<-ggplot(i[[3]])+
         geom_histogram(aes(x=Freq,y=..density..),binwidth=0.05,fill=NA,color="grey")+
         geom_density(aes(x=Freq),adjust=2)+
-        scale_x_log10(breaks=c(1,10,30,xintercepts[idx],100,1000),limits=c(2,3000))+
+#         scale_x_log10(breaks=c(1,10,30,xintercepts[idx],100,1000),limits=c(2,3000))+
+        scale_x_log10(breaks=c(10,30,100,1000),limits=c(2,3000))+
         scale_y_continuous(limits=c(0,1.8))+
         xlab("Number of Records in One Cluster")+
         ylab("Probability Density")+
-        theme_grey(base_size = 10)+
+        theme(axis.text.x=element_text(face=c("plain","bold","plain","plain")))+
 #         geom_vline(xintercept=xintercepts[idx])+
         annotate("text",x=400,y=1.6,size=3.2,
                   label=paste("Between SS / Total SS:",format.percent(i[[2]]),
-                              "\n Clusters (> 30 records):",
+                              "\nClusters (> 30 records):",
                               format.percent(length(which(i[[3]]$Freq>=30))/nrow(i[[3]]))))+
         ggtitle(paste(nrow(i[[3]]),"Clusters"))
 
@@ -169,10 +198,14 @@ gg.stat <- ggplot(melt(data=stats,id.vars="Clusters"),aes(x=Clusters,y=value))+
     ggtitle("Trend")+
     xlab("Number of Clusters")+
     ylab("Proportion")+
-    scale_shape_discrete(name="Criteria")
+    scale_shape_discrete(name="Criteria")+
+    scale_x_continuous(breaks=c(0,1000,2000,3000,4000,5000,6000))+
+    scale_y_continuous(labels=percent)+
+    theme(legend.justification=c(0,0),legend.position=c(0,0))
+
 tiff("plots/user.clustering.tiff",width=12*ppi,height=6*ppi,res=ppi)
-grid.arrange(gg.usercls[[2]],gg.usercls[[3]],gg.usercls[[4]],
-             gg.usercls[[5]],gg.usercls[[6]],gg.stat,
+grid.arrange(gg.usercls[[1]],gg.usercls[[3]],gg.usercls[[4]],
+             gg.usercls[[6]],gg.usercls[[8]],gg.stat,
              ncol=3,nrow=2)
 dev.off()
                  
@@ -185,6 +218,65 @@ checkin.poly.CH$cluster.id = sapply(checkin.poly.CH$user_id,function(i){
 # re-split
 user.list.ucls = split(checkin.poly.CH,checkin.poly.CH$cluster.id)
 
+```
+
+
+##### 1.4 relations between the number of unique venues in a cluster and the number of records in a cluster
+
+Intuitively, if there are more unique venues, there tend to be more records in the same cluster. However, the relationship should not be linear, because the appearance of each unique venues will not be equal. Suppose we have $m$ venues in a cluster, each represented as $v_{i}, i \in \left \{ 1,2,...m \right \}$. The number of appearances of each venue is $x_{i}$. We have the total number of records in that cluster $R=\sum_{1}^{m}x_{i}$.
+
+We find a power-law distribution in $x_{i}$, i.e.: $f(x_{i}) \sim x_{i}^k$
+```{r}
+# get venue list vi with appearance xi in each cluster
+counter.reset()
+xi_distribution = do.call(rbind, lapply(user.list.ucls,function(cluster){
+    counter.print(20)
+    # number of records:
+    R = nrow(cluster)
+    
+    cluster$venue_id=factor(cluster$venue_id)
+    vi_freq = as.data.frame(table(cluster$venue_id)) 
+    colnames(vi_freq)=c("vi","xi") # note: sum(vi_freq$xi)==R
+    # number of unique venues:
+    m = nrow(vi_freq)
+    
+    xi_freq = as.data.frame(table(vi_freq$xi)) 
+    colnames(xi_freq)=c("xi","Freq") # note: sum(xi_freq$Freq)==m
+    xi_freq$xi = as.integer(as.character(xi_freq$xi))
+    
+    # power law distribution
+    model=glm(data=xi_freq,formula=Freq~log(xi),family = gaussian(link='log'))
+    
+    goodness.null = 1-pchisq(model$null.deviance,model$df.null)
+    goodness.power.law = 1-pchisq(model$deviance,model$df.residual)
+    
+    k = model$coefficients[2]
+    a = model$coefficients[1]
+    
+    data.frame("a"=a,"k"=k,"R"=R,"m"=m,
+               "goodness.power.law"=goodness.power.law,
+               "power.law.sig"=goodness.power.law>0.05,
+               "goodness.null"=goodness.null,
+               "null.sig"=goodness.null>0.05)
+}))
+
+k.mean=mean(xi_distribution$k,na.rm=T);k.sd=sd(xi_distribution$k,na.rm=T)
+ggplot(xi_distribution,aes(x=k))+
+    geom_histogram(aes(y=..density..),fill=NA,color="grey",binwidth=0.05)+
+    geom_density(adjust=2.5,linetype=1)+
+    stat_function(fun=dnorm,args=list(mean=k.mean,sd=k.sd),linetype=2)+
+    geom_segment(aes(x=-4,y=0.3,xend=-3.75,yend=0.27),
+                 arrow=arrow(length=unit(0.5,"cm")))+
+    geom_text(aes(x=-4.5,y=0.32),label=c("Reference:Normal distribution"))+
+    geom_segment(aes(x=-1.9,y=0.4,xend=-2.2,yend=0.38),
+                 arrow=arrow(length=unit(0.5,"cm")))+
+    geom_text(aes(x=-1.5,y=0.42),label=c("Estimated distribution"))+
+    ylab("Probability Density")
+ggplot(xi_distribution,aes(x=m,y=R))+
+    geom_point(alpha=0.5,shape=21,fill="white",size=1)+
+    scale_y_log10()+
+    geom_smooth(size=1,method=glm,family=gaussian(link='log'),formula=y~log(x))
+model=glm(data=xi_distribution,formula=R~log(m),family = gaussian(link='log'))
 ```
 
 
@@ -240,248 +332,127 @@ conditional.entropies = as.data.frame(t(conditional.entropies))
 colnames(conditional.entropies)=c("Time","Space","ST")
 
 
+entropies = cbind("Random"=entropy.rand,"Uncorrelated"=entropy.unc,
+                  conditional.entropies,
+                  do.call(rbind,lapply(user.list.ucls,function(i){
+                      data.frame("unique.venues"=length(unique(i$venue_id)),
+                                 "records"=nrow(i))
+                  })))
+
 ## plotting
-ggplot()+geom_histogram(aes(x=entropy.rand),binwidth=0.05)+
-    xlim(0,8)
+tiff("plots/entropies.tiff",width=12*ppi,height=4*ppi,res=ppi)
+data=melt(entropies,id.vars = c("records","unique.venues"))
+grid.arrange(
+    ggplot(data)+
+        geom_histogram(aes(x=value,y=..density..),binwidth=0.1,fill=NA,
+                       color="grey",position="identity")+
+        geom_density(aes(x=value),adjust=2)+
+        xlab("Entropy")+ylab("Probability Density")+
+        facet_wrap(~variable,ncol=5),
+#     ggplot(data,aes(x=value,y=records))+
+#         geom_point(shape=21,fill="white",alpha=0.3,size=1)+
+#         xlab("Entropy")+ylab("Number of Records")+
+#         geom_smooth(method=lm)+
+#         scale_y_log10(breaks=c(10,30,100,1000))+
+#         theme(axis.text.y=element_text(face=c("plain","bold","plain","plain")))+
+#         facet_wrap(~variable,ncol=5),
+    ggplot(data,aes(x=value,y=unique.venues))+
+        geom_point(shape=21,fill="white",alpha=0.3,size=1)+
+        xlab("Entropy")+ylab("Unique Venues")+
+        geom_smooth(method=lm)+
+        scale_y_log10(breaks=c(10,100,1000))+
+#         theme(axis.text.y=element_text(face=c("plain","bold","plain","plain")))+
+        facet_wrap(~variable,ncol=5),
+    nrow=2,heights=c(1,1.2))
+dev.off()
 
-ggplot()+geom_histogram(aes(x=entropy.unc),binwidth=0.05)+
-    xlim(0,8)
+tiff("plots/entropy.residual.tiff",width=12*ppi,height=6*ppi,res=ppi)
+data=melt(entropies,id.vars = c("records","unique.venues"))
+gg.residual<-lapply(split(data,data$variable),function(i){
+    
+    list(ggplot(i,aes(x=unique.venues,y=records))+
+        geom_point(shape=21,fill="white",alpha=0.3,size=1)+
+        geom_smooth(method=glm,formula=y~log(x))+
+        xlab("Unique Venues")+ylab("Number of Records")+
+        scale_y_log10()+
+        theme_grey(base_size = 10)+
+        ggtitle(i[1,"variable"]),
+    ggplot(i,aes(x=unique.venues,y=value))+
+        geom_point(shape=21,fill="white",alpha=0.3,size=1)+
+        geom_smooth(method=glm,formula=y~log(x))+
+        xlab("Unique Venues")+ylab("Entropy")+
+        theme_grey(base_size = 10)+
+        ggtitle(i[1,"variable"]),
+    ggplot(i,aes(x=resid(glm(formula=records~log(unique.venues),
+                          family=gaussian(link="log"))),
+                 y=resid( glm(formula=value~log(unique.venues)))))+
+        geom_point(shape=21,fill="white",alpha=0.3,size=1)+
+#         geom_smooth(method=glm,formula=y~log(x))+
+        xlab("Redisual: Records ~ Venues")+
+        ylab("Redisual: Entropy ~ Venues")+
+        theme_grey(base_size = 10)+
+        scale_x_log10()+
+        ggtitle(i[1,"variable"]))
+})
+grid.arrange(gg.residual[[1]][[1]],gg.residual[[2]][[1]],gg.residual[[3]][[1]],
+             gg.residual[[4]][[1]],gg.residual[[5]][[1]],
+             gg.residual[[1]][[2]],gg.residual[[2]][[2]],gg.residual[[3]][[2]],
+             gg.residual[[4]][[2]],gg.residual[[5]][[2]],
+             gg.residual[[1]][[3]],gg.residual[[2]][[3]],gg.residual[[3]][[3]],
+             gg.residual[[4]][[3]],gg.residual[[5]][[3]],
+             ncol=5,nrow=3)
 
-ggplot()+geom_histogram(aes(x=conditional.entropies$Time),binwidth=0.05)+
-    xlim(0,8)
-
-ggplot()+geom_histogram(aes(x=conditional.entropies$Space),binwidth=0.05)+
-    xlim(0,8)
-
-ggplot()+geom_histogram(aes(x=conditional.entropies$ST),binwidth=0.05)+
-    xlim(0,8)
-
+dev.off()
 
 ####################
+reduction.list = list(
 
-ggplot()+
-    geom_point(aes(x=entropy.rand,y=entropy.unc),
-               shape=21,fill="white",alpha=0.5)+
+ggplot(entropies,aes(x=Random,y=Uncorrelated))+
+    geom_point(shape=21,fill="white",alpha=0.3,size=1)+
     geom_line(aes(x=c(1:8),y=c(1:8)),size=2,alpha=0.5,linetype="dashed")+
-    geom_smooth(aes(x=entropy.rand,y=entropy.unc))
-
-ggplot()+
-    geom_point(aes(x=entropy.rand,y=entropy.rand-entropy.unc),
-               shape=21,fill="white",alpha=0.5)+
-    geom_smooth(aes(x=entropy.rand,y=entropy.rand-entropy.unc))
-
-ggplot()+
-    geom_point(aes(x=entropy.rand,y=(entropy.rand-entropy.unc)/entropy.rand),
-               shape=21,fill="white",alpha=0.5)+
-    geom_smooth(aes(x=entropy.rand,y=(entropy.rand-entropy.unc)/entropy.rand))
-
-###################
-
-ggplot()+
-    geom_point(aes(x=entropy.unc,y=entropy.time),
-               shape=21,fill="white",alpha=0.5)+
+    geom_smooth(method=lm),
+ggplot(entropies,aes(x=Uncorrelated,y=Time))+
+    geom_point(shape=21,fill="white",alpha=0.3,size=1)+
     geom_line(aes(x=c(1:8),y=c(1:8)),size=2,alpha=0.5,linetype="dashed")+
-    geom_smooth(aes(x=entropy.unc,y=entropy.time))
+    geom_smooth(method=lm),
+ggplot(entropies,aes(x=Uncorrelated,y=Space))+
+    geom_point(shape=21,fill="white",alpha=0.3,size=1)+
+    geom_line(aes(x=c(1:8),y=c(1:8)),size=2,alpha=0.5,linetype="dashed")+
+    geom_smooth(method=lm),
+ggplot(entropies,aes(x=Uncorrelated,y=ST))+
+    geom_point(shape=21,fill="white",alpha=0.3,size=1)+
+    geom_line(aes(x=c(1:8),y=c(1:8)),size=2,alpha=0.5,linetype="dashed")+
+    geom_smooth(method=lm),
 
-ggplot()+
-    geom_point(aes(x=entropy.unc,y=entropy.unc-entropy.time),
-               shape=21,fill="white",alpha=0.5)+
-    geom_smooth(aes(x=entropy.unc,y=entropy.unc-entropy.time))
+ggplot(entropies,aes(x=Random,y=(Random-Uncorrelated)/Random))+
+    geom_point(shape=21,fill="white",alpha=0.3,size=1)+
+    geom_smooth(method=lm)+scale_y_continuous(labels=percent)+
+    ylab("Reduction (Uncorrelated)"),
+ggplot(entropies,aes(x=Uncorrelated,y=(Uncorrelated-Time)/Uncorrelated))+
+    geom_point(shape=21,fill="white",alpha=0.3,size=1)+
+    geom_smooth(method=lm)+scale_y_continuous(labels=percent)+
+    ylab("Reduction (Time)"),
+ggplot(entropies,aes(x=Uncorrelated,y=(Uncorrelated-Space)/Uncorrelated))+
+    geom_point(shape=21,fill="white",alpha=0.3,size=1)+
+    geom_smooth(method=lm)+scale_y_continuous(labels=percent)+
+    ylab("Reduction (Space)"),
+ggplot(entropies,aes(x=Uncorrelated,y=(Uncorrelated-ST)/Uncorrelated))+
+    geom_point(shape=21,fill="white",alpha=0.3,size=1)+
+    geom_smooth(method=lm)+scale_y_continuous(labels=percent)+
+    ylab("Reduction (ST)")
+)
 
-ggplot()+
-    geom_point(aes(x=entropy.unc,y=(entropy.unc-entropy.time)/entropy.unc),
-               shape=21,fill="white",alpha=0.5)+
-    geom_smooth(aes(x=entropy.unc,y=(entropy.unc-entropy.time)/entropy.unc))
-```
-
-```{r,eval=FALSE,echo=FALSE}
-
-
-```
-```{r,eval=FALSE}
-# real entropy (spatiotemporal pattern)
-entropy.real = sapply(usersets,function(user){
-
-    cls.s = spatial.clustering(user)
-    cls.t = temporal.clustering(user)
-    cls = merge(x=cls.s, y=cls.t[c("id","hour.cls")], by.x="id", by.y="id", all.X=TRUE)
-    
-    cls$cate_l2=factor(cls$cate_l2)
-    cls$st = as.factor(paste(cls$hour,cls$sp))
-    
-    
-    freq = as.data.frame(xtabs(data=cls,~st+cate_l2))
-    freq.marg = sapply(split(freq,freq$st),function(j){
-        sum(j$Freq)
-    })
-    freq$marg = rep(freq.marg,length(unique(freq$cate_l2)))
-    
-    freq$p.joint = freq$Freq / sum(freq$Freq)    
-    freq$p.marg = freq$marg / sum(freq.marg)
-    p = freq[freq$Freq>0,c("p.joint","p.marg")]
-    entropy = sum(p$p.joint * log2(p$p.marg / p$p.joint))
-    
-    entropy
-})
-
-# test
-entropy.real.act = sapply(usersets.active,function(user){
-
-    cls.s = spatial.clustering(user)
-    cls.t = temporal.clustering(user)
-    cls = merge(x=cls.s, y=cls.t[c("id","hour.cls")], by.x="id", by.y="id", all.X=TRUE)
-    
-    cls$cate_l2=factor(cls$cate_l2)
-    cls$st = as.factor(paste(cls$hour,cls$sp))
-    
-    
-    freq = as.data.frame(xtabs(data=cls,~st+cate_l2))
-    freq.marg = sapply(split(freq,freq$st),function(j){
-        sum(j$Freq)
-    })
-    freq$marg = rep(freq.marg,length(unique(freq$cate_l2)))
-    
-    freq$p.joint = freq$Freq / sum(freq$Freq)    
-    freq$p.marg = freq$marg / sum(freq.marg)
-    p = freq[freq$Freq>0,c("p.joint","p.marg")]
-    entropy = sum(p$p.joint * log2(p$p.marg / p$p.joint))
-    
-    entropy
-})
-```
-```{r,echo=FALSE}
-# save(entropy.rand,file="D:\\Experiments\\R\\data\\entropy.rand.Rda")
-# save(entropy.unc,file="D:\\Experiments\\R\\data\\entropy.unc.Rda")
-# save(entropy.temp,file="D:\\Experiments\\R\\data\\entropy.temp.Rda")
-# save(entropy.real,file="D:\\Experiments\\R\\data\\entropy.real.Rda")
-load("D:\\Experiments\\R\\data\\entropy.rand.Rda")
-load("D:\\Experiments\\R\\data\\entropy.unc.Rda")
-# load("D:\\Experiments\\R\\data\\entropy.temp.Rda")
-load("D:\\Experiments\\R\\data\\entropy.real.Rda")
-
-```
-```{r,echo=FALSE, fig.width=6, fig.height=3}
-##########################
-# grouping
-
-entropy.rand.act = entropy.rand[usersets.active.idx]
-entropy.unc.act = entropy.unc[usersets.active.idx]
-# entropy.temp.act = entropy.temp[usersets.active.idx]
-entropy.real.act = entropy.real[usersets.active.idx]
-
-
-# gg.entropy1 = ggplot() +
-#     stat_density(data=data.frame("entropy"=entropy.rand1),position = "identity",
-#               aes(x = entropy, y = ..density..,fill="1"),adjust = 3,alpha=0.5) +
-#     stat_density(data=data.frame("entropy"=entropy.unc1),position = "identity",
-#               aes(x = entropy, y = ..density..,fill="2"),adjust = 3,alpha=0.5) +
-#     stat_density(data=data.frame("entropy"=entropy.real1),position = "identity",
-#               aes(x = entropy, y = ..density..,fill="3"),adjust = 3,alpha=0.5) +
-#     scale_fill_discrete( breaks = c("1","2","3"),
-#          labels=list(bquote(S^.("rand")),bquote(S^.("unc")),bquote(S^.("real")) )  )+
-#     xlab(expression(paste("Entropy / S"))) +
-#     ylab("Density") +
-#     theme(axis.title = element_text(size=10),legend.title=element_blank(),
-#           legend.position=c(.85,.75),legend.background=element_blank())+
-#     scale_y_sqrt()+
-#     ggtitle("Entropies for Inactive Users")
-
-gg.entropy.act = ggplot() +
-    stat_density(data=data.frame("entropy"=entropy.rand.act),position = "identity",
-              aes(x = entropy, y = ..density..,fill="4"),adjust = 2,alpha=0.5) +
-    stat_density(data=data.frame("entropy"=entropy.unc.act),position = "identity",
-              aes(x = entropy, y = ..density..,fill="5"),adjust = 2,alpha=0.5) +
-#     stat_density(data=data.frame("entropy"=entropy.temp.act),position = "identity",
-#               aes(x = entropy, y = ..density..,fill="6"),adjust = 2,alpha=0.5) +
-    stat_density(data=data.frame("entropy"=entropy.real.act),position = "identity",
-              aes(x = entropy, y = ..density..,fill="7"),adjust = 2,alpha=0.5) +
-    scale_fill_discrete( breaks = c("4","5","7"),
-         labels=list(bquote(S^.("rand")),bquote(S^.("unc")),bquote(S^.("st")) )  )+
-    xlab(paste("Entropy \n\n(a)")) +
-    ylab("Density") +
-    theme(axis.title = element_text(size=10),legend.title=element_blank(),
-          legend.position=c(.85,.75),legend.background=element_blank())
-#     theme(axis.title = element_text(size=10),legend.title=element_blank(),
-#           legend.background=element_blank(),plot.title = element_text(size=11))
-#     ggtitle("Entropies of Differnt Models")
-
-gg.entropy.act
-
-png(paste0(basedir,"entropy.png"), width = 8*ppi, height = 3*ppi, res=ppi,bg = "transparent")
-multiplot(gg.entropy.act,g3,cols=2)
+tiff("plots/entropies.reduction.tiff",width=12*ppi,height=4*ppi,res=ppi)
+grid.arrange(reduction.list[[1]],reduction.list[[2]],
+             reduction.list[[3]],reduction.list[[4]],
+             reduction.list[[5]],reduction.list[[6]],
+             reduction.list[[7]],reduction.list[[8]],
+             ncol=4,nrow=2)
 dev.off()
-# 
-# manipulate(
-#     gg.entropy.act  + geom_vline(xintercept =x.max,color = "#E69F00", linetype="dotted", size=2),
-#     x.max= slider(0.4,4.8)
-#     )
 
 ```
 
-##### 3.2 entropy's relation with a series of factors
 
-```{r,echo=FALSE, fig.width=8, fig.height=8}
-
-## relations 
-usersets.stats.act = usersets.stats[usersets.active.idx,]
-
-df1=data.frame("x"=usersets.stats.act$hourcomp,"y"=entropy.real.act) 
-g1 <- ggplot(df1)+
-    geom_point(aes(x=x,y=y),alpha=.3)+
-    geom_smooth(aes(x=x,y=y),method="lm",size=3)+
-    theme(axis.title = element_text(size=10),legend.title=element_blank(),
-          legend.background=element_blank(),plot.title = element_text(size=11))+
-    ggtitle("Entropies V.S. Hour completeness")+
-    xlab("Hour Completeness") +
-    ylab("Entropy") +
-    geom_text(aes(x = 0.9, y = 2.5, label = lm_eqn(df1)), size=3,parse = TRUE) 
-
-df2=data.frame("x"=usersets.stats.act$totalcnt,"y"=entropy.real.act)
-g2 <- ggplot(df2)+
-    geom_point(aes(x=x,y=y),alpha=.3)+
-    geom_smooth(aes(x=x,y=y),method="lm",size=3) +
-    theme(axis.title = element_text(size=10),legend.title=element_blank(),
-          legend.background=element_blank(),plot.title = element_text(size=11))+
-    scale_x_log10()+
-    ggtitle("Entropies V.S. checkin counts")+
-    xlab("Checkin Counts") +
-    ylab("Entropy")+
-    geom_text(aes(x = 1000, y = 2.5, label = lm_eqn(df2)), size=3,parse = TRUE)
-
-df3=data.frame("x"=usersets.stats.act$cates,"y"=entropy.real.act)
-g3 <- ggplot(df3,aes(x=x,y=y))+
-    geom_point(alpha=.3,size=1)+
-    stat_quantile(aes(colour = ..quantile..), quantiles = seq(0, 1, by=0.25),size = 1.2,linetype="dashed") +
-    scale_colour_gradient2(name = "Quantile",midpoint = 0.5) +
-#     geom_smooth(aes(x=x,y=y),method="lm",formula= y~ x,size=3) +
-    theme(axis.title = element_text(size=10),
-          legend.background=element_blank(),plot.title = element_text(size=11))+
-#     ggtitle("Entropies V.S. Unique categories (N)")+
-    xlab("Number of Unique Categories \n\n(b)") +
-    ylab("Entropy") +
-    scale_y_continuous(limit=c(0,3))+
-    geom_text(aes(x = 70, y = 2.7, label = lm_eqn(df3)), size=3,parse = TRUE)
-
-df4=data.frame("x"=usersets.stats.act$totalcnt,"y"=usersets.stats.act$cates)
-g4 <- ggplot(df4)+
-    geom_point(aes(x=x,y=y),alpha=.3)+
-    geom_smooth(aes(x=x,y=y),method="lm",size=3) +
-    theme(axis.title = element_text(size=10),legend.title=element_blank(),
-          legend.background=element_blank(),plot.title = element_text(size=11))+
-    scale_x_log10()+
-    ggtitle("Checkin counts V.S. Unique categories (N)")+
-    xlab("Unique Categories") +
-    ylab("Checkins Counts")+
-    geom_text(aes(x = 1000, y = 10, label = lm_eqn(df4)), size=3,parse = TRUE)
-
-# png(paste0(basedir,"img\\ceus_entropy_relations2.png"), width = 8*ppi, height = 6*ppi, res=ppi,bg = "transparent")
-# multiplot(g1,g2,g3,g4,cols=2)
-# dev.off()
-
-multiplot(g1,g2,g3,g4,cols=2)
-
-
-```
 
 
 
@@ -732,16 +703,11 @@ gg.pi.s.n <- ggplot(df) +
 ##### 5.2 calculation of upper bounds 
 
 ```{r,echo=FALSE}
-piset = data.frame()
-temp = sapply(seq_along(usersets.active),function(id){
-    
-    N = length(unique(usersets.active[[id]]$cate_l2))
-
-    S = entropy.real.act[id]
-#     Stemp = entropy.temp[id]
-    Sunc = entropy.unc.act[id]
-    Srand = entropy.rand.act[id]
-    
+counter.reset()
+piset = do.call(rbind, lapply(seq_along(user.list.ucls),function(id){
+    counter.print(10)
+    N = length(unique(user.list.ucls[[id]]$venue_id))
+ 
     x = seq(from=0,to=1,length=1001)
     y = rep(0,1001)
 
@@ -753,45 +719,54 @@ temp = sapply(seq_along(usersets.active),function(id){
     yoffset = y[2:length(y)]
     yoffset[length(y)]=-0.001
     
-    pi = ifelse(S<=max(y),x[which( y>=S & yoffset<S )],x[which(y==max(y))] )
-#     pitemp = ifelse(Stemp<=max(y),x[which( y>=Stemp & yoffset<Stemp )],x[which(y==max(y))] )
-    piunc = ifelse(Sunc<=max(y),x[which( y>=Sunc & yoffset<Sunc )],x[which(y==max(y))] )
-    pirand = ifelse(Srand<=max(y),x[which( y>=Srand & yoffset<Srand )],x[which(y==max(y))] )
+    pi.rand = ifelse(entropies[id,"Random"]<=max(y),
+                     x[which( y>=entropies[id,"Random"] & yoffset<entropies[id,"Random"] )],
+                     x[which(y==max(y))] )
+    pi.unc = ifelse(entropies[id,"Uncorrelated"]<=max(y),
+                     x[which( y>=entropies[id,"Uncorrelated"] & yoffset<entropies[id,"Uncorrelated"] )],
+                     x[which(y==max(y))] )
+    pi.time = ifelse(entropies[id,"Time"]<=max(y),
+                     x[which( y>=entropies[id,"Time"] & yoffset<entropies[id,"Time"] )],
+                     x[which(y==max(y))] )
+    pi.space = ifelse(entropies[id,"Space"]<=max(y),
+                     x[which( y>=entropies[id,"Space"] & yoffset<entropies[id,"Space"] )],
+                     x[which(y==max(y))] )
+    pi.st = ifelse(entropies[id,"ST"]<=max(y),
+                     x[which( y>=entropies[id,"ST"] & yoffset<entropies[id,"ST"] )],
+                     x[which(y==max(y))] )
     
-    piset <<- rbind(piset,c("id"=id,"rand"=pirand,"unc"=piunc,"real"=pi,"n"=N))
-
-    NA
-})
-rm(temp)
-colnames(piset)=c("id","rand","unc","real","n")
-piset.melt= melt(piset,id.vars=c("id","n"))
-```
-```{r,eval=FALSE}
-gg.pi <- ggplot(piset.melt) + 
-    stat_density(aes(x=value,y=..density..,group=variable, fill=variable),
-                 position = "identity",adjust = 5,color=NA, alpha=.5) +
-#     scale_x_continuous(limits=c(0,1))+
-    theme(legend.position=c(.85,.75),legend.background=element_blank(),
-          legend.title=element_blank())+
-        theme(axis.title = element_text(size=10),legend.title=element_blank(),
-          legend.background=element_blank(),plot.title = element_text(size=11))+
-    scale_fill_discrete( breaks = c("rand","unc","real"),
-         labels=list(bquote(italic(Pi)^.("rand")),bquote(italic(Pi)^.("unc")),
-                     bquote(italic(Pi)^.("st")) )  )+
-    xlab(expression(atop(italic(Pi)^"max","\n\n(b)") ) ) +
-    ylab("Density")
-#     scale_y_sqrt()+
-#     ggtitle(expression(paste(Pi^"max"," for Active Users")))
-
-# manipulate(
-#     gg.pi2 + geom_vline(xintercept =x.max,color = "#E69F00", linetype="dotted"),
-#     x.max= slider(0,1)
-#     )
-
-png(paste0(basedir,"img\\ceus_pi2.png"), width = 8*ppi, height = 3*ppi, res=ppi)
-multiplot(gg.pi.s.n, gg.pi, cols=2)
+    data.frame("id"=id,"Random"=pi.rand,"Uncorrelated"=pi.unc,"Time"=pi.time,
+      "Space"=pi.space,"ST"=pi.st,"n"=N)
+}))
+piset$records=entropies$records
+tiff("plots/pi.max.tiff",width=12*ppi,height=4*ppi,res=ppi)
+data=melt(piset,id.vars =c("id","n","records"))
+grid.arrange(
+    ggplot(data)+
+        geom_histogram(aes(x=value,y=..density..),binwidth=0.01,fill=NA,
+                       color="grey",position="identity")+
+            geom_density(aes(x=value),adjust=2)+
+        xlab(expression(atop(italic(Pi)^"max") ) ) +
+        ylab("Probability Density")+
+        facet_wrap(~variable,ncol=5),
+#     ggplot(data,aes(x=value,y=records))+
+#         geom_point(shape=21,fill="white",alpha=0.3,size=1)+
+#         xlab(expression(atop(italic(Pi)^"max") ) ) +
+#         ylab("Number of Records")+
+#         geom_smooth(method=lm,formula=y~I(log(x)))+
+#         scale_y_log10(breaks=c(10,30,100,1000),limit=c(1,3000))+
+#         theme(axis.text.y=element_text(face=c("plain","bold","plain","plain")))+
+#         facet_wrap(~variable,ncol=5),
+    ggplot(data,aes(x=value,y=n))+
+        geom_point(shape=21,fill="white",alpha=0.3,size=1)+
+        xlab(expression(atop(italic(Pi)^"max") ) ) +
+        ylab("Unique Venues")+
+        geom_smooth(method=lm,formula=y~log(x))+
+        scale_y_log10(breaks=c(10,100,1000),limit=c(1,3000))+
+#         theme(axis.text.y=element_text(face=c("plain","bold","plain","plain")))+
+        facet_wrap(~variable,ncol=5),
+    nrow=2,heights=c(1,1.2))
 dev.off()
-
 ```
 
 
