@@ -71,7 +71,7 @@ time.distribution.plot(checkin.NY,title="New York City")
 The distribution of the check-in categories in 24 hours in radial plots.
 
 ```{r}
-time.radial.plot(checkin.NY)
+time.radial.plot(checkin.NY,weekday=F)
 ```
 
 ### Spatial
@@ -163,10 +163,14 @@ mapdf=df.from.spdf(classify.polygon.by.point(point=checkin.NY,
                                              SPDF, clsfy.attr="cate_l1"))
         # mapdf$density=apply(mapdf,1,function(i){i[i["cate.dom"]]})
         # mapdf$density=as.numeric(formatC(mapdf$density,digits=1,format = "f"))
-
+mapdf$Category.1st=relevel(mapdf$Category.1st,c("Food"))
+png("imgs/spatial.plot.png",width=10*ppi,height=6*ppi,res=ppi)
 map.plot(mapdf = mapdf, more.aes = aes(fill=Category.1st),
-         color="grey",size=0.3,alpha=0.7)+
-    xlab("")+ylab("")
+         color="grey",size=0.3)+
+    scale_fill_manual(values=c("#e3e3e3","#a6cee3","#1f78b4","#b2df8a","#33a02c",
+                               "#fb9a99","#e31a1c","#fdbf6f","#ff7f00"))+
+    xlab("")+ylab("")+theme_bw(base_size = 11)
+dev.off()
 
 
 ```
@@ -185,20 +189,6 @@ ani.width = 1500, ani.height = 1200)
 ```
 <img src="cateogrized.polygon.spatiotemporal.gif" />
 
-### Meteorological: Correspondence analysis
-
-```{r}
-cate.conds = xtabs(~conds+cate_l2, data=checkin.NY)
-#prop.table(cate.conds, 1) # row percentages
-#prop.table(cate.conds, 2) # column percentages
-fit <- ca(cate.conds)
-#print(fit) # basic results
-summary(fit) # extended results
-#plot(fit) # symmetric map
-plot(fit, mass = TRUE, contrib = "absolute", map ="rowgreen", 
-     arrows = c(TRUE, FALSE)) # asymmetric map
-
-```
 
 
 ### 3. Model -  derivation and corresponding functions
@@ -267,110 +257,7 @@ get.previous.impact <- function(dataframe){
 ```
 
 
-* relevance contextualized by (unweighted meteorological) factor 
 
-$$P_{u}(C=k|W=j)=\frac{Intercept(C=k,W=j)}{\sum Intercept(C,W=j)} (5)$$
-
-```{r}
-get.meteorological.impact <- function(fit){
-    
-    conds = fit[["rownames"]]
-    
-    do.call(rbind, lapply(conds, function(cond){
-        conds.id = which(fit[["rownames"]]==conds)
-        ref.vec = fit[["rowcoord"]][conds.id,1:8]
-        cate.all = fit[["colcoord"]][,1:8]
-        
-        intercepts = apply(cate.all, 1, function(x){ 
-        (x[1]*ref.vec[1] + x[2]*ref.vec[2] + x[3]*ref.vec[3] + x[4]*ref.vec[4] +
-             x[5]*ref.vec[5] + x[6]*ref.vec[6] + x[7]*ref.vec[7] + x[8]*ref.vec[8] ) /
-            (ref.vec[1]^2 + ref.vec[2]^2 + ref.vec[3]^2 + ref.vec[4]^2 +
-                 ref.vec[5]^2 + ref.vec[6]^2 + ref.vec[7]^2 + ref.vec[8]^2 ) 
-        } )
-        
-        # vec = intercepts / sum(intercepts)  !!!wrong!!! intercetp can be negative
-        # scale into [0,1]
-        vec = (intercepts - min(intercepts)) / (max(intercepts)-min(intercepts)) 
-
-        df = data.frame(t(vec))
-        colnames(df) = fit[["colnames"]]
-        rownames(df) = cond
-        
-        df
-    }) )
-
-}
-
-get.meteorological.impact2 <- function(dataframe){
-
-    do.call(rbind, lapply(split(dataframe,dataframe$conds), function(conds){
-        freq.tab = as.data.frame(table(conds$cate_l2))
-        freq.df = data.frame(t(freq.tab$Freq / sum(freq.tab$Freq) ))
-        colnames(freq.df) = freq.tab$Var1
-        
-        freq.df
-    }) )
-}
-
-```
-
-
-* weighted meteorological factor 
-
-$$P_{u}^{*} (C=k|W=j)= w_{j}*[P_{u}(C=k|W=j)-\bar P_{u}]+\bar P_{u}$$
-
-```{r}
-
-get.weather.weight <- function(fit){
-    conds.all = fit[["rowcoord"]][,1:2]
-    
-    mag = apply(conds.all, 1, function(x){ 
-        sqrt( (x[1]^2+x[2]^2) )
-        } )
-    
-    vec = mag / sum(mag)
-    names(vec) = fit[["rownames"]]
-    vec
-}
-
-get.weighted.meteorological.impact <- function(fit){
-    
-#     cate.conds = xtabs(~conds+cate_l2, data=dataframe)
-#     fit <- ca(cate.conds)
-    conds = fit[["rownames"]]
-    
-    unweighted = get.meteorological.impact(fit)
-    weights = get.weather.weight(fit)
-    
-#     conds.id = which(fit[["rownames"]]==conds)
-    
-#     vec = weights[conds.id] * (unweighted-mean(unweighted)) + mean(unweighted)
-    do.call(rbind, lapply(conds, function(cond){
-        weight = weights[cond]
-        unweighted.cond = unlist(unweighted[cond,])
-        vec = weight * (unweighted.cond-mean(unweighted.cond,na.rm = TRUE)) + 
-            mean(unweighted.cond,na.rm = TRUE)
-
-        df = data.frame(t(vec))
-        colnames(df) = fit[["colnames"]]
-        rownames(df) = cond
-        
-        df
-    }))
-}
-
-
-get.weighted.meteorological.impact2 <- function(dataframe, conds, weight){
-    
-    
-    unweighted = get.meteorological.impact2(dataframe, conds)
-
-    weight * (unweighted-mean(unweighted)) + mean(unweighted)
-    
-    
-}
-
-```
 
 * denominator (unweighted relevance)
 
@@ -414,13 +301,12 @@ pr.s.mat.global = get.spatial.impact(learning.all.data)
 pr.d.global = unlist(get.denominator(learning.all.data))+ 1E-6
 
 # making predictions (both globally and individually) for each record
-counter = 0; counter2=0;
+counter.reset()
 prediction= do.call(rbind, lapply(
     split(experiment.data,experiment.data$user_id),function(user){
         
         # information output
-        counter <<- counter + nrow(user); counter2 <<- counter2 +1;
-        print(paste(Sys.time(),"User",counter2,"; Finished", counter,"records."))
+        counter.print(10)
         
         # leaning from the historical data of the individual
         user.id = user[1,"user_id"]
@@ -673,14 +559,17 @@ performance.vs.cate = do.call(rbind,
 }))
 # png("precision.caetgory.popularity.png",width=6*ppi,height=3*ppi,res=ppi)
 gg3<-ggplot(performance.vs.cate,aes(x=Massive.Learning,y=Massive.predicting))+
-    geom_point(shape=21,fill="white",aes(color=Correctness))+
+    geom_point(aes(size=Correctness),shape=21,fill="white",color="black",alpha=0.6)+
     scale_x_log10()+
     scale_y_log10()+
-    theme_gray(base_size=11)+
-    scale_color_gradient2(midpoint = 0.25)+
+    theme_gray(base_size=10)+
+    geom_smooth(method=glm,data=performance.vs.cate[which(performance.vs.cate$Massive.Learning>0),])+
+#     scale_color_gradient2(midpoint = 0.25)+
     ggtitle("Correctness V.S. Category (Length=5)")+
     xlab("Appearances in Learning\n\n(a)")+
-    ylab("Appearances\nin Predicting")
+    ylab("Appearances in Predicting")+
+    scale_size_continuous(range=c(0.5,4))
+#     scale_size_continuous(limit=c(0.2,1))
 # dev.off()
 
 
@@ -734,33 +623,54 @@ performance.vs.space = do.call(rbind,lapply(split(prediction,prediction$Postal),
     }
 }))
 
+
+
 # png("precision.t.png",width=6*ppi,height=3*ppi,res=ppi)
 gg4<-ggplot(performance.vs.hour,aes(x=Massive.Learning,y=Unalikeability))+
-    geom_point(shape=21,fill="white",aes(color=Correctness))+
-    geom_text(aes(label=Hour),hjust=-0.3, vjust=0,size=3)+
+    geom_point(shape=21,fill="white",color="black",alpha=0.6,aes(size=Correctness))+
+    geom_text(aes(label=Hour),hjust=0.5, vjust=-0.6,size=2.5)+
     ggtitle("Correctness V.S. Time (Length=5)")+
+    geom_smooth(method=glm,formula=y~log(x),family=gaussian(link = "log"))+
     xlab("Appearances in Learning\n\n(b)")+
     ylab("Unalikeability")+
-    theme_gray(base_size=11)+
-    scale_color_gradient2(midpoint = 0.6)
+    theme_gray(base_size=10)+
+    scale_size_continuous(range=c(0.5,4))
 # dev.off()
 
 # png("precision.s.png",width=6*ppi,height=3*ppi,res=ppi)
+# performance.vs.space$flag=ifelse(performance.vs.space$Postal %in% c("11371","11430","10452","11436","11005"),levels(performance.vs.space$Postal)[performance.vs.space$Postal],"")
+performance.vs.space$flag=ifelse(performance.vs.space$Postal=="11430","A",
+                                 ifelse(performance.vs.space$Postal=="11371","B",""))
 gg5<-ggplot(performance.vs.space,aes(x=Massive.Learning,y=Unalikeability))+
-    geom_point(shape=21,fill="white",aes(color=Correctness))+
+    geom_point(shape=21,fill="white",color="black",alpha=0.6,aes(size=Correctness))+
+    geom_text(aes(label=flag),hjust=0.5, vjust=-1,size=3)+
     ggtitle("Correctness V.S. Space (Length=5)")+
     xlab("Appearances in Learning\n\n(c)")+
     ylab("Unalikeability")+
-    ylim(0.7,0.98)+
 #     scale_x_sqrt()+
-#     geom_smooth(method=glm)+
+    geom_smooth(method=glm,formula=y~log(x))+
     scale_x_log10(breaks=c(10,100,1000,10000))+
-    theme_gray(base_size=11)+
-    scale_color_gradient2(midpoint = 0.6)
+    scale_size_continuous(range=c(0.5,4),breaks=c(0.2,0.5,0.7,1.0))+
+    theme_gray(base_size=10)
 # dev.off()
 
-png("performance.combined.png",width=12*ppi,height=3*ppi,res=ppi)
-grid.arrange(gg3,gg4,gg5,ncol=3,nrow=1)
+mapdf2=merge(x=df.from.spdf(SPDF),y=performance.vs.space[,c("Postal","flag")],by.x="POSTAL",by.y="Postal",all.x=TRUE)
+mapdf2=mapdf2[order(mapdf2$order),]
+pnames = aggregate(cbind(long,lat)~flag,data=mapdf2,FUN=function(x){mean(range(x))})
+pnames=pnames[pnames$flag!="",]
+gg6<-map.plot(mapdf = mapdf2, more.aes = aes(fill=(flag=="")),
+         color="grey",size=0.3)+
+    scale_fill_manual(values=c("#ff7f00","#e3e3e3"))+
+    geom_text(data=pnames,aes(long,lat,label=flag),size=3)+
+    xlab("Longitude\n\n(d)")+ylab("Latitude")+theme_bw(base_size = 10)+
+    theme(legend.position="none")
+
+# png("imgs/performance.combined.png",width=12*ppi,height=4.5*ppi,res=ppi)
+# grid.arrange(gg3,gg4,gg5,ncol=3,nrow=1,widths=c(1,1,1))
+# dev.off()
+
+png("imgs/performance.combined2.png",width=12*ppi,height=8*ppi,res=ppi)
+grid.arrange(gg3,gg4,gg5,gg6,ncol=2,nrow=2)
 dev.off()
 ```
 
