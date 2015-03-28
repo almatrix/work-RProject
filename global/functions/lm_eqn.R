@@ -26,4 +26,15 @@ lm_eqn_log= function(df,x,y){
     as.character(as.expression(eq));                 
 }
 
+glm_eqn_exp = function(...){
+    model = glm(...)
+    
+    a=model$coefficients[1]
+    k=model$coefficients[2]
+    
+    eq <- substitute(italic(y) == e^a %.% italic(x)^k,
+                     list(a = format(gg.personal.stat[[1]]$a, digits = 3), 
+                          k = format(gg.personal.stat[[1]]$k, digits = 3)))
+    as.character(as.expression(eq))
+}
 

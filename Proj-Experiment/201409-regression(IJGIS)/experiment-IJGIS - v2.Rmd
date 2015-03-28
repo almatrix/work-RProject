@@ -17,19 +17,37 @@ library(scales)
 library(reshape2)
 library(ggplot2)
 library(gridExtra)
+library(SDMTools)
 #library(TSA)
 library(ca)
+library(plyr)
+library(MASS)#fitdistr
 
 source("../../global/functions/prepare.checkin.R")
 source("../../global/functions/basic.stats.plots.R")
 source("../../global/functions/spatial.analysis.R")
 source("../../global/functions/etc.R")
+source("../../global/functions/truncated.power.law.R")
 
 # ############
 # global variable
 ppi=300
 
 crs.wgs84.str = "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
+
+city.guide=data.frame("city"=c("Chicago City","Los Angeles City","New York City"),
+                      "coord.x"=c(-87.92,-118.62,-74.22),
+                      "coord.y"=c(41.7,33.82,40.82),
+                      "spatial.attr" = c("ZIP","Zip_Num","POSTAL"),
+                      "shapefile.boundary" = c("bounds_ChicagoCity_WGS84",
+                                               "bounds_LA_City_WGS84","NYC_borough_boundaries_WGS84"),
+                      "shapefile.zip" = c("Chicago-ZipCodes","LA_Zipcodes","NYC_zipcode"),
+                      "csvfile"=c("ChicagoCity","LosAngelesCity","NewYorkCity"),
+                      "label"=c("Area:234.0 sq mi\nPopulation:2,695,598(2010)\nCheck-ins:183,837",
+                                "Area:503 sq mi\nPopulation:3,884,307(2013)\nCheck-ins:138,211",
+                                "Area:468.9 sq mi\nPopulation:8,405,837(2013)\nCheck-ins:579,786"),
+                      stringsAsFactors=FALSE)
+
 ```
 
 
@@ -37,54 +55,36 @@ crs.wgs84.str = "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0
 
 ##### 1.1 Trajectory
 ```{r,echo=FALSE, fig.width=6, fig.height=6}
-checkin.NY = prepare.checkin("../../global/data/csv-raw/NewYorkCity.csv",
+checkin.poly.list = lapply(1:3, function(city.index){
+    checkin = prepare.checkin(paste0("../../global/data/csv-raw/",
+                                     city.guide$csvfile[city.index],".csv"),
                              is.raw=TRUE, weather.data=NA, 
                              convert.time=TRUE, add.history=FALSE)
-checkin.LA = prepare.checkin("../../global/data/csv-raw/LosAngelesCity.csv",
-                             is.raw=TRUE, weather.data=NA, 
-                             convert.time=TRUE, add.history=FALSE)
-checkin.CH = prepare.checkin("../../global/data/csv-raw/ChicagoCity.csv",
-                             is.raw=TRUE, weather.data=NA, 
-                             convert.time=TRUE, add.history=FALSE)
+    SPDF = readOGR(dsn = "../../global/data/shapefiles", 
+                   layer = city.guide$shapefile.zip[city.index])
+    
+    na.omit(point.in.poly(checkin, SPDF, copy.attr=city.guide$spatial.attr[city.index]))
+})
 
-SPDF.NY = readOGR(dsn = "../../global/data/shapefiles", layer = "NYC_zipcode")
-SPDF.LA = readOGR(dsn = "../../global/data/shapefiles", layer = "LA_Zipcodes")
-SPDF.CH = readOGR(dsn = "../../global/data/shapefiles", layer = "Chicago-ZipCodes")
+save(checkin.poly.list,file="data/checkin.poly.list.Rda")
+load("data/checkin.poly.list.Rda")
 
-checkin.poly.NY = na.omit(point.in.poly(checkin.NY, SPDF.NY, copy.attr="POSTAL"))
-checkin.poly.LA = na.omit(point.in.poly(checkin.LA, SPDF.LA, copy.attr="Zip_Num"))
-checkin.poly.CH = na.omit(point.in.poly(checkin.CH, SPDF.CH, copy.attr="ZIP"))
-
-checkin.poly.list=list(checkin.poly.NY,checkin.poly.LA,checkin.poly.CH)
-
-tiff("plots/checkin_points_cities.png", width = 12*ppi, height = 4*ppi, 
-     res=ppi,bg = "white")
-grid.arrange(
-    point.plot(checkin.NY,alpha=0.3,size=1,shape=21,fill="white",
+######
+gg.maps = lapply(1:3, function(city.index){
+    point.plot(checkin.poly.list[[city.index]],alpha=0.3,size=1,shape=21,fill=NA,color="#333333",
                basemap = map.plot(mapdir="../../global/data/shapefiles",
-                                  maplayer="NYC_borough_boundaries_WGS84",
-                                  size=0.4,color="grey",fill=NA))+
-        ggtitle("New York City")+
+                                  maplayer=city.guide$shapefile.boundary[city.index],
+                                  size=0.2,color="grey",fill=NA))+
+        ggtitle(city.guide$city[city.index])+
         xlab("Longitude")+ylab("Latitude")+
-        annotate("text",x=-74.22,y=40.82,size=2.5,hjust=0,label="Area: 468.9 sq mi\nPopulation: 8,405,837(2013)\nCheck-ins: 579,786"),
-    
-    point.plot(checkin.LA,alpha=0.3,size=1,shape=21,fill="white",
-               basemap = map.plot(mapdir="../../global/data/shapefiles", 
-                                  maplayer="bounds_LA_City_WGS84",
-                                  size=0.4,color="grey",fill=NA))+
-        ggtitle("Los Angeles City")+
-        xlab("Longitude")+ylab("Latitude")+
-        annotate("text",x=-118.62,y=33.82,size=2.5,hjust=0,label="Area:503 sq mi\nPopulation:3,884,307(2013)\nCheck-ins:138,211"),
-    
-    point.plot(checkin.CH,alpha=0.3,size=1,shape=21,fill="white",
-               basemap = map.plot(mapdir="../../global/data/shapefiles", 
-                                  maplayer="bounds_ChicagoCity_WGS84",
-                                  size=0.4,color="grey",fill=NA))+
-        ggtitle("Chicago City")+
-        xlab("Longitude")+ylab("Latitude")+
-        annotate("text",x=-87.92,y=41.7,size=2.5,hjust=0,label="Area:234.0 sq mi\nPopulation:2,695,598(2010)\nCheck-ins:183,837"),
-             nrow=1, ncol=3, widths=c(1.2,0.8,1))
+        annotate("text",x=city.guide$coord.x[city.index],y=city.guide$coord.y[city.index],
+                 size=2.5,hjust=0,label=city.guide$label[city.index])
+})
+tiff("plots/checkin_points_cities.png", width = 12*ppi, height = 4*ppi, res=ppi)
+grid.arrange(gg.maps[[1]],gg.maps[[2]],gg.maps[[3]],
+             nrow=1, ncol=3, widths=c(1,0.8,1.2))
 dev.off()
+#####
 ```
 
 ##### 1.2 Data sparsity 
@@ -92,75 +92,82 @@ dev.off()
 The check-in dataset, like other social media datasets, is sparse. Most of the records are created by only a small propotion of user. 
 
 ```{r}
-gg.personal.stat<-lapply(checkin.poly.list,function(checkin){
-    user.freq = as.data.frame(table(checkin$user_id))
-    colnames(user.freq)=c("User","Freq")
-    count.freq = as.data.frame(table(user.freq$Freq))
-    colnames(count.freq)=c("Freq","Freq.Freq")
-    count.freq$Freq=as.integer(as.character(count.freq$Freq))
-#     count.freq$Prob=count.freq$Freq.Freq/sum(count.freq$Freq.Freq)
-    
-    model = glm(data=count.freq,formula=Freq.Freq~log(Freq),
-                             family=gaussian(link = 'log'))
-    print(summary(model))
-    print(anova(model,test="Chisq"))
-    
-    a=model$coefficients[1]
-    k=model$coefficients[2]
-    
-    gg<-ggplot(count.freq,aes(x=Freq,y=Freq.Freq))+
-        geom_point(shape=21,fill="white",alpha=.5)+
-        scale_x_log10()+
-        geom_smooth(formula=y~x,method=glm,family=gaussian(link = 'log'))+
-        xlab("Number of Check-ins [x]")+
-        ylab("Number of Users\nHaving x Check-ins [y=f(x)]")+
-        theme_grey(base_size = 10)
-    list(gg,a=a,k=k)
-})
-model.summary.NY1=as.character(as.expression(substitute(italic(y) == e^a %.% italic(x)^k,
-                         list(a = format(gg.personal.stat[[1]]$a, digits = 3), 
-                              k = format(gg.personal.stat[[1]]$k, digits = 3)))))
-model.summary.NY2 = "ANOVA: 
---------------------------------------------------------------------------------
-            Df    Deviance    Resid.Df    Resid.Dev    Pr(>Chi)
-NULL                                   356     177403499              
-log(x)     1  175119543         355         2283955     < 2.2e-16 ***
---------------------------------------------------------------------------------
-Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1"
-model.summary.LA1=as.character(as.expression(substitute(italic(y) == e^a %.% italic(x)^k,
-                         list(a = format(gg.personal.stat[[2]]$a, digits = 3), 
-                              k = format(gg.personal.stat[[2]]$k, digits = 3)))))
-model.summary.LA2 = "ANOVA: 
---------------------------------------------------------------------------------
-            Df    Deviance    Resid.Df    Resid.Dev    Pr(>Chi)
-NULL                                    181      51559695              
-log(x)     1    51169528          180          390166    < 2.2e-16 ***
---------------------------------------------------------------------------------
-Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1"
-model.summary.CH1=as.character(as.expression(substitute(italic(y) == e^a %.% italic(x)^k,
-                         list(a = format(gg.personal.stat[[3]]$a, digits = 3), 
-                              k = format(gg.personal.stat[[3]]$k, digits = 3)))))
-model.summary.CH2 = "ANOVA: 
---------------------------------------------------------------------------------
-            Df    Deviance    Resid.Df    Resid.Dev    Pr(>Chi)
-NULL                                    244      36737034              
-log(x)     1   36624722           243          112311    < 2.2e-16 ***
---------------------------------------------------------------------------------
-Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1"
+personal.stat.frequency<-lapply(1:3,function(city.index){
+    checkin = checkin.poly.list[[city.index]]
+    # the observation of personal checkin frequency
+    user.freq = as.data.frame(table(checkin$user_id)) 
+    user.freq$city = city.guide$city[city.index]
 
-tiff("plots/user.count.stat.tiff",width=12*ppi,height=3*ppi,res=ppi)
-grid.arrange(gg.personal.stat[[1]][[1]]+ggtitle("New York City")+
-                 geom_text(aes(x=5,y=10500,label=model.summary.NY1),parse = TRUE,hjust=0,size=3)+
-                 geom_text(aes(x=5,y=6000,label=model.summary.NY2),hjust=0,size=2),
-             gg.personal.stat[[2]][[1]]+ggtitle("Los Angeles City")+
-                 geom_text(aes(x=5,y=6000,label=model.summary.LA1),parse = TRUE,hjust=0,size=3)+
-                 geom_text(aes(x=5,y=3500,label=model.summary.LA2),hjust=0,size=2),
-             gg.personal.stat[[3]][[1]]+ggtitle("Chicago City")+
-                 geom_text(aes(x=5,y=5000,label=model.summary.CH1),parse = TRUE,hjust=0,size=3)+
-                 geom_text(aes(x=5,y=3000,label=model.summary.CH2),hjust=0,size=2),
-             ncol=3,widths=c(1,1,1)
-             )
+    user.freq
+})
+
+personal.stat.density<-lapply(1:3,function(city.index){
+    user.freq = personal.stat.frequency[[city.index]] # personal checkin frequency
+    count.freq = as.data.frame(table(user.freq$Freq)) # stats on the observed frequncy
+    colnames(count.freq)=c("Freq","Freq.Freq")
+    count.freq$Freq=as.integer(as.character(count.freq$Freq)) # back to numbers
+    count.freq$prob=count.freq$Freq.Freq/sum(count.freq$Freq.Freq) # probability of observing this frequency
+    count.freq$city = city.guide$city[city.index]
+    
+    count.freq
+                           
+})
+
+# cdf
+personal.stat.cdf <- lapply(1:3,function(city.index){
+    user.freq = personal.stat.frequency[[city.index]]
+    cdf = summarize(user.freq,Frequency = unique(Freq), ecdf = ecdf(Freq)(unique(Freq)))
+    cdf$city = city.guide$city[city.index]
+    cdf
+})
+
+# simulating
+truncated.para = lapply(1:3,function(city.index){
+    model = nls(ecdf~truncated.plfit.cdf(Frequency,x0,beta,ka),
+        data=personal.stat.cdf[[city.index]],trace=TRUE,algorithm="port",
+        start=list(x0=0,beta=1,ka=100),
+        lower=c(x0=0,beta=1,ka=100),upper=c(x0=5,beta=3,ka=800))
+    summary(model)$parameters[,1]
+    
+})
+truncated.para = data.frame(do.call(rbind,truncated.para),"city"=city.guide$city)
+truncated.simu = ddply(truncated.para,.(city),summarize,
+    x = c(1:1000,2000,4000),
+    fx = truncated.plfit.df(c(1:1000,2000,4000),x0,beta,ka),
+    Fx = truncated.plfit.cdf(c(1:1000,2000,4000),x0,beta,ka))
+truncated.eqs = ddply(truncated.para,.(city),function(i){
+    truncated.plfit.print(i$x0,i$beta,i$ka)
+})
+
+######################
+tiff("plots/truncated.plfit.tiff",width=10*ppi,height=3.5*ppi,res=ppi)
+gg.fx = ggplot(do.call(rbind,personal.stat.density))+
+    geom_point(aes(x=Freq,y=prob),size=1.5,shape=21,fill=NA,alpha=0.6)+
+    geom_line(data=truncated.simu,aes(x=x,y=fx),color="blue",alpha=0.8)+
+#     geom_smooth(aes(x=Freq,y=prob,linetype="Power Law"),se=F,color="blue",alpha=0.8,
+#                 formula=y~x,method=lm)+
+    scale_x_log10(breaks=c(10,30,100,1000))+scale_y_log10(limits=c(0.00001,0.4))+
+    xlab("Personal Checkin Counts [x]")+ylab("Pr(X=x)")+
+    geom_text(data=eqs,x=1,y=-1,aes(label=V1),
+              inherit.aes=FALSE,parse = TRUE,hjust=0,size=2.5)+
+    facet_wrap(~city)+
+    theme(strip.text=element_text(size=8),axis.text = element_text(size=8),
+              axis.title = element_text(size=8),plot.title = element_text(size=10),
+          plot.margin=unit(c(.05,.05,.05,.05),"npc"))
+gg.Fx=ggplot(do.call(rbind,personal.stat.cdf))+
+    geom_point(aes(x=Frequency,y=ecdf),size=1.5,shape=21,fill=NA,alpha=0.6)+
+    geom_line(data=truncated.simu,aes(x=x,y=Fx),color="blue",alpha=0.8)+
+#     geom_smooth(aes(x=Frequency,y=ecdf,linetype="Power Law"),se=F,color="black",alpha=0.8,
+#                 formula=y~x,method=glm,family=gaussian(link='log'))+
+    scale_x_log10(breaks=c(10,30,100,1000))+scale_y_continuous()+
+    labs(x="Personal Checkin Counts [x]",y="ECDF [Pr(X>=x)]")+
+    facet_wrap(~city)+
+    theme(strip.text=element_text(size=8),axis.text = element_text(size=8),
+              axis.title = element_text(size=8),plot.title = element_text(size=10),
+          plot.margin=unit(c(.05,.05,.05,.05),"npc"))
+grid.arrange(gg.fx,gg.Fx,nrow=2)
 dev.off()
+
 ```
 
 
@@ -170,156 +177,133 @@ dev.off()
 2. clustering the points in the N-dimension space
 
 ```{r}
-user.list.all = split(checkin.poly.CH,checkin.poly.CH$user_id)
-
-# user vector
-counter.reset();  time0=Sys.time(); 
-point.vectors = sapply(user.list.all,function(user){
-    counter.print(500)
-    table(user$cate_l2)
-})
-time.print(Sys.time(), time0, "creating user vectors takes")
-```
-```{r}
-# now we should discuss how we decide the number of clusters.
-# It should be a compromise between the between_variances and 
-# the records in each cluster. We should keep as much variance 
-# as possible, while make sure there are still enough records
-# in each cluster for valid statistics.
-# ! computational heavy !
-nr.clusters = lapply(c(200,500,1000,2000,3000,4000,5000,6000),function(i){
-   time0=Sys.time();
-   clusters = kmeans(t(point.vectors),centers=i,iter.max = 1000)
-   time.print(Sys.time(), time0, "creating user clusters takes")
-        
-   pct.ss = clusters$betweenss / clusters$totss
-   user.sizes = sapply(user.list.all,function(user){
-       nrow(user)
-   })
-   agg.sizes = as.data.frame(xtabs(data=data.frame("size"=user.sizes,
-                                                   "cls"=clusters$cluster),
-                                   size~cls))
-        
-   list(clusters,pct.ss,agg.sizes)
-})
-save(nr.clusters,file="data/nr.clusters.CH.Rda")
-load("data/nr.clusters.CH.Rda")
-```
-```{r}
-# xintercepts = c(500,280,140,55,33,20,13,10);idx=0;
-stats=data.frame()
-gg.usercls <- lapply(nr.clusters,function(i){
-#     idx<<-idx+1
+nr.cls.candidates = list(c(200,500,1000,2500,5000,7500,10000,12500,15000),
+                   c(200,500,1000,2000,3000,4000,5000,6000),
+                   c(200,500,1000,2000,3000,4000,5000,6000))
+clusters.list = lapply(1:3,function(city.index){ # for each of the three datasets
+     
+    checkin = checkin.poly.list[[city.index]] # get the ith checkin dataset
     
-    gg<-ggplot(i[[3]])+
-        geom_histogram(aes(x=Freq,y=..density..),binwidth=0.05,fill=NA,color="grey")+
-        geom_density(aes(x=Freq),adjust=2)+
-#         scale_x_log10(breaks=c(1,10,30,xintercepts[idx],100,1000),limits=c(2,3000))+
-        scale_x_log10(breaks=c(10,30,100,1000),limits=c(2,3000))+
-        scale_y_continuous(limits=c(0,1.8))+
-        xlab("Number of Check-ins in One Cluster")+
-        ylab("Probability Density")+
-        theme(axis.text.x=element_text(face=c("plain","bold","plain","plain")))+
-#         geom_vline(xintercept=xintercepts[idx])+
-        annotate("text",x=400,y=1.6,size=3.2,
-                  label=paste("Between SS / Total SS:",format.percent(i[[2]]),
-                              "\nClusters (> 30 records):",
-                              format.percent(length(which(i[[3]]$Freq>=30))/nrow(i[[3]]))))+
-        ggtitle(paste(nrow(i[[3]]),"Clusters"))
+    user.list.all = split(checkin,checkin$user_id)
+    # create user vector
+    counter.reset(); time=Sys.time();
+    point.vectors = sapply(user.list.all,function(user){
+        counter.print(500)
+        table(user$cate_l2)
+    })
+    time.print(Sys.time(), time, paste("creating user vectors for city",
+                                       city.index,"takes"))
+    
+    # now we should discuss how we decide the number of clusters.
+    # It should be a compromise between the between_variances and 
+    # the records in each cluster. We should keep as much variance 
+    # as possible, while make sure there are still enough records
+    # in each cluster for valid statistics.
+    # ! computational heavy !
+    nr.clusters = nr.cls.candidates[[city.index]]
+    clusters = lapply(nr.clusters,function(i){
+       time = Sys.time();
+       clusters = kmeans(t(point.vectors),centers=i,iter.max = 1000)
+       time.print(Sys.time(), time, "creating user clusters takes")
+            
+       pct.ss = clusters$betweenss / clusters$totss
+       user.sizes = sapply(user.list.all,function(user){
+           nrow(user)
+       })
+       agg.sizes = as.data.frame(xtabs(data=data.frame("size"=user.sizes,
+                                                       "cls"=clusters$cluster),
+                                       size~cls))
+            
+       list(clusters,pct.ss,agg.sizes)
+    })
+    # save the result out because it is quite heavy computation
+    save(clusters,file=paste0("data/clusters_",city.index,".Rda"))
+    
+    clusters        
+})
+save(clusters.list, file="data/clusters.list.Rda")
 
-    stats <<- rbind(stats,data.frame("Clusters"=nrow(i[[3]]),
-                        "SS preservation"=i[[2]],
-                        "Over 30 records"=length(which(i[[3]]$Freq>=30))/nrow(i[[3]])))
-    gg                     
+gg.usercls = list();gg.stat=list();
+lapply(1:3,function(city.index){
+    stats=data.frame()
+    gg.usercls[[city.index]] <<- lapply(clusters.list[[city.index]],function(i){
+    #     idx<<-idx+1
+        
+        gg<-ggplot(i[[3]])+
+            geom_histogram(aes(x=Freq,y=..density..),binwidth=0.05,fill=NA,color="grey")+
+            geom_density(aes(x=Freq),adjust=2)+
+    #         scale_x_log10(breaks=c(1,10,30,xintercepts[idx],100,1000),limits=c(2,3000))+
+            scale_x_log10(breaks=c(10,30,100,1000),limits=c(2,3000))+
+            scale_y_continuous(limits=c(0,1.8))+
+            xlab("Number of Check-ins in One Cluster")+
+            ylab("Probability Density")+
+            theme(axis.text.x=element_text(face=c("plain","bold","plain","plain")))+
+    #         geom_vline(xintercept=xintercepts[idx])+
+            annotate("text",x=400,y=1.6,size=3,
+                      label=paste("Between SS / Total SS:",format.percent(i[[2]]),
+                                  "\nClusters (> 30 records):",
+                                  format.percent(length(which(i[[3]]$Freq>=30))/nrow(i[[3]]))))+
+            ggtitle(paste(nrow(i[[3]]),"Clusters (",city.guide$city[city.index],")"))+
+            theme(strip.text=element_text(size=8),axis.text = element_text(size=8),
+                      axis.title = element_text(size=8),plot.title = element_text(size=10),
+                  plot.margin=unit(c(.05,.05,.05,.05),"npc"))
+    
+        stats <<- rbind(stats,data.frame("Clusters"=nrow(i[[3]]),
+                            "SS preservation"=i[[2]],
+                            "Over 30 records"=length(which(i[[3]]$Freq>=30))/nrow(i[[3]])))
+        gg                     
+    })
+    
+    gg.stat[[city.index]] <<- ggplot(melt(data=stats,id.vars="Clusters"),aes(x=Clusters,y=value))+
+        geom_line(aes(group=variable))+geom_point(aes(shape=variable,group=variable))+
+    #     theme_grey(base_size = 10)+
+        ggtitle(paste("Trend (",city.guide$city[city.index],")"))+
+        xlab("Number of Clusters")+
+        ylab("Proportion")+
+        scale_shape_discrete(name="Criteria")+
+#         scale_x_continuous(breaks=c(0,1000,2000,3000,4000,5000,6000,7000,8000))+
+        scale_y_continuous(labels=percent)+
+        theme(legend.justification=c(0,0),legend.position=c(0,0),
+              legend.text = element_text(size=6),legend.title=element_text(size=8),
+              legend.key.height=unit(1,"line"),legend.key.width=unit(1,"line"))+
+        theme(strip.text=element_text(size=8),axis.text = element_text(size=8),
+              axis.title = element_text(size=8),plot.title = element_text(size=10),
+              
+              plot.margin=unit(c(.05,.05,.05,.05),"npc"))
+    
+    NA
+
 })
 
-gg.stat <- ggplot(melt(data=stats,id.vars="Clusters"),aes(x=Clusters,y=value))+
-    geom_line(aes(group=variable))+geom_point(aes(shape=variable,group=variable))+
-#     theme_grey(base_size = 10)+
-    ggtitle("Trend")+
-    xlab("Number of Clusters")+
-    ylab("Proportion")+
-    scale_shape_discrete(name="Criteria")+
-    scale_x_continuous(breaks=c(0,1000,2000,3000,4000,5000,6000))+
-    scale_y_continuous(labels=percent)+
-    theme(legend.justification=c(0,0),legend.position=c(0,0))
-
-tiff("plots/user.clustering.tiff",width=12*ppi,height=6*ppi,res=ppi)
-grid.arrange(gg.usercls[[1]],gg.usercls[[3]],gg.usercls[[4]],
-             gg.usercls[[6]],gg.usercls[[8]],gg.stat,
+tiff(paste("plots/user.clustering_.tiff"),width=11*ppi,height=4.5*ppi,res=ppi)
+grid.arrange(gg.usercls[[1]][[1]],gg.usercls[[1]][[3]],gg.usercls[[1]][[6]],
+             gg.stat[[1]]+annotate("rect",xmin=800,xmax=1200,ymin=0.9,ymax=1.05,alpha=.2),
+             gg.stat[[2]]+annotate("rect",xmin=800,xmax=1200,ymin=0.9,ymax=1.05,alpha=.2),
+             gg.stat[[3]]+annotate("rect",xmin=2100,xmax=2900,ymin=0.9,ymax=1.05,alpha=.2),
              ncol=3,nrow=2)
 dev.off()
-                 
-# user aggregation
-counter.reset();
-checkin.poly.CH$cluster.id = sapply(checkin.poly.CH$user_id,function(i){
-    counter.print(4000)
-    nr.clusters[[4]][[1]]$cluster[as.character(i)]
+
+# choose the number of clusters based the plotting result
+nr.cls.final.id = c(4,3,3) # 2500, 1000, 1000
+            
+
+# user aggregation and respliting
+user.list.ucls = lapply(1:3,function(city.index){
+#     counter.reset();
+#     checkin = checkin.poly.list[[city.index]]
+#     checkin$cluster.id = sapply(checkin$user_id,function(user){
+#         counter.print(4000)
+#         clusters.in.city = clusters.list[[city.index]]
+#         clusters.final = clusters.in.city[[nr.cls.final.id[city.index]]]
+#         clusters.final[[1]]$cluster[as.character(user)] # the cluster id for that user
+#     })
+#     save(checkin,file=paste0("data/checkin.poly.cls_",city.index,".Rda"))
+    load(paste0("data/checkin.poly.cls_",city.index,".Rda"))
+    split(checkin,checkin$cluster.id)
 })
-# re-split
-user.list.ucls = split(checkin.poly.CH,checkin.poly.CH$cluster.id)
+
 
 ```
-
-
-##### 1.4 relations between the number of unique venues in a cluster and the number of records in a cluster
-
-Intuitively, if there are more unique venues, there tend to be more records in the same cluster. However, the relationship should not be linear, because the appearance of each unique venues will not be equal. Suppose we have $m$ venues in a cluster, each represented as $v_{i}, i \in \left \{ 1,2,...m \right \}$. The number of appearances of each venue is $x_{i}$. We have the total number of records in that cluster $R=\sum_{1}^{m}x_{i}$.
-
-We find a power-law distribution in $x_{i}$, i.e.: $f(x_{i}) \sim x_{i}^k$
-```{r}
-# get venue list vi with appearance xi in each cluster
-counter.reset()
-xi_distribution = do.call(rbind, lapply(user.list.ucls,function(cluster){
-    counter.print(20)
-    # number of records:
-    R = nrow(cluster)
-    
-    cluster$venue_id=factor(cluster$venue_id)
-    vi_freq = as.data.frame(table(cluster$venue_id)) 
-    colnames(vi_freq)=c("vi","xi") # note: sum(vi_freq$xi)==R
-    # number of unique venues:
-    m = nrow(vi_freq)
-    
-    xi_freq = as.data.frame(table(vi_freq$xi)) 
-    colnames(xi_freq)=c("xi","Freq") # note: sum(xi_freq$Freq)==m
-    xi_freq$xi = as.integer(as.character(xi_freq$xi))
-    
-    # power law distribution
-    model=glm(data=xi_freq,formula=Freq~log(xi),family = gaussian(link='log'))
-    
-    goodness.null = 1-pchisq(model$null.deviance,model$df.null)
-    goodness.power.law = 1-pchisq(model$deviance,model$df.residual)
-    
-    k = model$coefficients[2]
-    a = model$coefficients[1]
-    
-    data.frame("a"=a,"k"=k,"R"=R,"m"=m,
-               "goodness.power.law"=goodness.power.law,
-               "power.law.sig"=goodness.power.law>0.05,
-               "goodness.null"=goodness.null,
-               "null.sig"=goodness.null>0.05)
-}))
-
-k.mean=mean(xi_distribution$k,na.rm=T);k.sd=sd(xi_distribution$k,na.rm=T)
-ggplot(xi_distribution,aes(x=k))+
-    geom_histogram(aes(y=..density..),fill=NA,color="grey",binwidth=0.05)+
-    geom_density(adjust=2.5,linetype=1)+
-    stat_function(fun=dnorm,args=list(mean=k.mean,sd=k.sd),linetype=2)+
-    geom_segment(aes(x=-4,y=0.3,xend=-3.75,yend=0.27),
-                 arrow=arrow(length=unit(0.5,"cm")))+
-    geom_text(aes(x=-4.5,y=0.32),label=c("Reference:Normal distribution"))+
-    geom_segment(aes(x=-1.9,y=0.4,xend=-2.2,yend=0.38),
-                 arrow=arrow(length=unit(0.5,"cm")))+
-    geom_text(aes(x=-1.5,y=0.42),label=c("Estimated distribution"))+
-    ylab("Probability Density")
-ggplot(xi_distribution,aes(x=m,y=R))+
-    geom_point(alpha=0.5,shape=21,fill="white",size=1)+
-    scale_y_log10()+
-    geom_smooth(size=1,method=glm,family=gaussian(link='log'),formula=y~log(x))
-model=glm(data=xi_distribution,formula=R~log(m),family = gaussian(link='log'))
-```
-
 
 
 #### 2. Entropy
@@ -330,120 +314,567 @@ model=glm(data=xi_distribution,formula=R~log(m),family = gaussian(link='log'))
 ##########################
 # computing 
 # random entropy
-entropy.rand = sapply(user.list.ucls, function(i){
-    N = length(unique(i$venue_id))
-    log2(N) 
-})
+get.rand.entropy.etc = function(data){
+    N = length(unique(data$venue_id))
+    entropy = log2(N) 
+
+    pi.max = get.pi.max.from.entropy(entropy, N)
+    
+    pi.min = 1 / N
+    
+    u2 = 1 - 1 / N
+    
+    data.frame("Condition"="Random","Entropy"=entropy,
+      "Pi.max"=pi.max,"Pi.min"=pi.min,
+      "Unalikeability"=u2)
+}
 
 # uncorrelated entropy (heterogeneity pattern)
-get.entropy.unc = function(data){
+get.unc.entropy.etc = function(data){
+    data$venue_id=factor(data$venue_id) # do not statistic none-used venue
     venue.freq = as.data.frame(table(data$venue_id))
+    
     p = venue.freq$Freq / sum(venue.freq$Freq)
-    p = p[p>0]
-    -1 * sum(p * log2(p))
+    entropy = -1 * sum(p * log2(p))
+    
+    N = length(levels(data$venue_id))
+    pi.max = get.pi.max.from.entropy(entropy, N)
+    
+    pi.min = max(venue.freq$Freq) / sum(venue.freq$Freq)
+    
+    u2 = 1 - sum(p^2)
+    
+    data.frame("Condition"="Uncorrelated","Entropy"=entropy,
+      "Pi.max"=pi.max,"Pi.min"=pi.min,
+      "Unalikeability"=u2)
 }
-entropy.unc = sapply(user.list.ucls, function(i){get.entropy.unc(i)})
 
-# temprol entropy (temproal pattern)
-get.conditional.entropy = function(data,condition){
+# conditional entropy (temproal pattern)
+get.conditional.entropy.etc = function(data,condition,condition_name){
+    data$venue_id=factor(data$venue_id) # do not statistic none-used venue
     freq = as.data.frame(xtabs(data=data,
                                as.formula(paste("~",condition,"+venue_id"))))
-    
-    freq.marg = as.vector(table(data[,condition]))
-    freq$Freq.marg = rep(freq.marg,length(unique(freq$venue_id)))
     freq = freq[freq$Freq>0,]
+    freq = ddply(freq,condition,function(i){
+        i$marg = sum(i$Freq)
+        i$max = max(i$Freq)
+        i$p = i$Freq / i$marg 
+        
+        i$entropy = -1 * sum(i$p * log2(i$p))
+        i$pi.max = get.pi.max.from.entropy(i$entropy,nrow(i))
+        i$pi.min = i$max / i$marg
+        i$u2 = 1 - sum(i$p^2)
+        
+        i$condition = condition_name
+        
+        i
+    })
+    freq$cluster.id = data[1,"cluster.id"]
+    colnames(freq)=c("Condition_ID",colnames(freq)[2:12])
     
     p.joint = freq$Freq / sum(freq$Freq)
+    entropy = sum(p.joint * log2(freq$marg / freq$Freq))
 
-    sum(p.joint * log2(freq$Freq.marg / freq$Freq))
+    N = length(levels(data$venue_id))
+    pi.max = get.pi.max.from.entropy(entropy,N)
+    pi.min = with(freq,weighted.mean(pi.min,Freq))
+    u2 = 1 - sum(p.joint^2)
+    
+
+    list("mean"=data.frame("Condition"=condition_name,"Entropy"=entropy,
+                  "Pi.max"=pi.max,"Pi.min"=pi.min,"Unalikeability"=u2),
+         "detail"=freq)
 }
 
-counter.reset()
-conditional.entropies = sapply(user.list.ucls,function(i){
-    counter.print(10)
-    entropy.time = get.conditional.entropy(i,"hour")
-    entropy.space = get.conditional.entropy(i,"ZIP")
+get.pi.max.from.entropy = function(entropy,N){
+    x = seq(from=0,to=1,length=1001)
+    y = rep(0,1001)
+    if(N!=1){
+        y[1]=log2(N-1)
+        y[2:1000] = (1-x[2:1000])*log2(N-1) - x[2:1000]*log2(x[2:1000]) - (1-x[2:1000])*log2(1-x[2:1000]) 
+    }
+    yoffset = y[2:length(y)]
+    yoffset[length(y)]=-0.001
     
-    i$spacetime = paste(i$hour, i$ZIP)
-    entropy.st = get.conditional.entropy(i,"spacetime")
+    if(length(entropy)==1){
+        ans = ifelse(entropy<=max(y),x[which( y>=entropy & yoffset<entropy )],
+           x[which(y==max(y))] )
+    } else{
+        ans = sapply(entropy,function(i){
+            ifelse(i<=max(y),x[which( y>=i & yoffset<i )],
+                   x[which(y==max(y))] )
+        })
+    }
     
-    c(entropy.time,entropy.space,entropy.st)
+    ans
+}
+
+######
+
+
+entropies.etc.df=data.frame();
+
+entropies.etc.list = lapply(1:3,function(city.index){
+    user.list = user.list.ucls[[city.index]]
+
+    counter.reset()
+    entropies.etc=lapply(user.list,function(i){
+        counter.print(10)
+        
+        rand = get.rand.entropy.etc(i)
+        unc = get.unc.entropy.etc(i)
+        time = get.conditional.entropy.etc(i,"hour","Hour")
+        space = get.conditional.entropy.etc(i,spatial.attr[city.index],"Space")
+        
+        i$ST = paste(i$hour, i[,spatial.attr[city.index]])
+        st = get.conditional.entropy.etc(i,"ST","ST")
+        
+        # some extra statistics
+        total.records = nrow(i)
+        unique.venues = length(unique(i$venue_id))
+        unique.users = length(unique(i$user_id))
+        
+
+        df = rbind(rand,unc,time$mean,space$mean,st$mean)
+        df$Cluster.id = i[1,"cluster.id"]
+        df$Records = nrow(i)
+        df$Venues = length(unique(i$venue_id))
+        df$Users = length(unique(i$user_id))
+        df$City = city.names[city.index]
+        entropies.etc.df <<- rbind(entropies.etc.df,df)
+        
+        time.detail=unique(time$detail[,-c(2,3,6)])
+        time.detail$city = city.names[city.index]
+        space.detail=unique(space$detail[,-c(2,3,6)])
+        space.detail$city = city.names[city.index]
+        st.detail=unique(st$detail[,-c(2,3,6)])
+        st.detail$city = city.names[city.index]
+
+        
+    list(time.detail,space.detail,st.detail)
+    })
+    
+    entropies.etc
+
 })
-conditional.entropies = as.data.frame(t(conditional.entropies))
-colnames(conditional.entropies)=c("Time","Space","ST")
 
 
-entropies = cbind("Random"=entropy.rand,"Uncorrelated"=entropy.unc,
-                  conditional.entropies,
-                  do.call(rbind,lapply(user.list.ucls,function(i){
-                      data.frame("unique.venues"=length(unique(i$venue_id)),
-                                 "records"=nrow(i))
-                  })))
+entropies.etc.time.df=do.call(rbind,lapply(1:3,function(city.index){
+    entropies.etc.city = entropies.etc.list[[city.index]]
+    do.call(rbind,lapply(1:length(entropies.etc.city),function(i){
+        entropies.etc.city[[i]][[1]]
+    }))
+}))
+entropies.etc.space.df=do.call(rbind,lapply(1:3,function(city.index){
+    entropies.etc.city = entropies.etc.list[[city.index]]
+    do.call(rbind,lapply(1:length(entropies.etc.city),function(i){
+        entropies.etc.city[[i]][[2]]
+    }))
+}))
+entropies.etc.st.df=do.call(rbind,lapply(1:3,function(city.index){
+    entropies.etc.city = entropies.etc.list[[city.index]]
+    df = do.call(rbind,lapply(1:length(entropies.etc.city),function(i){
+        entropies.etc.city[[i]][[3]]
+    }))
+    time.space = data.frame(do.call(rbind,strsplit(as.character(df$Condition_ID),
+                                                   " ",fixed=TRUE)))
+    colnames(time.space)=c("hour","space")
+    cbind(df,time.space) 
+}))
+       
+```
 
+```{r}
 ## plotting
-tiff("plots/entropies.tiff",width=12*ppi,height=6*ppi,res=ppi)
-data=melt(entropies,id.vars = c("records","unique.venues"))
-grid.arrange(
-    ggplot(data)+
-        geom_histogram(aes(x=value,y=..density..),binwidth=0.1,fill=NA,
-                       color="grey",position="identity")+
-        geom_density(aes(x=value),adjust=2)+
-        xlab("Entropy")+ylab("Probability Density")+
-        facet_wrap(~variable,ncol=5),
-#     ggplot(data,aes(x=value,y=records))+
-#         geom_point(shape=21,fill="white",alpha=0.3,size=1)+
-#         xlab("Entropy")+ylab("Number of Records")+
-#         geom_smooth(method=lm)+
-#         scale_y_log10(breaks=c(10,30,100,1000))+
-#         theme(axis.text.y=element_text(face=c("plain","bold","plain","plain")))+
-#         facet_wrap(~variable,ncol=5),
-    ggplot(data,aes(x=value,y=unique.venues))+
-        geom_point(shape=21,fill="white",alpha=0.3,size=1)+
-        xlab("Entropy")+ylab("Unique Venues")+
-        geom_smooth(method=lm)+
-        scale_y_log10(breaks=c(10,100,1000))+
-#         theme(axis.text.y=element_text(face=c("plain","bold","plain","plain")))+
-        facet_wrap(~variable,ncol=5),
-    nrow=2,heights=c(1,1.1))
+
+tiff("plots/entropies.density.tiff",width=12*ppi,height=5*ppi,res=ppi)
+ggplot(entropies.etc.df)+
+    geom_histogram(aes(x=Entropy,y=..density..),binwidth=0.1,fill=NA,
+                   color="grey",position="identity")+
+    geom_density(aes(x=Entropy),adjust=2)+
+    ylab("Probability Density")+
+    facet_grid(City~Condition)
 dev.off()
 
-tiff("plots/entropy.residual.tiff",width=12*ppi,height=6*ppi,res=ppi)
-data=melt(entropies,id.vars = c("records","unique.venues"))
-gg.residual<-lapply(split(data,data$variable),function(i){
+
+tiff("plots/pi.max.min.density.tiff",width=12*ppi,height=5*ppi,res=ppi)
+ggplot(melt(data=entropies.etc.df[,c(1,3,4,10)],id.vars=c("Condition","City")))+
+    geom_histogram(aes(x=value,y=..density..,group=variable),binwidth=0.01,fill=NA,
+                   color="grey",position="identity")+
+    geom_density(aes(x=value,group=variable,linetype=variable),adjust=3,alpha=0.5)+
+    xlab(expression(atop(italic(Pi)) ) ) +
+    ylab("Probability Density")+
+    scale_y_sqrt()+
+    scale_linetype_manual(name="",values=c(2,1),breaks=c("Pi.max","Pi.min"),
+                          labels=c(expression(atop(italic(Pi))^"max" ),
+                                   expression(atop(italic(Pi))^"min" )))+
+    facet_grid(City~Condition)
+dev.off()
+
+
+tiff("plots/pi.max.min.relation.tiff",width=12*ppi,height=5*ppi,res=ppi)
+eqs <- ddply(entropies.etc.df,.(City,Condition),function(i){
+    model = glm(i,formula=Pi.min~log(Pi.max),family=gaussian(link="log"))
+    a=model$coefficients[1]
+    k=model$coefficients[2]
     
-    list(ggplot(i,aes(x=unique.venues,y=records))+
-        geom_point(shape=21,fill="white",alpha=0.3,size=1)+
-        geom_smooth(method=glm,formula=y~log(x))+
-        xlab("Unique Venues")+ylab("Number of Records")+
-        scale_y_log10()+
-        theme_grey(base_size = 10)+
-        ggtitle(i[1,"variable"]),
-    ggplot(i,aes(x=unique.venues,y=value))+
-        geom_point(shape=21,fill="white",alpha=0.3,size=1)+
-        geom_smooth(method=glm,formula=y~log(x))+
-        xlab("Unique Venues")+ylab("Entropy")+
-        theme_grey(base_size = 10)+
-        ggtitle(i[1,"variable"]),
-    ggplot(i,aes(x=resid(glm(formula=records~log(unique.venues),
-                          family=gaussian(link="log"))),
-                 y=resid( glm(formula=value~log(unique.venues)))))+
-        geom_point(shape=21,fill="white",alpha=0.3,size=1)+
-#         geom_smooth(method=glm,formula=y~log(x))+
-        xlab("Redisual: Records ~ Venues")+
-        ylab("Redisual: Entropy ~ Venues")+
-        theme_grey(base_size = 10)+
-        scale_x_log10()+
-        ggtitle(i[1,"variable"]))
+    eq <- substitute(italic(y) ==  e^a %.%  italic(x)^k ,
+                     list(a = format(a, digits = 3),
+                          k = format(k, digits = 3)))
+    as.character(as.expression(eq))
 })
-grid.arrange(gg.residual[[1]][[1]],gg.residual[[2]][[1]],gg.residual[[3]][[1]],
-             gg.residual[[4]][[1]],gg.residual[[5]][[1]],
-             gg.residual[[1]][[2]],gg.residual[[2]][[2]],gg.residual[[3]][[2]],
-             gg.residual[[4]][[2]],gg.residual[[5]][[2]],
-             gg.residual[[1]][[3]],gg.residual[[2]][[3]],gg.residual[[3]][[3]],
-             gg.residual[[4]][[3]],gg.residual[[5]][[3]],
-             ncol=5,nrow=3)
+ggplot(entropies.etc.df,aes(x=Pi.max,y=Pi.min))+
+    geom_line(aes(x=0:1,y=0:1),color="grey",linetype="dashed")+
+    geom_point(alpha=0.4,shape=21,fill="white",aes(size=Entropy))+
+    xlab(expression(atop(italic(Pi))^"max" ))+
+    ylab(expression(atop(italic(Pi))^"min" ))+
+    geom_smooth(method=glm,formula=y~log(x),family=gaussian(link="log"))+
+    geom_text(data=eqs,aes(x=0.1,y=0.9,label=V1),inherit.aes=FALSE,
+                  parse = TRUE,hjust=0,size=3.5)+
+    scale_x_continuous(limit=c(0,1))+
+    scale_y_continuous(limit=c(0,1))+
+    facet_grid(City~Condition)
+dev.off() 
+
+
+tiff("plots/pi.records.tiff",width=12*ppi,height=5*ppi,res=ppi)
+data=melt(entropies.etc.df[,c(1,3,4,7,10)],id.vars=c("Records","City","Condition"))
+data$variable<-factor(data$variable,labels=c("max","min"))
+# tiff("plots/pi.records.tiff",width=12*ppi,height=5*ppi,res=ppi)
+ggplot(data,aes(x=Records,y=value))+
+    facet_grid(City~variable+Condition,labeller=labeller(variable=label_bquote(Pi^.(x))))+
+    geom_point(shape=21,fill="white",size=1,alpha=0.7)+scale_x_log10()+
+    labs(x="Total Check-ins",y=expression(Pi))
+dev.off()
+
+
+tiff("plots/pi.min.hourly.tiff",width=12*ppi,height=3*ppi,res=ppi)
+data = ddply(entropies.etc.st.df,.(city),function(city){
+    stat = ddply(city,.(hour),function(hour){
+        data.frame("pi.max"=with(hour,wt.mean(pi.max,marg)),
+                   "pi.min"=with(hour,wt.mean(pi.min,marg)),
+                   "record"=with(hour,sum(marg)))
+    })
+    stat$record = stat$record / sum(stat$record) 
+    stat
+})
+gga<-ggplot(data,aes(x=hour,y=pi.min) )+
+    facet_wrap(~city)+
+    geom_point()+
+    geom_smooth(aes(group = 1),se=F, method = "lm", formula = y ~ poly(x, 12),size=1) +
+    xlab("Hour of Day\n(a)") +
+    ylab(expression(Pi^min)) +ggtitle(expression(paste("Temporal Distribution of ",Pi)))+
+    scale_x_discrete(breaks=c("00","04","08","12","16","20"))+
+    theme(strip.text=element_text(size=7),axis.text = element_text(size=6),
+              axis.title = element_text(size=7),plot.title = element_text(size=8),
+          plot.margin=unit(c(.05,.05,.05,.05),"npc"))
+ggb<-ggplot(data,aes(x=hour,y=record))+
+    facet_wrap(~city)+geom_point()+
+    geom_smooth(aes(group = 1),se=F, method = "lm", formula = y ~ poly(x, 12),size=1)+
+    xlab("Hour of Day\n(b)") +
+    ylab("Check-ins") +ggtitle("Temporal Distribution of Check-ins")+
+    scale_x_discrete(breaks=c("00","04","08","12","16","20"))+
+    scale_y_continuous(labels=percent)+
+    theme(strip.text=element_text(size=7),axis.text = element_text(size=6),
+              axis.title = element_text(size=7),plot.title = element_text(size=8),
+          plot.margin=unit(c(.05,.05,.05,.05),"npc"))
+eqs <- ddply(data,.(city),function(i){
+    model = lm(i,formula=pi.min~record) 
+    eq <- substitute(atop(italic(r)^2~"="~r2*","~~italic(p)~"="~pvalue),
+                     list(r2 = format(summary(model)$r.squared, digits = 3),
+                          pvalue = format(summary(model)[[4]][[8]],scientific=TRUE, digits = 3)))
+    as.character(as.expression(eq));                 
+})
+ggc<-ggplot(data,aes(x=record,y=pi.min))+geom_point(size=1)+facet_wrap(~city)+
+    geom_smooth(method=lm,formula=y~x)+
+    xlab("Check-ins\n(c)") +
+    ylab(expression(Pi^min)) +ggtitle("Time Correlation")+
+    scale_x_continuous(labels=percent)+
+    geom_text(data=eqs,aes(x=0.025,y=0.85,label=V1),inherit.aes=FALSE,
+                  parse = TRUE,hjust=0,size=3)+
+    theme(strip.text=element_text(size=7),axis.text = element_text(size=6),
+              axis.title = element_text(size=7),plot.title = element_text(size=8),
+          plot.margin=unit(c(.05,.05,.05,.05),"npc"))
+grid.arrange(arrangeGrob(gga,ggb,nrow=2),ggc,
+             ncol=2,widths=c(0.8,1))
+dev.off()
+
+
+data2 = lapply(1:3,function(city.index){
+    subdf = entropies.etc.st.df[which(entropies.etc.st.df$city==city.names[city.index]),]
+    subdf$space = factor(subdf$space)
+    stat = do.call(rbind,lapply(split(subdf,subdf$space),function(regional){
+        data.frame("space"=regional[1,"space"],
+                   "pi.max"=with(regional,wt.mean(pi.max,marg)),
+                   "pi.min"=with(regional,wt.mean(pi.min,marg)),
+                   "record"=with(regional,sum(marg)),
+                   "city"=city.names[city.index])
+    }))
+    stat$record = stat$record / sum(stat$record) 
+    
+    stat$resid = resid(lm(stat,formula=pi.min~log(record) ))
+    
+    stat
+})
+
+gg.maps<-lapply(1:3,function(city.index){
+    SPDF = readOGR(dsn = "../../global/data/shapefiles", layer = shapefile.zip[city.index])
+    shape.df = df.from.spdf(SPDF)
+    shape.df = merge(x=shape.df,y=data2[[city.index]],
+                     by.x=spatial.attr[city.index],by.y="space",all.x=T)
+    shape.df = shape.df[order(shape.df$order),] 
+    shape.df$pi.min.rescale = with(shape.df,cut(pi.min,dig.lab = 2,
+                                      breaks=quantile(pi.min,probs=seq(0,1,by=0.25),na.rm=T),
+                                      include.lowest=TRUE))
+    shape.df$record.rescale = with(shape.df,cut(I(100*record),dig.lab =2,
+                                      breaks=c(0,quantile(I(100*record),probs=seq(0.25,1,by=0.25),na.rm=T)),
+                                      include.lowest=FALSE))
+    shape.df$resid.rescale = with(shape.df,cut(abs(resid),dig.lab = 2,
+                                      breaks=seq(0,0.4,by=0.05),
+                                      include.lowest=TRUE))
+    map1<-map.plot(mapdf=shape.df,more.aes=aes(fill=pi.min.rescale),color="grey",size=0.1)+
+        ggtitle(city.names[city.index])+
+#         ggtitle(bquote(atop(.(city.names[city.index]),Pi^"min" )))+
+        labs(x="Longitude",y="Latitude")+
+        scale_fill_brewer(type="seq",palette = "Greys",name=expression(Pi^"min"))+
+#         scale_x_continuous(breaks=seq(min(shape.df$long),max(shape.df$long),length.out=4))+
+        theme(axis.text = element_text(size=6),
+              legend.title=element_text(size=8),legend.text=element_text(size=7),
+              axis.title = element_text(size=8),plot.title = element_text(size=8),
+          plot.margin=unit(c(.05,.05,.05,.05),"npc"))
+    map2<-map.plot(mapdf=shape.df, more.aes=aes(fill=record.rescale),color="grey",size=0.1)+
+        ggtitle(city.names[city.index])+
+#         ggtitle(bquote(atop(.(city.names[city.index]),"Portion of Checkins")))+
+        labs(x="Longitude",y="Latitude")+
+        scale_fill_brewer(type="seq",palette = "Greys",name="Check-ins[%]")+
+#         scale_x_continuous(breaks=seq(min(shape.df$long),max(shape.df$long),length.out=4))+
+        theme(axis.text = element_text(size=6),legend.key.width=unit(1,"line"),
+              legend.title=element_text(size=8),legend.text=element_text(size=7),
+              axis.title = element_text(size=8),plot.title = element_text(size=8),
+          plot.margin=unit(c(.05,.05,.05,.05),"npc"))
+    map3=map.plot(mapdf=shape.df, more.aes=aes(fill=resid.rescale),color="grey",size=0.1)+
+        ggtitle(city.names[city.index])+
+        labs(x="Longitude",y="Latitude")+
+        scale_fill_brewer(type="seq",palette = "Greys",name="Residual")+
+#         scale_x_continuous(breaks=seq(min(shape.df$long),max(shape.df$long),length.out=4))+
+        theme(axis.text = element_text(size=6),legend.key.width=unit(1,"line"),
+              legend.title=element_text(size=8),legend.text=element_text(size=7),
+              axis.title = element_text(size=8),plot.title = element_text(size=8),
+          plot.margin=unit(c(.05,.05,.05,.05),"npc"))
+    list(map1,map2,map3)
+})
+eqs2 <- ddply(do.call(rbind,data2),.(city),function(i){
+    model = lm(i,formula=pi.min~log(record) )
+    eq <- substitute(atop(italic(r)^2~"="~r2*","~~italic(p)~"="~pvalue),
+                     list(r2 = format(summary(model)$r.squared, digits = 3),
+                          pvalue = format(summary(model)[[4]][[8]],scientific=TRUE, digits = 3)))
+    as.character(as.expression(eq));                 
+})
+ggd<-ggplot(do.call(rbind,data2),aes(x=record,y=pi.min))+facet_wrap(~city)+
+    geom_point(size=1)+
+#     geom_smooth()+scale_x_log10()+
+    geom_smooth(method=lm,formula=y~x)+
+    xlab("Check-ins\n(c)") +
+    geom_text(data=eqs2,aes(x=0.00001,y=0.35,label=V1),inherit.aes=FALSE,
+                  parse = TRUE,hjust=0,size=3)+
+    ylab(expression(Pi^min)) +ggtitle("Spatial Correlation")+
+    scale_x_log10(labels=percent)+
+    theme(axis.text = element_text(size=8),
+          plot.margin=unit(c(.05,.05,.05,.05),"npc"),
+              axis.title = element_text(size=10),plot.title = element_text(size=10))
+
+
+
+# CA for spatial semantics
+gg.resid = lapply(1:3, function(city.index){
+    data = checkin.poly.list[[city.index]][,c("cate_l1",spatial.attr[city.index])]
+    colnames(data)[2]<-"zip"
+    data$zip=factor(data$zip)
+    data$cate_l1=factor(data$cate_l1)
+    ca.model = ca(xtabs(~zip+cate_l1,data=data))
+    
+#     plot(ca.model, mass = TRUE, contrib = "absolute", map ="rowgreen", 
+#      arrows = c(TRUE, FALSE)) # asymmetric map
+    lm.model = lm(data2[[city.index]],formula=pi.min~log(record) )
+    
+    plot.df1 = data.frame(ca.model$rowcoord[,1:2],"name"=ca.model$rownames,
+                         "resid"=resid(lm.model),"city"=city.names[city.index])
+    plot.df1=plot.df1[order(abs(plot.df1$resid)),]
+    plot.df1$resid.positive = ifelse(plot.df1$resid>0,">0","<=0")
+    
+    plot.df2 = data.frame(ca.model$colcoord[,1:2],"name"=ca.model$colnames,
+                                            "city"=city.names[city.index])
+    
+    ggplot(plot.df1,aes(x=X1,y=X2))+
+        geom_text(data=plot.df2,aes(label=name),size=2.5，alpha=0.8)+
+        geom_segment(data=plot.df2,x=0,y=0,aes(xend=X1,yend=X2),
+                     color="grey",arrow=arrow(length=unit(0.5,"cm")))+
+        geom_point(aes(size=abs(resid),shape=resid.positive),fill="white",alpha=0.7)+
+        ggtitle(city.names[city.index])+
+        labs(x=paste0("Dimension 1 (",formatC(summary(ca.model)$scree[1,3],digits=4),"%)"),
+             y=paste0("Dimension 2 (",formatC(summary(ca.model)$scree[2,3],digits=4),"%)"))+
+        scale_size_continuous(name="Residual\nValue")+
+        scale_shape_manual(name="Residual\nSign",values=c(21,24))+
+        theme(axis.text = element_text(size=6),legend.key.width=unit(1,"line"),
+              legend.title=element_text(size=8),legend.text=element_text(size=7),
+              axis.title = element_text(size=8),plot.title = element_text(size=8),
+          plot.margin=unit(c(.05,.05,.05,.05),"npc"))+
+        guides(shape=guide_legend(order=1),size=guide_legend(order=2))
+})
+
+tiff("plots/pi.min.spatial.tiff",width=12*ppi,height=12*ppi,res=ppi)
+grid.arrange(arrangeGrob(
+                 arrangeGrob(gg.maps[[1]][[1]],gg.maps[[2]][[1]],gg.maps[[3]][[1]],
+                             main=textGrob(expression(paste("Spatial Distribution of ",Pi)),
+                                           vjust=1.5,gp=gpar(fontsize=10)),
+                             sub=textGrob("(a)",gp=gpar(fontsize=10),vjust=-1),
+                             ncol=3,widths=c(1,0.9,1.12)),
+                 arrangeGrob(gg.maps[[1]][[2]],gg.maps[[2]][[2]],gg.maps[[3]][[2]],
+                             main=textGrob("Spatial Distribution of Check-ins",
+                                           vjust=1.5,gp=gpar(fontsize=10)),
+                             sub=textGrob("(b)",gp=gpar(fontsize=10),vjust=-1),
+                             ncol=3,widths=c(1,0.9,1.12)),
+#                  arrangeGrob(gg.maps[[1]][[3]],gg.maps[[2]][[3]],gg.maps[[3]][[3]],
+#                              main=textGrob("Spatial Distribution of Redidual",
+#                                            vjust=1.5,gp=gpar(fontsize=10)),
+#                              sub=textGrob("(g)",gp=gpar(fontsize=10),vjust=-1),
+#                              ncol=3,widths=c(1,0.9,1.12)),
+             ncol=1),ggd,
+             arrangeGrob(gg.resid[[1]],gg.resid[[2]],gg.resid[[3]],
+                             main=textGrob("Relations of Spatial Semantics and Rediduals",
+                                           vjust=1.5,gp=gpar(fontsize=10)),
+                             sub=textGrob("(d)",gp=gpar(fontsize=10),vjust=-1),
+                             ncol=3),
+#              ggc,ggf,
+            nrow=3,heights=c(2,0.8,1))
+# rm(gga,ggb,data)
+dev.off()
+
+
+
+tiff("plots/pi.k.coefficient.venue.tiff",width=12*ppi,height=5*ppi,res=ppi)
+data = entropies.etc.df[which(entropies.etc.df$Condition=="ST"),]
+data = ddply(data,.(City),function(i){
+    i$Venue.Quantile = with(i,cut(Venues,
+                                  breaks=quantile(Venues,probs=seq(0,1,by=0.25)),
+                                  include.lowest=TRUE,
+                                  labels=paste("Venue Numbers: Quantile",1:4)))
+    i
+})
+eqs <- ddply(data,.(City,Venue.Quantile),function(i){
+    model = glm(i,formula=Pi.min~log(Pi.max),family=gaussian(link="log"))
+    a=model$coefficients[1]
+    k=model$coefficients[2]
+    
+    eq <- substitute(italic(y) ==  e^a %.%  italic(x)^k ,
+                     list(a = format(a, digits = 3),
+                          k = format(k, digits = 3)))
+    as.character(as.expression(eq))
+})
+ggplot(data,aes(x=Pi.max,y=Pi.min))+
+#     geom_line(aes(x=0:1,y=0:1),color="grey",linetype="dashed")+
+    geom_point(alpha=0.4,shape=21,fill="white")+
+    xlab(expression(atop(italic(Pi))^"max" ))+
+    ylab(expression(atop(italic(Pi))^"min" ))+
+    geom_smooth(method=glm,formula=y~log(x),family=gaussian(link="log"))+
+    geom_text(data=eqs,aes(x=0.6,y=0.9,label=V1),inherit.aes=FALSE,
+                  parse = TRUE,hjust=0,size=3.5)+
+#     scale_x_continuous(limit=c(0,1))+
+#     scale_y_continuous(limit=c(0,1))+
+    facet_grid(City~Venue.Quantile)
+dev.off()
+
+tiff("plots/pi.k.coefficient.unalikeability.tiff",width=12*ppi,height=5*ppi,res=ppi)
+data = entropies.etc.df[which(entropies.etc.df$Condition=="ST"),]
+data = ddply(data,.(City),function(i){
+    i$Unalikeability.Quantile = with(i,cut(Unalikeability,
+                                  breaks=quantile(Unalikeability,probs=seq(0,1,by=0.2)),
+                                  include.lowest=TRUE,
+                                  labels=paste("Unalikeability: Quantile",1:5)))
+    i
+})
+eqs <- ddply(data,.(City,Unalikeability.Quantile),function(i){
+    model = glm(i,formula=Pi.min~log(Pi.max),family=gaussian(link="log"))
+    a=model$coefficients[1]
+    k=model$coefficients[2]
+    
+    eq <- substitute(italic(y) ==  e^a %.%  italic(x)^k ,
+                     list(a = format(a, digits = 3),
+                          k = format(k, digits = 3)))
+    as.character(as.expression(eq))
+})
+ggplot(data,aes(x=Pi.max,y=Pi.min))+
+#     geom_line(aes(x=0:1,y=0:1),color="grey",linetype="dashed")+
+    geom_point(alpha=0.4,shape=21,fill="white")+
+    xlab(expression(atop(italic(Pi))^"max" ))+
+    ylab(expression(atop(italic(Pi))^"min" ))+
+    geom_smooth(method=glm,formula=y~log(x),family=gaussian(link="log"))+
+    geom_text(data=eqs,aes(x=0.6,y=0.9,label=V1),inherit.aes=FALSE,
+                  parse = TRUE,hjust=0,size=3.5)+
+#     scale_x_continuous(limit=c(0,1))+
+#     scale_y_continuous(limit=c(0,1))+
+    facet_grid(City~Unalikeability.Quantile)
+dev.off()
+
+tiff("plots/entropies-venues.tiff",width=12*ppi,height=5*ppi,res=ppi)
+eqs <- ddply(data,.(city,variable),function(i){
+    model = lm(i,formula=value~log(Venues)-1)
+    
+#     a=model$coefficients[1]
+    k=model$coefficients[1]
+    
+    eq <- substitute(italic(y) %~%  k %.% log ( italic(x) ),
+                     list(k = format(k, digits = 3)))
+    as.character(as.expression(eq))
+})
+    ggplot(data,aes(x=Venues,y=value))+
+        geom_point(shape=21,fill="white",alpha=0.3,size=1)+
+        ylab("Entropy")+xlab("Number Unique Venues")+
+        geom_smooth(method=glm,formula=y~x)+
+        scale_x_log10(breaks=c(10,100,1000))+
+        geom_text(data=eqs,aes(x=1,y=8.5,label=V1),inherit.aes=FALSE,
+                  parse = TRUE,hjust=0,size=3)+
+        facet_grid(city~variable)
 
 dev.off()
+
+# tiff("plots/entropy.residual.tiff",width=12*ppi,height=6*ppi,res=ppi)
+# data=melt(entropies,id.vars = c("records","unique.venues"))
+# gg.residual<-lapply(split(data,data$variable),function(i){
+#     
+#     list(ggplot(i,aes(x=unique.venues,y=records))+
+#         geom_point(shape=21,fill="white",alpha=0.3,size=1)+
+#         geom_smooth(method=glm,formula=y~log(x))+
+#         xlab("Unique Venues")+ylab("Number of Records")+
+#         scale_y_log10()+
+#         theme_grey(base_size = 10)+
+#         ggtitle(i[1,"variable"]),
+#     ggplot(i,aes(x=unique.venues,y=value))+
+#         geom_point(shape=21,fill="white",alpha=0.3,size=1)+
+#         geom_smooth(method=glm,formula=y~log(x))+
+#         xlab("Unique Venues")+ylab("Entropy")+
+#         theme_grey(base_size = 10)+
+#         ggtitle(i[1,"variable"]),
+#     ggplot(i,aes(x=resid(glm(formula=records~log(unique.venues),
+#                           family=gaussian(link="log"))),
+#                  y=resid( glm(formula=value~log(unique.venues)))))+
+#         geom_point(shape=21,fill="white",alpha=0.3,size=1)+
+# #         geom_smooth(method=glm,formula=y~log(x))+
+#         xlab("Redisual: Records ~ Venues")+
+#         ylab("Redisual: Entropy ~ Venues")+
+#         theme_grey(base_size = 10)+
+#         scale_x_log10()+
+#         ggtitle(i[1,"variable"]))
+# })
+# grid.arrange(gg.residual[[1]][[1]],gg.residual[[2]][[1]],gg.residual[[3]][[1]],
+#              gg.residual[[4]][[1]],gg.residual[[5]][[1]],
+#              gg.residual[[1]][[2]],gg.residual[[2]][[2]],gg.residual[[3]][[2]],
+#              gg.residual[[4]][[2]],gg.residual[[5]][[2]],
+#              gg.residual[[1]][[3]],gg.residual[[2]][[3]],gg.residual[[3]][[3]],
+#              gg.residual[[4]][[3]],gg.residual[[5]][[3]],
+#              ncol=5,nrow=3)
+# 
+# dev.off()
 
 ####################
 reduction.list = list(
@@ -744,43 +1175,64 @@ gg.pi.s.n <- ggplot(df) +
 ##### 5.2 calculation of upper bounds 
 
 ```{r,echo=FALSE}
-counter.reset()
-piset = do.call(rbind, lapply(seq_along(user.list.ucls),function(id){
-    counter.print(10)
-    N = length(unique(user.list.ucls[[id]]$venue_id))
- 
-    x = seq(from=0,to=1,length=1001)
-    y = rep(0,1001)
-
-    if(N!=1){
-        y[1]=log2(N-1)
-        y[2:1000] = (1-x[2:1000])*log2(N-1) - x[2:1000]*log2(x[2:1000]) - (1-x[2:1000])*log2(1-x[2:1000]) 
-    }
-
-    yoffset = y[2:length(y)]
-    yoffset[length(y)]=-0.001
+pi.list = lapply(1:3, function(city.index){
+    counter.reset()
+    user.list = user.list.ucls[[city.index]]
+    piset = do.call(rbind, lapply(seq_along(user.list),function(id){
+        counter.print(10)
+        N = length(unique(user.list[[id]]$venue_id))
+     
+        x = seq(from=0,to=1,length=1001)
+        y = rep(0,1001)
     
-    pi.rand = ifelse(entropies[id,"Random"]<=max(y),
-                     x[which( y>=entropies[id,"Random"] & yoffset<entropies[id,"Random"] )],
-                     x[which(y==max(y))] )
-    pi.unc = ifelse(entropies[id,"Uncorrelated"]<=max(y),
-                     x[which( y>=entropies[id,"Uncorrelated"] & yoffset<entropies[id,"Uncorrelated"] )],
-                     x[which(y==max(y))] )
-    pi.time = ifelse(entropies[id,"Time"]<=max(y),
-                     x[which( y>=entropies[id,"Time"] & yoffset<entropies[id,"Time"] )],
-                     x[which(y==max(y))] )
-    pi.space = ifelse(entropies[id,"Space"]<=max(y),
-                     x[which( y>=entropies[id,"Space"] & yoffset<entropies[id,"Space"] )],
-                     x[which(y==max(y))] )
-    pi.st = ifelse(entropies[id,"ST"]<=max(y),
-                     x[which( y>=entropies[id,"ST"] & yoffset<entropies[id,"ST"] )],
-                     x[which(y==max(y))] )
+        if(N!=1){
+            y[1]=log2(N-1)
+            y[2:1000] = (1-x[2:1000])*log2(N-1) - x[2:1000]*log2(x[2:1000]) - (1-x[2:1000])*log2(1-x[2:1000]) 
+        }
     
-    data.frame("id"=id,"Random"=pi.rand,"Uncorrelated"=pi.unc,"Time"=pi.time,
-      "Space"=pi.space,"ST"=pi.st,"n"=N)
+        yoffset = y[2:length(y)]
+        yoffset[length(y)]=-0.001
+        entropies = entropies.list[[city.index]]
+        pi.rand = ifelse(entropies[id,"Random"]<=max(y),
+                         x[which( y>=entropies[id,"Random"] & yoffset<entropies[id,"Random"] )],
+                         x[which(y==max(y))] )
+        pi.unc = ifelse(entropies[id,"Uncorrelated"]<=max(y),
+                         x[which( y>=entropies[id,"Uncorrelated"] & yoffset<entropies[id,"Uncorrelated"] )],
+                         x[which(y==max(y))] )
+        pi.time = ifelse(entropies[id,"Time"]<=max(y),
+                         x[which( y>=entropies[id,"Time"] & yoffset<entropies[id,"Time"] )],
+                         x[which(y==max(y))] )
+        pi.space = ifelse(entropies[id,"Space"]<=max(y),
+                         x[which( y>=entropies[id,"Space"] & yoffset<entropies[id,"Space"] )],
+                         x[which(y==max(y))] )
+        pi.st = ifelse(entropies[id,"ST"]<=max(y),
+                         x[which( y>=entropies[id,"ST"] & yoffset<entropies[id,"ST"] )],
+                         x[which(y==max(y))] )
+        
+        data.frame("id"=id,"Random"=pi.rand,"Uncorrelated"=pi.unc,"Time"=pi.time,
+          "Space"=pi.space,"ST"=pi.st)
+    }))
+    cbind(piset,entropies.list[[city.index]][,c("Records","Venues","Users")])
+})
+
+tiff("plots/pi.max.cities.tiff",width=12*ppi,height=5*ppi,res=ppi)
+pi.melt= do.call(rbind,lapply(1:3,function(city.index){
+    df = melt(pi.list[[city.index]],id.vars = c("id","Records","Venues","Users"))
+    df$city = city.names[city.index]
+    df
 }))
-piset$records=entropies$records
-tiff("plots/pi.max.tiff",width=12*ppi,height=4*ppi,res=ppi)
+ggplot(pi.melt)+
+    geom_histogram(aes(x=value,y=..density..),binwidth=0.01,fill=NA,
+                   color="grey",position="identity")+
+    geom_density(aes(x=value),adjust=2)+
+    xlab(expression(atop(italic(Pi)^"max") ) ) +
+    ylab("Probability Density")+
+    scale_y_sqrt()+
+    facet_grid(city~variable)
+dev.off()
+
+# piset$records=entropies$records
+tiff("plots/pi.max.tiff",width=12*ppi,height=5*ppi,res=ppi)
 data=melt(piset,id.vars =c("id","n","records"))
 grid.arrange(
     ggplot(data)+
@@ -806,7 +1258,7 @@ grid.arrange(
         scale_y_log10(breaks=c(10,100,1000),limit=c(1,3000))+
 #         theme(axis.text.y=element_text(face=c("plain","bold","plain","plain")))+
         facet_wrap(~variable,ncol=5),
-    nrow=2,heights=c(1,1.2))
+    nrow=2,heights=c(1,1.1))
 dev.off()
 ```
 
@@ -936,6 +1388,102 @@ gg.mutual.imp2 <-
 png(paste0(basedir,"relations.pi.mutual.png"), width = 8*ppi, height = 6*ppi, res=ppi)
 multiplot(gg.pi.n,gg.mutual.imp1,
           gg.pi.reg,gg.mutual.imp2,cols=2)
+dev.off()
+```
+
+#### 5.4 What predictability can algorithms achieve at least?// regularity
+
+```{r}
+# relation between "regularity" and "hour"
+reg.list = lapply(1:3, function(city.index){
+    counter.reset()
+    user.list = user.list.ucls[[city.index]]
+    #  the most probable category for this user 
+    regularity = lapply(user.list, function(user){
+        counter.print(10)
+        user$venue_id=factor(user$venue_id)
+       
+        # the most probable category for this user 
+        freq.unc = as.data.frame(table(user$venue_id))
+        pi.unc = max(freq.unc$Freq) / sum(freq.unc$Freq)
+        
+        pi.t = sapply(split(user,user$hour),function(hour){
+            venue_seq = hour$venue_id
+            # the most probable category
+            venue_seq = as.data.frame(table(venue_seq))
+            max(venue_seq$Freq)/sum(venue_seq$Freq)
+        })
+#         pi.t[is.na(pi.t)]=0
+        
+        pi.s = sapply(split(user,user[,spatial.attr[city.index]]),
+                                    function(space){
+            venue_seq = space$venue_id
+            # the most probable category
+            venue_seq = as.data.frame(table(venue_seq))
+            max(venue_seq$Freq)/sum(venue_seq$Freq)
+        })
+#         pi.s[is.na(pi.s)]=0
+        
+        user$st=paste(user$hour,user[,spatial.attr[city.index]])
+        pi.st = sapply(split(user,user$st),function(st){
+            venue_seq = st$venue_id
+            # the most probable category
+            venue_seq = as.data.frame(table(venue_seq))
+            max(venue_seq$Freq)/sum(venue_seq$Freq)
+        })
+#         pi.st[is.na(pi.st)]=0
+        
+        list("Uncorrelated"=pi.unc,"Time"=pi.t,"Space"=pi.s,"ST"=pi.st)
+    
+    })
+})
+
+
+tiff("plots/pi.min.cities.tiff",width=12*ppi,height=5*ppi,res=ppi)
+reg.melt = do.call(rbind,lapply(1:3,function(city.index){
+    regs = reg.list[[city.index]]
+    df = do.call(rbind,lapply(regs,function(reg){
+        data.frame("Uncorrelated"=reg$Uncorrelated,
+                   "Time"=mean(reg$Time,na.rm=T),
+                   "Space"=mean(reg$Space,na.rm=T),
+                   "ST"=mean(reg$ST,na.rm=T))
+    }))
+    df$id=c(1:nrow(df))
+    df$city = city.names[city.index]
+    df = melt(df,id.vars=c("id","city"))
+}))
+ggplot(reg.melt)+
+    geom_histogram(aes(x=value,y=..density..),binwidth=0.01,fill=NA,
+                   color="grey",position="identity")+
+    geom_density(aes(x=value),adjust=2)+
+    xlab(expression(atop(italic(Pi)^"min") ) ) +
+    ylab("Probability Density")+
+    scale_y_sqrt()+
+    facet_grid(city~variable)
+dev.off()
+
+
+pi.max.min=merge(x=pi.melt,y=reg.melt,by=c("id","variable","city"),all.y=TRUE)
+colnames(pi.max.min)[7:8]=c("Max","Min")
+eqs <- ddply(pi.max.min,.(city,variable),function(i){
+    model = lm(i,formula=Max~Min)
+    
+    b=model$coefficients[1]
+    k=model$coefficients[2]
+    
+    eq <- substitute(italic(y) ==  b + k ~ italic(x) ,
+                     list(b = format(b, digits = 3),k = format(k, digits = 3)))
+    as.character(as.expression(eq))
+})
+tiff("plots/pi.max-min.cities.tiff",width=12*ppi,height=5*ppi,res=ppi)
+ggplot(pi.max.min,aes(x=Max,y=Min))+
+    geom_point(shape=21,fill="white",size=1,alpha=0.7)+
+    geom_smooth(method=lm,formula=y~x)+
+    xlab(expression(atop(italic(Pi)^"max") ) ) +
+    ylab(expression(atop(italic(Pi)^"min") ) ) +
+    geom_text(data=eqs,aes(x=0.25,y=0.75,label=V1),inherit.aes=FALSE,
+                  parse = TRUE,hjust=0,size=3)+
+    facet_grid(city~variable)
 dev.off()
 ```
 
