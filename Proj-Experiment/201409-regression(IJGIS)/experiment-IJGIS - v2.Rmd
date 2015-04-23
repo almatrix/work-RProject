@@ -21,7 +21,7 @@ library(SDMTools)
 #library(TSA)
 library(ca)
 library(plyr)
-library(MASS)#fitdistr
+#library(MASS)#fitdistr
 
 source("../../global/functions/prepare.checkin.R")
 source("../../global/functions/basic.stats.plots.R")
@@ -285,7 +285,8 @@ dev.off()
 
 # choose the number of clusters based the plotting result
 nr.cls.final.id = c(4,3,3) # 2500, 1000, 1000
-            
+```
+```{r}
 
 # user aggregation and respliting
 user.list.ucls = lapply(1:3,function(city.index){
@@ -322,11 +323,10 @@ get.rand.entropy.etc = function(data){
     
     pi.min = 1 / N
     
-    u2 = 1 - 1 / N
+#     u2 = 1 - 1 / N
     
     data.frame("Condition"="Random","Entropy"=entropy,
-      "Pi.max"=pi.max,"Pi.min"=pi.min,
-      "Unalikeability"=u2)
+      "Pi.max"=pi.max,"Pi.min"=pi.min)
 }
 
 # uncorrelated entropy (heterogeneity pattern)
@@ -349,7 +349,33 @@ get.unc.entropy.etc = function(data){
       "Unalikeability"=u2)
 }
 
-# conditional entropy (temproal pattern)
+# uncorrelated entropy with small sample size
+get.unc.entropy.etc.v2 = function(data,data.global){
+    data$venue_id=factor(data$venue_id) # do not statistic none-used venue
+    venue.freq = as.data.frame(table(data$venue_id))
+    colnames(venue.freq) = c("venue_id","Freq")
+    
+    p = venue.freq$Freq / sum(venue.freq$Freq)
+    entropy = sum(-1 * p * log2(p) + 1/2/sum(venue.freq$Freq))
+    
+    N = sum(venue.freq$Freq)
+    pi.max = get.pi.max.from.entropy(entropy, N)
+    
+    prior.freq = as.data.frame(table(data.global$venue_id))
+    colnames(prior.freq) = c("venue_id","Freq")
+    prior.freq$prob = prior.freq$Freq / sum(prior.freq$Freq)
+    prior.freq = subset(prior.freq,as.character(venue_id) %in% as.character(venue.freq$venue_id))
+    pi.min = get.pi.min.from.freq(venue.freq, prior.freq$prob)
+#     pi.min = max(venue.freq$Freq) / sum(venue.freq$Freq)
+    
+#     u2 = 1 - sum(p^2)
+    
+    data.frame("Condition"="Uncorrelated","Entropy"=entropy,
+      "Pi.max"=pi.max,"Pi.min"=pi.min)
+}
+
+
+# conditional entropy 
 get.conditional.entropy.etc = function(data,condition,condition_name){
     data$venue_id=factor(data$venue_id) # do not statistic none-used venue
     freq = as.data.frame(xtabs(data=data,
@@ -386,6 +412,89 @@ get.conditional.entropy.etc = function(data,condition,condition_name){
          "detail"=freq)
 }
 
+# conditional entropy adjusted to small sample size
+get.conditional.entropy.etc.v2 = function(data,condition,condition.name,data.global){
+    data$venue_id=factor(data$venue_id) # do not statistic none-used venue
+    
+    freq.joint = as.data.frame(xtabs(data=data,
+                               as.formula(paste("~",condition,"+venue_id"))))
+    # clean the joint frequency table
+    freq.joint = freq.joint[freq.joint$Freq>0,]
+    freq.joint[,condition]=factor(freq.joint[,condition])
+    
+    N = sum(freq.joint$Freq)
+    L = length(unique(data$venue_id))
+    
+    in.condition = do.call(rbind,lapply(split(freq.joint,freq.joint[,condition]),function(i){
+        i$venue_id=factor(i$venue_id)
+        # adjusted for small samples (Mueller, 1955)
+        n = sum(i$Freq)
+        H.v = with(i,sum( -1 * Freq/n * log2(Freq/n) + 1/2/n))
+        # adjusted for small samples ("entropy estimates of small datasets")
+#         H.v = sum(apply(i,1,function(j){
+#             ni = as.integer(j["Freq"])
+#             (ni+1)/(n+2) * sum(1/c((ni+2):(n+2)))
+#         }))
+        
+        l = length(unique(i$venue_id)) 
+        pi.max = get.pi.max.from.entropy(H.v, l+1) # one for "others"
+    
+        condition.value=i[1,condition]
+        data.global.sub = data.global[as.character(data.global[,condition])==as.character(condition.value),]
+        data.global.sub$venue_id = factor(data.global.sub$venue_id)
+        prior.freq = as.data.frame(table(data.global.sub$venue_id))
+        colnames(prior.freq) = c("venue_id","Freq")
+        prior.freq$prob = prior.freq$Freq / sum(prior.freq$Freq)
+        prior.freq = subset(prior.freq,as.character(venue_id) %in% as.character(i$venue_id))
+
+        pi.min = get.pi.min.from.freq(i, prior.freq$prob) 
+#         pi.min.v2 = get.pi.min.from.freq(i, 1/(l+1)) 
+        data.frame("entropy"=H.v,
+                   "pi.min"=pi.min,
+                   "pi.max"=pi.max,
+                   "record"=n,
+                   "condition.value"=condition.value)
+    }))
+    
+    H = sum(with(in.condition, record / N * entropy))
+    pi.max = get.pi.max.from.entropy(H, N)
+    pi.min = with(in.condition, wt.mean(pi.min, record))
+    
+    list("mean"=data.frame("Condition"=condition.name,"Entropy"=H,
+               "Pi.max"=pi.max,"Pi.min"=mean(in.condition$pi.min,na.rm=T)),
+         "detail"=in.condition)
+}
+
+# get.pi.min.from.freq = function(freq,L,confidence=0.95){
+#     # pi.min should also consider the small sample correction
+#     # using Wilson score interval
+#     # extended from Wilson 1927
+#     if(sum(freq$Freq)>0){
+#         p = max(freq$Freq) / sum(freq$Freq)
+#         n = sum(freq$Freq) # number of total observations
+# #         l = ifelse(nrow(freq)<2,2,nrow(freq)) # number of unique options
+#         z = qnorm(1-1/2*(1-confidence))  # confidence interval 
+#         
+#         # CI should be weighted average of p and 1/l
+#         n/(n+z^2) *p + (z^2)/(n+z^2) * 1/L
+#     }else{NaN}
+# }
+
+get.pi.min.from.freq = function(freq,prior,confidence=0.95){
+    # pi.min should also consider the small sample correction
+    # using Wilson score interval
+    # extended from Wilson 1927
+    if(sum(freq$Freq)>0){
+        p = freq$Freq / sum(freq$Freq)
+        n = sum(freq$Freq) # number of total observations
+#         l = ifelse(nrow(freq)<2,2,nrow(freq)) # number of unique options
+        z = qnorm(1-1/2*(1-confidence))  # confidence interval 
+        
+        # CI should be weighted average of p and prior 
+        max(n/(n+z^2) *p + (z^2)/(n+z^2) * prior)
+    }else{NaN}
+}
+
 get.pi.max.from.entropy = function(entropy,N){
     x = seq(from=0,to=1,length=1001)
     y = rep(0,1001)
@@ -416,18 +525,20 @@ entropies.etc.df=data.frame();
 
 entropies.etc.list = lapply(1:3,function(city.index){
     user.list = user.list.ucls[[city.index]]
-
+    data.global = checkin.poly.list[[city.index]]
+    data.global$ST = paste(data.global$hour, data.global[,city.guide$spatial.attr[city.index]])
+    
     counter.reset()
     entropies.etc=lapply(user.list,function(i){
-        counter.print(10)
+        counter.print(2)
         
         rand = get.rand.entropy.etc(i)
-        unc = get.unc.entropy.etc(i)
-        time = get.conditional.entropy.etc(i,"hour","Hour")
-        space = get.conditional.entropy.etc(i,spatial.attr[city.index],"Space")
+        unc = get.unc.entropy.etc.v2(i,data.global)
+        time = get.conditional.entropy.etc.v2(i,"hour","Hour",data.global)
+        space = get.conditional.entropy.etc.v2(i,city.guide$spatial.attr[city.index],"Space",data.global)
         
-        i$ST = paste(i$hour, i[,spatial.attr[city.index]])
-        st = get.conditional.entropy.etc(i,"ST","ST")
+        i$ST = paste(i$hour, i[,city.guide$spatial.attr[city.index]])
+        st = get.conditional.entropy.etc.v2(i,"ST","ST",data.global)
         
         # some extra statistics
         total.records = nrow(i)
@@ -440,15 +551,18 @@ entropies.etc.list = lapply(1:3,function(city.index){
         df$Records = nrow(i)
         df$Venues = length(unique(i$venue_id))
         df$Users = length(unique(i$user_id))
-        df$City = city.names[city.index]
+        df$City = city.guide$city[city.index]
         entropies.etc.df <<- rbind(entropies.etc.df,df)
         
-        time.detail=unique(time$detail[,-c(2,3,6)])
-        time.detail$city = city.names[city.index]
-        space.detail=unique(space$detail[,-c(2,3,6)])
-        space.detail$city = city.names[city.index]
-        st.detail=unique(st$detail[,-c(2,3,6)])
-        st.detail$city = city.names[city.index]
+#         time.detail=unique(time$detail[,-c(2,3,6)])
+        time.detail = as.data.frame(time$detail)
+        time.detail$city = city.guide$city[city.index]
+#         space.detail=unique(space$detail[,-c(2,3,6)])
+        space.detail = as.data.frame(space$detail)
+        space.detail$city = city.guide$city[city.index]
+        st.detail = as.data.frame(st$detail)
+#         st.detail=unique(st$detail[,-c(2,3,6)])
+        st.detail$city = city.guide$city[city.index]
 
         
     list(time.detail,space.detail,st.detail)
@@ -458,26 +572,15 @@ entropies.etc.list = lapply(1:3,function(city.index){
 
 })
 
-
-entropies.etc.time.df=do.call(rbind,lapply(1:3,function(city.index){
-    entropies.etc.city = entropies.etc.list[[city.index]]
-    do.call(rbind,lapply(1:length(entropies.etc.city),function(i){
-        entropies.etc.city[[i]][[1]]
-    }))
-}))
-entropies.etc.space.df=do.call(rbind,lapply(1:3,function(city.index){
-    entropies.etc.city = entropies.etc.list[[city.index]]
-    do.call(rbind,lapply(1:length(entropies.etc.city),function(i){
-        entropies.etc.city[[i]][[2]]
-    }))
-}))
 entropies.etc.st.df=do.call(rbind,lapply(1:3,function(city.index){
     entropies.etc.city = entropies.etc.list[[city.index]]
     df = do.call(rbind,lapply(1:length(entropies.etc.city),function(i){
         entropies.etc.city[[i]][[3]]
     }))
-    time.space = data.frame(do.call(rbind,strsplit(as.character(df$Condition_ID),
-                                                   " ",fixed=TRUE)))
+#     time.space = data.frame(do.call(rbind,strsplit(as.character(df$Condition_ID),
+#                                                    " ",fixed=TRUE)))
+    time.space = data.frame(do.call(rbind,strsplit(as.character(rownames(df)),
+                                                   " ",fixed=TRUE)))    
     colnames(time.space)=c("hour","space")
     cbind(df,time.space) 
 }))
@@ -498,7 +601,7 @@ dev.off()
 
 
 tiff("plots/pi.max.min.density.tiff",width=12*ppi,height=5*ppi,res=ppi)
-ggplot(melt(data=entropies.etc.df[,c(1,3,4,10)],id.vars=c("Condition","City")))+
+ggplot(melt(data=entropies.etc.df[,c(1,3,4,9)],id.vars=c("Condition","City")))+
     geom_histogram(aes(x=value,y=..density..,group=variable),binwidth=0.01,fill=NA,
                    color="grey",position="identity")+
     geom_density(aes(x=value,group=variable,linetype=variable),adjust=3,alpha=0.5)+
@@ -538,7 +641,7 @@ dev.off()
 
 
 tiff("plots/pi.records.tiff",width=12*ppi,height=5*ppi,res=ppi)
-data=melt(entropies.etc.df[,c(1,3,4,7,10)],id.vars=c("Records","City","Condition"))
+data=melt(entropies.etc.df[,c(1,3,4,6,9)],id.vars=c("Records","City","Condition"))
 data$variable<-factor(data$variable,labels=c("max","min"))
 # tiff("plots/pi.records.tiff",width=12*ppi,height=5*ppi,res=ppi)
 ggplot(data,aes(x=Records,y=value))+
@@ -551,22 +654,25 @@ dev.off()
 tiff("plots/pi.min.hourly.tiff",width=12*ppi,height=3*ppi,res=ppi)
 data = ddply(entropies.etc.st.df,.(city),function(city){
     stat = ddply(city,.(hour),function(hour){
-        data.frame("pi.max"=with(hour,wt.mean(pi.max,marg)),
-                   "pi.min"=with(hour,wt.mean(pi.min,marg)),
-                   "record"=with(hour,sum(marg)))
+#         data.frame("pi.max"=with(hour,mean(pi.max)),
+#                    "pi.min"=with(hour,mean(pi.min)),
+#                     "record"=with(hour,sum(record)))
+        data.frame("record"=with(hour,sum(record)),
+                   "pi"=with(hour,c(mean(pi.min),mean(pi.max))),
+                   "type"=c("min","max"))
     })
     stat$record = stat$record / sum(stat$record) 
     stat
 })
-gga<-ggplot(data,aes(x=hour,y=pi.min) )+
+gga<-ggplot(data,aes(x=hour,y=pi) )+
     facet_wrap(~city)+
-    geom_point()+
-    geom_smooth(aes(group = 1),se=F, method = "lm", formula = y ~ poly(x, 12),size=1) +
+    geom_point(aes(shape=type))+
+    geom_smooth(aes(group = type),se=F, method = "lm", formula = y ~ poly(x, 12),size=1) +
     xlab("Hour of Day\n(a)") +
     ylab(expression(Pi^min)) +ggtitle(expression(paste("Temporal Distribution of ",Pi)))+
     scale_x_discrete(breaks=c("00","04","08","12","16","20"))+
-    theme(strip.text=element_text(size=7),axis.text = element_text(size=6),
-              axis.title = element_text(size=7),plot.title = element_text(size=8),
+    theme(legend.position="bottom",strip.text=element_text(size=7),axis.text = element_text(size=6),
+          axis.title = element_text(size=7),plot.title = element_text(size=8),
           plot.margin=unit(c(.05,.05,.05,.05),"npc"))
 ggb<-ggplot(data,aes(x=hour,y=record))+
     facet_wrap(~city)+geom_point()+
@@ -578,37 +684,39 @@ ggb<-ggplot(data,aes(x=hour,y=record))+
     theme(strip.text=element_text(size=7),axis.text = element_text(size=6),
               axis.title = element_text(size=7),plot.title = element_text(size=8),
           plot.margin=unit(c(.05,.05,.05,.05),"npc"))
-eqs <- ddply(data,.(city),function(i){
-    model = lm(i,formula=pi.min~record) 
+eqs <- ddply(data,.(city,type),function(i){
+    model = lm(i,formula=pi~record) 
     eq <- substitute(atop(italic(r)^2~"="~r2*","~~italic(p)~"="~pvalue),
                      list(r2 = format(summary(model)$r.squared, digits = 3),
                           pvalue = format(summary(model)[[4]][[8]],scientific=TRUE, digits = 3)))
     as.character(as.expression(eq));                 
 })
-ggc<-ggplot(data,aes(x=record,y=pi.min))+geom_point(size=1)+facet_wrap(~city)+
+eqs$pos.y = rep(c(0.7,0.45),3)
+ggc<-ggplot(data,aes(x=record,y=pi))+geom_point(size=1)+
+    facet_grid(type~city,scales="free_y")+
     geom_smooth(method=lm,formula=y~x)+
     xlab("Check-ins\n(c)") +
     ylab(expression(Pi^min)) +ggtitle("Time Correlation")+
     scale_x_continuous(labels=percent)+
-    geom_text(data=eqs,aes(x=0.025,y=0.85,label=V1),inherit.aes=FALSE,
-                  parse = TRUE,hjust=0,size=3)+
+    geom_text(data=eqs,aes(x=0.005,y=pos.y,label=V1),inherit.aes=FALSE,
+                  parse = TRUE,hjust=0,vjust=0.8,size=3)+
     theme(strip.text=element_text(size=7),axis.text = element_text(size=6),
               axis.title = element_text(size=7),plot.title = element_text(size=8),
           plot.margin=unit(c(.05,.05,.05,.05),"npc"))
-grid.arrange(arrangeGrob(gga,ggb,nrow=2),ggc,
+grid.arrange(arrangeGrob(gga,ggb,nrow=2,heights=c(1.5,1)),ggc,
              ncol=2,widths=c(0.8,1))
 dev.off()
 
 
 data2 = lapply(1:3,function(city.index){
-    subdf = entropies.etc.st.df[which(entropies.etc.st.df$city==city.names[city.index]),]
+    subdf = entropies.etc.st.df[which(entropies.etc.st.df$city==city.guide$city[city.index]),]
     subdf$space = factor(subdf$space)
     stat = do.call(rbind,lapply(split(subdf,subdf$space),function(regional){
         data.frame("space"=regional[1,"space"],
-                   "pi.max"=with(regional,wt.mean(pi.max,marg)),
-                   "pi.min"=with(regional,wt.mean(pi.min,marg)),
-                   "record"=with(regional,sum(marg)),
-                   "city"=city.names[city.index])
+                   "pi.max"=with(regional,mean(pi.max)),
+                   "pi.min"=with(regional,mean(pi.min)),
+                   "record"=with(regional,sum(record)),
+                   "city"=city.guide$city[city.index])
     }))
     stat$record = stat$record / sum(stat$record) 
     
@@ -618,10 +726,10 @@ data2 = lapply(1:3,function(city.index){
 })
 
 gg.maps<-lapply(1:3,function(city.index){
-    SPDF = readOGR(dsn = "../../global/data/shapefiles", layer = shapefile.zip[city.index])
+    SPDF = readOGR(dsn = "../../global/data/shapefiles", layer = city.guide$shapefile.zip[city.index])
     shape.df = df.from.spdf(SPDF)
     shape.df = merge(x=shape.df,y=data2[[city.index]],
-                     by.x=spatial.attr[city.index],by.y="space",all.x=T)
+                     by.x=city.guide$spatial.attr[city.index],by.y="space",all.x=T)
     shape.df = shape.df[order(shape.df$order),] 
     shape.df$pi.min.rescale = with(shape.df,cut(pi.min,dig.lab = 2,
                                       breaks=quantile(pi.min,probs=seq(0,1,by=0.25),na.rm=T),
@@ -633,7 +741,7 @@ gg.maps<-lapply(1:3,function(city.index){
                                       breaks=seq(0,0.4,by=0.05),
                                       include.lowest=TRUE))
     map1<-map.plot(mapdf=shape.df,more.aes=aes(fill=pi.min.rescale),color="grey",size=0.1)+
-        ggtitle(city.names[city.index])+
+        ggtitle(city.guide$city[city.index])+
 #         ggtitle(bquote(atop(.(city.names[city.index]),Pi^"min" )))+
         labs(x="Longitude",y="Latitude")+
         scale_fill_brewer(type="seq",palette = "Greys",name=expression(Pi^"min"))+
@@ -643,7 +751,7 @@ gg.maps<-lapply(1:3,function(city.index){
               axis.title = element_text(size=8),plot.title = element_text(size=8),
           plot.margin=unit(c(.05,.05,.05,.05),"npc"))
     map2<-map.plot(mapdf=shape.df, more.aes=aes(fill=record.rescale),color="grey",size=0.1)+
-        ggtitle(city.names[city.index])+
+        ggtitle(city.guide$city[city.index])+
 #         ggtitle(bquote(atop(.(city.names[city.index]),"Portion of Checkins")))+
         labs(x="Longitude",y="Latitude")+
         scale_fill_brewer(type="seq",palette = "Greys",name="Check-ins[%]")+
@@ -653,7 +761,7 @@ gg.maps<-lapply(1:3,function(city.index){
               axis.title = element_text(size=8),plot.title = element_text(size=8),
           plot.margin=unit(c(.05,.05,.05,.05),"npc"))
     map3=map.plot(mapdf=shape.df, more.aes=aes(fill=resid.rescale),color="grey",size=0.1)+
-        ggtitle(city.names[city.index])+
+        ggtitle(city.guide$city[city.index])+
         labs(x="Longitude",y="Latitude")+
         scale_fill_brewer(type="seq",palette = "Greys",name="Residual")+
 #         scale_x_continuous(breaks=seq(min(shape.df$long),max(shape.df$long),length.out=4))+
@@ -663,14 +771,16 @@ gg.maps<-lapply(1:3,function(city.index){
           plot.margin=unit(c(.05,.05,.05,.05),"npc"))
     list(map1,map2,map3)
 })
-eqs2 <- ddply(do.call(rbind,data2),.(city),function(i){
-    model = lm(i,formula=pi.min~log(record) )
+data3 = do.call(rbind,data2)
+data3 = melt(data3[,c(1:5)],id.vars=c(1,4,5))
+eqs2 <- ddply(data3,.(city,variable),function(i){
+    model = lm(i,formula=value~log(record) )
     eq <- substitute(atop(italic(r)^2~"="~r2*","~~italic(p)~"="~pvalue),
                      list(r2 = format(summary(model)$r.squared, digits = 3),
                           pvalue = format(summary(model)[[4]][[8]],scientific=TRUE, digits = 3)))
     as.character(as.expression(eq));                 
 })
-ggd<-ggplot(do.call(rbind,data2),aes(x=record,y=pi.min))+facet_wrap(~city)+
+ggd<-ggplot(data3,aes(x=record,y=value))+facet_grid(city~variable)+
     geom_point(size=1)+
 #     geom_smooth()+scale_x_log10()+
     geom_smooth(method=lm,formula=y~x)+

@@ -17,11 +17,11 @@ library(scales)
 library(reshape2)
 library(ggplot2)
 library(gridExtra)
-# library(SDMTools)
+library(SDMTools)
 #library(TSA)
 library(ca)
 library(plyr)
-# library(MASS)#fitdistr
+#library(MASS)#fitdistr
 
 source("../../global/functions/prepare.checkin.R")
 source("../../global/functions/basic.stats.plots.R")
@@ -80,7 +80,7 @@ gg.maps = lapply(1:3, function(city.index){
         annotate("text",x=city.guide$coord.x[city.index],y=city.guide$coord.y[city.index],
                  size=2.5,hjust=0,label=city.guide$label[city.index])
 })
-tiff("plots/checkin_points_cities.png", width = 12*ppi, height = 4*ppi, res=ppi)
+tiff("plots/checkin_points_cities.png", width = 10*ppi, height = 3.5*ppi, res=ppi)
 grid.arrange(gg.maps[[1]],gg.maps[[2]],gg.maps[[3]],
              nrow=1, ncol=3, widths=c(1,0.8,1.2))
 dev.off()
@@ -140,7 +140,7 @@ truncated.eqs = ddply(truncated.para,.(city),function(i){
 })
 
 ######################
-tiff("plots/truncated.plfit.tiff",width=10*ppi,height=3.5*ppi,res=ppi)
+tiff("plots/truncated.plfit.tiff",width=8*ppi,height=3.5*ppi,res=ppi)
 gg.fx = ggplot(do.call(rbind,personal.stat.density))+
     geom_point(aes(x=Freq,y=prob),size=1.5,shape=21,fill=NA,alpha=0.6)+
     geom_line(data=truncated.simu,aes(x=x,y=fx),color="blue",alpha=0.8)+
@@ -148,8 +148,8 @@ gg.fx = ggplot(do.call(rbind,personal.stat.density))+
 #                 formula=y~x,method=lm)+
     scale_x_log10(breaks=c(10,30,100,1000))+scale_y_log10(limits=c(0.00001,0.4))+
     xlab("Personal Checkin Counts [x]")+ylab("Pr(X=x)")+
-    geom_text(data=eqs,x=1,y=-1,aes(label=V1),
-              inherit.aes=FALSE,parse = TRUE,hjust=0,size=2.5)+
+    geom_text(data=truncated.eqs,x=1,y=-1,aes(label=V1),
+              inherit.aes=FALSE,parse = TRUE,hjust=0,size=2.2)+
     facet_wrap(~city)+
     theme(strip.text=element_text(size=8),axis.text = element_text(size=8),
               axis.title = element_text(size=8),plot.title = element_text(size=10),
@@ -160,7 +160,7 @@ gg.Fx=ggplot(do.call(rbind,personal.stat.cdf))+
 #     geom_smooth(aes(x=Frequency,y=ecdf,linetype="Power Law"),se=F,color="black",alpha=0.8,
 #                 formula=y~x,method=glm,family=gaussian(link='log'))+
     scale_x_log10(breaks=c(10,30,100,1000))+scale_y_continuous()+
-    labs(x="Personal Checkin Counts [x]",y="ECDF [Pr(X>=x)]")+
+    labs(x="Personal Checkin Counts [x]",y="CDF [Pr(X<=x)]")+
     facet_wrap(~city)+
     theme(strip.text=element_text(size=8),axis.text = element_text(size=8),
               axis.title = element_text(size=8),plot.title = element_text(size=10),
@@ -239,7 +239,7 @@ lapply(1:3,function(city.index){
             ylab("Probability Density")+
             theme(axis.text.x=element_text(face=c("plain","bold","plain","plain")))+
     #         geom_vline(xintercept=xintercepts[idx])+
-            annotate("text",x=400,y=1.6,size=3,
+            annotate("text",x=200,y=1.6,size=2.5,
                       label=paste("Between SS / Total SS:",format.percent(i[[2]]),
                                   "\nClusters (> 30 records):",
                                   format.percent(length(which(i[[3]]$Freq>=30))/nrow(i[[3]]))))+
@@ -275,8 +275,8 @@ lapply(1:3,function(city.index){
 
 })
 
-tiff(paste("plots/user.clustering_.tiff"),width=11*ppi,height=4.5*ppi,res=ppi)
-grid.arrange(gg.usercls[[1]][[1]],gg.usercls[[1]][[3]],gg.usercls[[1]][[6]],
+tiff(paste("plots/user.clustering_.tiff"),width=8*ppi,height=4.5*ppi,res=ppi)
+grid.arrange(gg.usercls[[1]][[6]],gg.usercls[[1]][[3]],gg.usercls[[1]][[1]],
              gg.stat[[1]]+annotate("rect",xmin=800,xmax=1200,ymin=0.9,ymax=1.05,alpha=.2),
              gg.stat[[2]]+annotate("rect",xmin=800,xmax=1200,ymin=0.9,ymax=1.05,alpha=.2),
              gg.stat[[3]]+annotate("rect",xmin=2100,xmax=2900,ymin=0.9,ymax=1.05,alpha=.2),
@@ -285,7 +285,8 @@ dev.off()
 
 # choose the number of clusters based the plotting result
 nr.cls.final.id = c(4,3,3) # 2500, 1000, 1000
-            
+```
+```{r}
 
 # user aggregation and respliting
 user.list.ucls = lapply(1:3,function(city.index){
@@ -313,8 +314,6 @@ user.list.ucls = lapply(1:3,function(city.index){
 ```{r,eval=FALSE}
 ##########################
 # computing 
-
-
 # random entropy
 get.rand.entropy.etc = function(data){
     N = length(unique(data$venue_id))
@@ -324,11 +323,11 @@ get.rand.entropy.etc = function(data){
     
     pi.min = 1 / N
     
+#     u2 = 1 - 1 / N
+    
     data.frame("Condition"="Random","Entropy"=entropy,
       "Pi.max"=pi.max,"Pi.min"=pi.min)
 }
-
-
 
 # uncorrelated entropy (heterogeneity pattern)
 get.unc.entropy.etc = function(data){
@@ -342,27 +341,37 @@ get.unc.entropy.etc = function(data){
     pi.max = get.pi.max.from.entropy(entropy, N)
     
     pi.min = max(venue.freq$Freq) / sum(venue.freq$Freq)
-   
     
-#     u2 = 1 - sum(p^2)
+    u2 = 1 - sum(p^2)
     
     data.frame("Condition"="Uncorrelated","Entropy"=entropy,
-      "Pi.max"=pi.max,"Pi.min"=pi.min)
+      "Pi.max"=pi.max,"Pi.min"=pi.min,
+      "Unalikeability"=u2)
 }
 
 # uncorrelated entropy with small sample size
-get.unc.entropy.etc.v2 = function(data){
-    data$venue_id=factor(data$venue_id) # do not statistic none-used venue
-    venue.freq = as.data.frame(table(data$venue_id))
+get.unc.entropy.etc.v2 = function(data,prior.freq){
+    # get the inital probability distribution
+    venue.freq = get.freq.dataframe(data=data,"venue_id")
+    N = sum(venue.freq$Freq)
+    L = length(unique(data$venue_id))
     
-    p = venue.freq$Freq / sum(venue.freq$Freq)
-    entropy = sum(-1 * p * log2(p) + 1/2/sum(venue.freq$Freq))
+    # get the adjusted probabilty distribution
+    prior.freq = merge(x=venue.freq, y=prior.freq, by=c("venue_id"),all.x=T)
+    prior.freq$p.adjusted = with(prior.freq,get.p.adjusted(p.joint.x, N, p.joint.y))
     
-    N = length(levels(data$venue_id))
-    pi.max = get.pi.max.from.entropy(entropy, N)
+    # calculate entropy based on probability
+#     entropy.init = with(venue.freq, sum(-1 * p.joint * log2(p.joint) ))
+#     entropy = with(prior.freq, sum(-1 * p.adjusted * log2(p.adjusted) ))
+    entropy = with(venue.freq, sum(-1 * p.joint * log2(p.joint) + 1/2/N))
     
-     pi.min = get.pi.min.from.freq(venue.freq,N)
-#     pi.min = max(venue.freq$Freq) / sum(venue.freq$Freq)
+    # get pi.max based on entropy
+#     pi.max.init = get.pi.max.from.entropy(entropy.init, L)
+    pi.max = get.pi.max.from.entropy(entropy, (L+1))
+    
+    # get pi.min based on probability disitribution
+    pi.min = max(prior.freq$p.adjusted)
+#     pi.min.init = max(venue.freq$p.joint)
     
 #     u2 = 1 - sum(p^2)
     
@@ -370,119 +379,119 @@ get.unc.entropy.etc.v2 = function(data){
       "Pi.max"=pi.max,"Pi.min"=pi.min)
 }
 
-# conditional entropy (temproal pattern)
-get.conditional.entropy.etc = function(data,condition,
-                                       condition.name){
+# conditional entropy 
+get.conditional.entropy.etc = function(data,condition,condition_name){
     data$venue_id=factor(data$venue_id) # do not statistic none-used venue
     freq = as.data.frame(xtabs(data=data,
                                as.formula(paste("~",condition,"+venue_id"))))
     freq = freq[freq$Freq>0,]
-    
-    entropy.by.condition = ddply(freq,condition,function(in.condition){
-        in.condition$p.joint = in.condition$Freq / sum(freq$Freq)
-        in.condition$p.marg = sum(in.condition$p.joint)
-        in.condition$n = nrow(in.condition) # unique output option
-        in.condition$N = sum(in.condition$Freq)
-        in.condition$entropy = with(in.condition,sum(-1*p.joint/p.marg*log(p.joint/p.marg)))
-        in.condition$entropy.v2 = sum(apply(in.condition,1,function(i){
-            ni=as.integer(i["Freq"]);N=as.integer(i["N"])
-            (ni+1)/(N+2)*sum(1/c((ni+2):(N+2)))
-        }))
-        in.condition$entropy.v3 = with(in.condition,sum(-1*p.joint/p.marg*log(p.joint/p.marg)+1/2/N[1]))
-        in.condition$pi.max = with(in.condition,get.pi.max.from.entropy(entropy[1],n[1]))
+    freq = ddply(freq,condition,function(i){
+        i$marg = sum(i$Freq)
+        i$max = max(i$Freq)
+        i$p = i$Freq / i$marg 
         
-        in.condition$pi.max.v2=with(in.condition,get.pi.max.from.entropy(entropy.v2[1],n[1]))
-        in.condition$pi.max.v3=with(in.condition,get.pi.max.from.entropy(entropy.v3[1],n[1]))
-        in.condition$pi.min = with(in.condition,max(p.joint)/p.marg) 
+        i$entropy = -1 * sum(i$p * log2(i$p))
+        i$pi.max = get.pi.max.from.entropy(i$entropy,nrow(i))
+        i$pi.min = i$max / i$marg
+        i$u2 = 1 - sum(i$p^2)
         
-        in.condition
+        i$condition = condition_name
+        
+        i
     })
+    freq$cluster.id = data[1,"cluster.id"]
+    colnames(freq)=c("Condition_ID",colnames(freq)[2:12])
     
-    entropy = with(entropy.by.condition,sum(p.joint*log(p.marg/p.joint)))
-    entropy.mean = with(entropy.by.condition,mean(entropy))
-    entropy.mean.v2 = with(entropy.by.condition,mean(entropy.v2))
-    
-    N = length(unique(data$venue_id))
+    p.joint = freq$Freq / sum(freq$Freq)
+    entropy = sum(p.joint * log2(freq$marg / freq$Freq))
+
+    N = length(levels(data$venue_id))
     pi.max = get.pi.max.from.entropy(entropy,N)
-    pi.max.v1 = get.pi.max.from.entropy(entropy.mean,N)
-    pi.max.v2=get.pi.max.from.entropy(entropy.mean.v2,N)
+    pi.min = with(freq,weighted.mean(pi.min,Freq))
+    u2 = 1 - sum(p.joint^2)
     
-    pi.min = mean(entropy.by.condition$pi.min)
-    
-    c(entropy=entropy,entropy.mean=entropy.mean,entropy.mean.v2=entropy.mean.v2,
-      pi.max=pi.max,pi.max.v1=pi.max.v1,pi.max.v2=pi.max.v2,
-      pi.min=pi.min)
-#     pi.min = with(entropy.by.condition,weighted.mean(pi.min,n))
-    
-#     freq = ddply(freq,condition,function(i){
-#         i$marg = sum(i$Freq)
-#         i$max = max(i$Freq)
-#         i$p = i$Freq / i$marg 
-#         
-#         i$entropy = -1 * sum(i$p * log2(i$p))
-#         i$pi.max = get.pi.max.from.entropy(i$entropy,nrow(i))
-#         i$pi.min = i$max / i$marg
-#         i$u2 = 1 - sum(i$p^2)
-#         
-# #         i$condition = condition.name
-#         
-#         i
-#     })
-#     freq$cluster.id = data[1,"cluster.id"]
-#     colnames(freq)=c("Condition_ID",colnames(freq)[2:12])
-#     
-#     p.joint = freq$Freq / sum(freq$Freq)
-#     entropy = sum(p.joint * log2(freq$marg / freq$Freq))
-# 
-#     N = length(levels(data$venue_id))
-#     pi.max = get.pi.max.from.entropy(entropy,N)
-#     pi.min = with(freq,weighted.mean(pi.min,Freq))
-#     u2 = 1 - sum(p.joint^2)
-#     
-# 
-#     list("mean"=data.frame("Condition"=condition_name,"Entropy"=entropy,
-#                   "Pi.max"=pi.max,"Pi.min"=pi.min,"Unalikeability"=u2),
-#          "detail"=freq)
+
+    list("mean"=data.frame("Condition"=condition_name,"Entropy"=entropy,
+                  "Pi.max"=pi.max,"Pi.min"=pi.min,"Unalikeability"=u2),
+         "detail"=freq)
 }
 
+# conditional entropy adjusted to small sample size
+get.conditional.entropy.etc.v2 = function(data,cond.col,condition.name,prior.freq){
 
-get.conditional.entropy.etc.v2 = function(data,condition,condition.name){
-    data$venue_id=factor(data$venue_id) # do not statistic none-used venue
-    freq = as.data.frame(xtabs(data=data,
-                               as.formula(paste("~",condition,"+venue_id"))))
-    freq = freq[freq$Freq>0,]
-    N = sum(freq$Freq)
+    freq.joint = get.freq.dataframe(data=data,"venue_id",cond.col,
+                                    p.cond=T,p.joint=F)
     
-    # adjusted for small samples
-    H.vh = with(freq,sum(-1*Freq/N*log(Freq/N) + 1/2/N))
-    H.h = sum(sapply(split(freq,freq[,condition]),function(i){
-        -1* sum(i$Freq)/N * log(sum(i$Freq)/N) + 1/2/N 
-    }),na.rm=T)
+    N = sum(freq.joint$Freq)
+    L = length(unique(data$venue_id))
     
-    H = H.vh - H.h
-    pi.max = get.pi.max.from.entropy(H,length(unique(data$venue_id)))
-    
-    # pi.min should also consider the small sample correction
-    # using Wilson score interval
-    pi.min = sapply(split(freq,freq[,condition]),function(i){
-        get.pi.min.from.freq(i,length(unique(data$venue_id)))
+    in.condition = ddply(freq.joint, .(condition), function(i){
+        n = sum(i$Freq)
+        l = length(unique(i$venue_id))
+
+        prior.freq = merge(x=i, y=prior.freq, by=c("obs"),all.x=T)
+        prior.freq$p.adjusted = with(prior.freq, 
+                                     get.p.adjusted(p.cond.x, n, p.cond.y) )
+#         # adjusted for small samples (Mueller, 1955)
+        H.v = with(i,sum( -1 * p.cond * log2(p.cond) + 1/2/n))
+#         # adjusted for small samples ("entropy estimates of small datasets")
+#         H.v2 = sum(apply(i,1,function(j){
+#             ni = as.integer(j["Freq"]);n=as.integer(j["marg.freq"])
+#             (ni+1)/(n+2) * sum(1/c((ni+2):(n+2)))
+#         }))
+#         H.v.init = with(i,sum( -1 * p.cond * log2(p.cond) ))
+#         H.v = with(prior.freq, sum(-1 * p.adjusted * log2(p.adjusted)))
+
+        pi.max = get.pi.max.from.entropy(H.v, l+1) # one for "others"
+#         pi.max.init = get.pi.max.from.entropy(H.v.init, l+1)
+
+        pi.min = max(prior.freq$p.adjusted)
+#         pi.min.init = max(prior.freq$p.cond.x)
+
+        data.frame(#"condition.value"=as.character(i[1,"condition"]),
+                   "entropy"=H.v,
+                   "pi.min"=pi.min,
+                   "pi.max"=pi.max,
+                   "record"=n)
     })
+    
+    H = sum(with(in.condition, record / N * entropy))
+    pi.max = get.pi.max.from.entropy(H, N)
+    pi.min = with(in.condition, weighted.mean(pi.min, record))
     
     list("mean"=data.frame("Condition"=condition.name,"Entropy"=H,
-               "Pi.max"=pi.max,"Pi.min"=mean(pi.min,na.rm=T)),
-         "detail"=pi.min)
+               "Pi.max"=pi.max,"Pi.min"=pi.min),
+         "detail"=in.condition)
 }
 
-get.pi.min.from.freq = function(freq,L,confidence=0.95){
-    if(sum(freq$Freq)>0){
-        p = max(freq$Freq) / sum(freq$Freq)
-        n = sum(freq$Freq) # number of total observations
+# get.pi.min.from.freq = function(freq,L,confidence=0.95){
+#     # pi.min should also consider the small sample correction
+#     # using Wilson score interval
+#     # extended from Wilson 1927
+#     if(sum(freq$Freq)>0){
+#         p = max(freq$Freq) / sum(freq$Freq)
+#         n = sum(freq$Freq) # number of total observations
+# #         l = ifelse(nrow(freq)<2,2,nrow(freq)) # number of unique options
+#         z = qnorm(1-1/2*(1-confidence))  # confidence interval 
+#         
+#         # CI should be weighted average of p and 1/l
+#         n/(n+z^2) *p + (z^2)/(n+z^2) * 1/L
+#     }else{NaN}
+# }
+
+get.p.adjusted = function(p,n,prior,confidence=0.95){
+    # pi.min should also consider the small sample correction
+    # using Wilson score interval
+    # extended from Wilson 1927
+#     if(n>0){
+#         p = freq$Freq / sum(freq$Freq)
+#         n = sum(freq$Freq) # number of total observations
 #         l = ifelse(nrow(freq)<2,2,nrow(freq)) # number of unique options
         z = qnorm(1-1/2*(1-confidence))  # confidence interval 
         
-        # CI should be weighted average of p and 1/l
-        n/(n+z^2) *p + (z^2)/(n+z^2) * 1/L
-    }else{NaN}
+        # CI should be weighted average of p and prior 
+        n/(n+z^2) *p + (z^2)/(n+z^2) * prior
+#     }else{NaN}
 }
 
 get.pi.max.from.entropy = function(entropy,N){
@@ -508,30 +517,100 @@ get.pi.max.from.entropy = function(entropy,N){
     ans
 }
 
+get.freq.dataframe = function(data,obs.col,cond.col=NA,p.joint=T,p.cond=F,p.marg=F){
+    
+    if(length(cond.col)==1){
+        if(is.na(cond.col)){
+            freq = as.data.frame(xtabs(data=data,paste("~",obs.col),drop.unused.levels=T))  
+        }else{
+            data$new.col = paste(data[,obs.col],data[,cond.col],sep="@")
+            freq = as.data.frame(xtabs(data=data,~new.col,drop.unused.levels=T))
+            col.info = data.frame(do.call(rbind,strsplit(as.character(freq$new.col),
+                                                       "@",fixed=TRUE)))
+            colnames(col.info)=c(obs.col,"condition")
+            freq = cbind(col.info,freq)
+            colnames(freq)=c(obs.col,"condition","obs","Freq")
+            
+            marg.freq = ddply(freq,.(condition),function(in.condition){
+                sum(in.condition$Freq)
+            })
+            colnames(marg.freq)[2]="marg.freq"
+            
+            freq = merge(x=freq,y=marg.freq,all.x=T)
+    }}else{
+        data$condition = do.call(paste,lapply(cond.col,function(col){
+            data[,col]
+        }))
+        data$new.col = paste(data[,obs.col],data$condition,sep="@")
+        
+        freq = as.data.frame(xtabs(data=data,~new.col,drop.unused.levels=T))
+        col.info = data.frame(do.call(rbind,strsplit(as.character(freq$new.col),
+                                                   "@",fixed=TRUE)))
+        freq = cbind(col.info,freq)
+        colnames(freq)=c(obs.col,"condition","obs","Freq")
+        
+        marg.freq = ddply(freq,.(condition),function(in.condition){
+            sum(in.condition$Freq)
+        })
+        colnames(marg.freq)[2]="marg.freq"
+        
+        freq = merge(x=freq,y=marg.freq,all.x=T)
+    }
+    
+ 
+#     freq = as.data.frame(xtabs(data=data,...))
+#     if(drop.unused){
+#         freq = subset(freq, Freq>0)
+#     }
+
+    
+    if(p.joint){
+        freq$p.joint = with(freq, Freq / sum(Freq))
+    }
+    
+    if(p.cond){
+        if(length(cond.col)==1 && is.na(cond.col)){
+            stop("you must specify the condition for conditional probability.")}
+        freq$p.cond = with(freq, Freq / marg.freq)
+    }
+    
+    if(p.marg){
+        if(length(cond.col)==1 && is.na(cond.col)){
+            stop("you must specify the condition for marginal probability.")}
+        freq$p.marg = with(freq, marg.freq / sum(Freq))
+    }
+    
+    freq
+}
+
 ######
-
-entropies.etc.df=data.frame();
-
 entropies.etc.list = lapply(1:3,function(city.index){
     user.list = user.list.ucls[[city.index]]
+    data.global = checkin.poly.list[[city.index]]
+    spatial.attr = city.guide$spatial.attr[city.index]
+    
+    prior.unc = get.freq.dataframe(data=data.global,"venue_id")
+    prior.time = get.freq.dataframe(data=data.global,"venue_id","hour",
+                                    p.joint=F,p.cond=T)
+    prior.space = get.freq.dataframe(data=data.global,"venue_id",spatial.attr,
+                                     p.joint=F,p.cond=T)
+    prior.st = get.freq.dataframe(data=data.global,"venue_id",c("hour",spatial.attr),
+                                  p.joint=F,p.cond=T)
+
 
     counter.reset()
-    entropies.etc=lapply(user.list[1:50],function(i){
+    lapply(user.list,function(i){
         counter.print(10)
-        
+
         rand = get.rand.entropy.etc(i)
-        unc = get.unc.entropy.etc.v2(i)
-        time = get.conditional.entropy.etc.v2(i,"hour","Hour")
-        space = get.conditional.entropy.etc.v2(i,city.guide$spatial.attr[city.index],"Space")
+        unc = get.unc.entropy.etc.v2(i,prior.unc)
+        time = get.conditional.entropy.etc.v2(i,"hour","Hour",prior.time)
+        space = get.conditional.entropy.etc.v2(i,spatial.attr,"Space",prior.space)
+        st = get.conditional.entropy.etc.v2(i,c("hour",spatial.attr),"ST",prior.st)
         
-        i$ST = paste(i$hour, i[,city.guide$spatial.attr[city.index]])
-        st = get.conditional.entropy.etc.v2(i,"ST","ST")
-        
-        # some extra statistics
         total.records = nrow(i)
         unique.venues = length(unique(i$venue_id))
         unique.users = length(unique(i$user_id))
-        
 
         df = rbind(rand,unc,time$mean,space$mean,st$mean)
         df$Cluster.id = i[1,"cluster.id"]
@@ -539,52 +618,44 @@ entropies.etc.list = lapply(1:3,function(city.index){
         df$Venues = length(unique(i$venue_id))
         df$Users = length(unique(i$user_id))
         df$City = city.guide$city[city.index]
-        entropies.etc.df <<- rbind(entropies.etc.df,df)
         
-#         time.detail=unique(time$detail[,-c(2,3,6)])
-        time.detail = as.data.frame(time$detail)
-        time.detail$city = city.guide$city[city.index]
-#         space.detail=unique(space$detail[,-c(2,3,6)])
-        space.detail = as.data.frame(space$detail)
-        space.detail$city = city.guide$city[city.index]
+#         time.detail = as.data.frame(time$detail)
+#         time.detail$city = city.guide$city[city.index]
+#         space.detail = as.data.frame(space$detail)
+#         space.detail$city = city.guide$city[city.index]
         st.detail = as.data.frame(st$detail)
 #         st.detail=unique(st$detail[,-c(2,3,6)])
         st.detail$city = city.guide$city[city.index]
 
         
-    list(time.detail,space.detail,st.detail)
+        list(df,st.detail)
     })
     
-    entropies.etc
-
 })
 
+save(entropies.etc.list,file="data/entropies.etc.list.Rda")
 
-entropies.etc.time.df=do.call(rbind,lapply(1:3,function(city.index){
+entropies.etc.df=do.call(rbind,lapply(1:3,function(city.index){
     entropies.etc.city = entropies.etc.list[[city.index]]
     do.call(rbind,lapply(1:length(entropies.etc.city),function(i){
         entropies.etc.city[[i]][[1]]
     }))
 }))
-entropies.etc.space.df=do.call(rbind,lapply(1:3,function(city.index){
-    entropies.etc.city = entropies.etc.list[[city.index]]
-    do.call(rbind,lapply(1:length(entropies.etc.city),function(i){
-        entropies.etc.city[[i]][[2]]
-    }))
-}))
+
 entropies.etc.st.df=do.call(rbind,lapply(1:3,function(city.index){
     entropies.etc.city = entropies.etc.list[[city.index]]
     df = do.call(rbind,lapply(1:length(entropies.etc.city),function(i){
-        entropies.etc.city[[i]][[3]]
+        entropies.etc.city[[i]][[2]]
     }))
-#     time.space = data.frame(do.call(rbind,strsplit(as.character(df[,1]),
-#                                                    " ",fixed=TRUE)))
-    time.space = data.frame(do.call(rbind,strsplit(as.character(rownames(df)),
-                                                   " ",fixed=TRUE)))
-    colnames(time.space)=c("hour","space")
-    cbind(df,time.space) 
+    
 }))
-       
+ 
+time.space = data.frame(do.call(rbind,strsplit(as.character(entropies.etc.st.df$condition),
+                                                   " ",fixed=TRUE)))
+colnames(time.space)=c("hour","space")
+entropies.etc.st.df = cbind(entropies.etc.st.df,time.space) 
+
+
 ```
 
 ```{r}
@@ -600,18 +671,33 @@ ggplot(entropies.etc.df)+
 dev.off()
 
 
-tiff("plots/pi.max.min.density.tiff",width=12*ppi,height=5*ppi,res=ppi)
-ggplot(melt(data=entropies.etc.df[,c(1,3,4,9)],id.vars=c("Condition","City")))+
+data.pi.density = entropies.etc.df[which(entropies.etc.df$Condition %in% c("Hour","Space","ST")),c(1,3,4,6,9)]
+data.pi.density = melt(data=data.pi.density,id.vars=c("Condition","City","Records"))
+data.pi.density$Condition = as.character(data.pi.density$Condition)
+data.pi.density$Condition[which(data.pi.density$Condition=="Hour")]="Time"
+data.pi.density$Condition = factor(data.pi.density$Condition)
+data.pi.density$Condition = relevel(data.pi.density$Condition,"Time")
+
+tiff("plots/pi.max.min.density.tiff",width=8*ppi,height=3.5*ppi,res=ppi)
+ggplot(data.pi.density)+
     geom_histogram(aes(x=value,y=..density..,group=variable),binwidth=0.01,fill=NA,
                    color="grey",position="identity")+
     geom_density(aes(x=value,group=variable,linetype=variable),adjust=3,alpha=0.5)+
     xlab(expression(atop(italic(Pi)) ) ) +
     ylab("Probability Density")+
-    scale_y_sqrt()+
+#     scale_y_sqrt()+
     scale_linetype_manual(name="",values=c(2,1),breaks=c("Pi.max","Pi.min"),
                           labels=c(expression(atop(italic(Pi))^"max" ),
                                    expression(atop(italic(Pi))^"min" )))+
-    facet_grid(City~Condition)
+    facet_grid(Condition~City)
+dev.off()
+
+data.pi.density$variable<-factor(data.pi.density$variable,labels=c("max","min"))
+tiff("plots/pi.records.tiff",width=8*ppi,height=3.5*ppi,res=ppi)
+ggplot(data.pi.density,aes(x=Records,y=value))+
+    facet_grid(Condition~City+variable,labeller=labeller(variable=label_bquote(Pi^.(x))))+
+    geom_point(shape=21,fill="white",size=1,alpha=0.6)+scale_x_log10()+
+    labs(x="Total Check-ins",y=expression(Pi))
 dev.off()
 
 
@@ -627,7 +713,7 @@ eqs <- ddply(entropies.etc.df,.(City,Condition),function(i){
     as.character(as.expression(eq))
 })
 ggplot(entropies.etc.df,aes(x=Pi.max,y=Pi.min))+
-    geom_line(data=data.frame(x=0:1,y=0:1),aes(x=x,y=y),color="grey",linetype="dashed")+
+    geom_line(aes(x=0:1,y=0:1),color="grey",linetype="dashed")+
     geom_point(alpha=0.4,shape=21,fill="white",aes(size=Entropy))+
     xlab(expression(atop(italic(Pi))^"max" ))+
     ylab(expression(atop(italic(Pi))^"min" ))+
@@ -640,953 +726,441 @@ ggplot(entropies.etc.df,aes(x=Pi.max,y=Pi.min))+
 dev.off() 
 
 
-tiff("plots/pi.records.tiff",width=12*ppi,height=5*ppi,res=ppi)
-data=melt(entropies.etc.df[,c(1,3,4,7,10)],id.vars=c("Records","City","Condition"))
-data$variable<-factor(data$variable,labels=c("max","min"))
-# tiff("plots/pi.records.tiff",width=12*ppi,height=5*ppi,res=ppi)
-ggplot(data,aes(x=Records,y=value))+
-    facet_grid(City~variable+Condition,labeller=labeller(variable=label_bquote(Pi^.(x))))+
-    geom_point(shape=21,fill="white",size=1,alpha=0.7)+scale_x_log10()+
-    labs(x="Total Check-ins",y=expression(Pi))
-dev.off()
 
 
-tiff("plots/pi.min.hourly.tiff",width=12*ppi,height=3*ppi,res=ppi)
 data = ddply(entropies.etc.st.df,.(city),function(city){
     stat = ddply(city,.(hour),function(hour){
-        data.frame("pi.max"=with(hour,wt.mean(pi.max,marg)),
-                   "pi.min"=with(hour,wt.mean(pi.min,marg)),
-                   "record"=with(hour,sum(marg)))
+        data.frame("pi.max"=with(hour,mean(pi.max)),
+                   "pi.min"=with(hour,mean(pi.min)),
+                    "record"=with(hour,sum(record)))
+#         data.frame("record"=with(hour,sum(record)),
+#                    "pi"=with(hour,c(mean(pi.min),mean(pi.max))),
+#                    "type"=c("min","max"))
     })
-    stat$record = stat$record / sum(stat$record) 
+#     stat$record = stat$record / sum(stat$record) 
     stat
 })
-gga<-ggplot(data,aes(x=hour,y=pi.min) )+
+gga<-ggplot(data,aes(x=hour,y=pi.max) )+
     facet_wrap(~city)+
     geom_point()+
-    geom_smooth(aes(group = 1),se=F, method = "lm", formula = y ~ poly(x, 12),size=1) +
+    geom_smooth(aes(group = 1),se=F, method = "lm", formula = y ~ poly(x, 12),size=0.8) +
     xlab("Hour of Day\n(a)") +
-    ylab(expression(Pi^min)) +ggtitle(expression(paste("Temporal Distribution of ",Pi)))+
+    ylab(expression(Pi^max)) +ggtitle(expression(paste("Temporal Distribution of ",Pi^"max")))+
     scale_x_discrete(breaks=c("00","04","08","12","16","20"))+
-    theme(strip.text=element_text(size=7),axis.text = element_text(size=6),
-              axis.title = element_text(size=7),plot.title = element_text(size=8),
+    theme(legend.position="bottom",strip.text=element_text(size=7),axis.text = element_text(size=6),
+          axis.title = element_text(size=7),plot.title = element_text(size=8),
           plot.margin=unit(c(.05,.05,.05,.05),"npc"))
-ggb<-ggplot(data,aes(x=hour,y=record))+
-    facet_wrap(~city)+geom_point()+
-    geom_smooth(aes(group = 1),se=F, method = "lm", formula = y ~ poly(x, 12),size=1)+
+ggb<-ggplot(data,aes(x=hour,y=pi.min) )+
+    facet_wrap(~city)+
+    geom_point()+
+    geom_smooth(aes(group = 1),se=F, method = "lm", formula = y ~ poly(x, 12),size=0.8) +
     xlab("Hour of Day\n(b)") +
-    ylab("Check-ins") +ggtitle("Temporal Distribution of Check-ins")+
+    ylab(expression(Pi^min)) +ggtitle(expression(paste("Temporal Distribution of ",Pi^"min")))+
     scale_x_discrete(breaks=c("00","04","08","12","16","20"))+
-    scale_y_continuous(labels=percent)+
+    theme(legend.position="bottom",strip.text=element_text(size=7),axis.text = element_text(size=6),
+          axis.title = element_text(size=7),plot.title = element_text(size=8),
+          plot.margin=unit(c(.05,.05,.05,.05),"npc"))
+ggc<-ggplot(data,aes(x=hour,y=record))+
+    facet_wrap(~city)+geom_point()+
+    geom_smooth(aes(group = 1),se=F, method = "lm", formula = y ~ poly(x, 12),size=0.8)+
+    xlab("Hour of Day\n(c)") +
+    ylab("Check-ins") +ggtitle("Temporal Distribution of Activeness")+
+    scale_x_discrete(breaks=c("00","04","08","12","16","20"))+
+    scale_y_log10()+
+#     scale_y_continuous(labels=percent)+
     theme(strip.text=element_text(size=7),axis.text = element_text(size=6),
               axis.title = element_text(size=7),plot.title = element_text(size=8),
           plot.margin=unit(c(.05,.05,.05,.05),"npc"))
-eqs <- ddply(data,.(city),function(i){
+eqs1 <- ddply(data,.(city),function(i){
+    model = lm(i,formula=pi.max~record) 
+    eq <- substitute(atop(italic(r)^2~"="~r2*","~~italic(p)~"="~pvalue),
+                     list(r2 = format(summary(model)$r.squared, digits = 3),
+                          pvalue = format(summary(model)[[4]][[8]],scientific=TRUE, digits = 3)))
+    as.character(as.expression(eq));                 
+})
+eqs2 <- ddply(data,.(city),function(i){
     model = lm(i,formula=pi.min~record) 
     eq <- substitute(atop(italic(r)^2~"="~r2*","~~italic(p)~"="~pvalue),
                      list(r2 = format(summary(model)$r.squared, digits = 3),
                           pvalue = format(summary(model)[[4]][[8]],scientific=TRUE, digits = 3)))
     as.character(as.expression(eq));                 
 })
-ggc<-ggplot(data,aes(x=record,y=pi.min))+geom_point(size=1)+facet_wrap(~city)+
-    geom_smooth(method=lm,formula=y~x)+
-    xlab("Check-ins\n(c)") +
-    ylab(expression(Pi^min)) +ggtitle("Time Correlation")+
-    scale_x_continuous(labels=percent)+
-    geom_text(data=eqs,aes(x=0.025,y=0.85,label=V1),inherit.aes=FALSE,
+ggd<-ggplot(data,aes(x=record,y=pi.max))+#geom_point(size=3,shape=21,fill=NA)+
+    facet_grid(~city,scales="free_x")+
+    geom_text(aes(label=hour),size=3)+
+    geom_smooth(method=lm,formula=y~exp(x))+
+    xlab("Check-ins\n(a)") +
+    ylab(expression(Pi^max)) +
+    ggtitle(expression(paste("Temporal Correlation (",Pi^"max"," and Activeness)")))+
+    scale_x_log10()+
+#     scale_x_continuous(labels=percent)+
+    geom_text(data=eqs1,aes(x=500,y=0.73,label=V1),inherit.aes=FALSE,
                   parse = TRUE,hjust=0,size=3)+
-    theme(strip.text=element_text(size=7),axis.text = element_text(size=6),
-              axis.title = element_text(size=7),plot.title = element_text(size=8),
-          plot.margin=unit(c(.05,.05,.05,.05),"npc"))
-grid.arrange(arrangeGrob(gga,ggb,nrow=2),ggc,
-             ncol=2,widths=c(0.8,1))
+    theme(axis.text = element_text(size=8),legend.position="none",
+          plot.margin=unit(c(.05,.05,.05,.05),"npc"),
+              axis.title = element_text(size=10),plot.title = element_text(size=10))
+gge<-ggplot(data,aes(x=record,y=pi.min))+#geom_point(size=3,shape=21,fill=NA)+
+    facet_grid(~city,scales="free_x")+
+    geom_smooth(method=lm,formula=y~x)+
+    geom_text(aes(label=hour),size=3)+
+    xlab("Check-ins\n(b)") +
+    ylab(expression(Pi^min)) +
+    ggtitle(expression(paste("Temporal Correlation (",Pi^"min"," and Activeness)")))+
+#     scale_x_continuous(labels=percent)+
+    scale_x_log10()+
+    geom_text(data=eqs2,aes(x=500,y=0.2,label=V1),inherit.aes=FALSE,
+                  parse = TRUE,hjust=0,size=3)+
+    theme(axis.text = element_text(size=8),legend.position="none",
+          plot.margin=unit(c(.05,.05,.05,.05),"npc"),
+              axis.title = element_text(size=10),plot.title = element_text(size=10))
+
+# tiff("plots/pi.min.hourly.tiff",width=8*ppi,height=5*ppi,res=ppi)
+# grid.arrange(
+#                 arrangeGrob(gga,ggb,ggc,nrow=3,heights=c(1,1,1)),
+#                 arrangeGrob(ggd,gge,nrow=2),
+#                 ncol=2,widths=c(1,1.2))
+tiff("plots/pi.time.tiff",width=8*ppi,height=5*ppi,res=ppi)
+grid.arrange(ggd,gge,ncol=1,nrow=2)
 dev.off()
 
 
+
+```
+
+```{r}
 data2 = lapply(1:3,function(city.index){
-    subdf = entropies.etc.st.df[which(entropies.etc.st.df$city==city.names[city.index]),]
+    subdf = entropies.etc.st.df[which(entropies.etc.st.df$city==city.guide$city[city.index]),]
     subdf$space = factor(subdf$space)
     stat = do.call(rbind,lapply(split(subdf,subdf$space),function(regional){
         data.frame("space"=regional[1,"space"],
-                   "pi.max"=with(regional,wt.mean(pi.max,marg)),
-                   "pi.min"=with(regional,wt.mean(pi.min,marg)),
-                   "record"=with(regional,sum(marg)),
-                   "city"=city.names[city.index])
+                   "pi.max"=with(regional,mean(pi.max)),
+                   "pi.min"=with(regional,mean(pi.min)),
+                   "record"=with(regional,sum(record)),
+                   "city"=city.guide$city[city.index])
     }))
-    stat$record = stat$record / sum(stat$record) 
+#     stat$record = stat$record / sum(stat$record) 
     
-    stat$resid = resid(lm(stat,formula=pi.min~log(record) ))
-    
+    stat$resid.pi.max = resid(lm(stat,formula=pi.max~exp(log(record,base=10)) ))
+    stat$resid.pi.min = resid(lm(stat,formula=log(pi.min)~log(record)))
+    stat$resid.max.T = with(stat,abs(resid.pi.max)>4*mean(abs(resid.pi.max)))
+    stat$resid.min.T = with(stat,abs(resid.pi.min)>4*mean(abs(resid.pi.min)))
+    stat$disp.name.max=with(stat,ifelse(resid.max.T,as.character(space),""))
+    stat$disp.name.min=with(stat,ifelse(resid.min.T,as.character(space),""))
     stat
 })
 
-gg.maps<-lapply(1:3,function(city.index){
-    SPDF = readOGR(dsn = "../../global/data/shapefiles", layer = shapefile.zip[city.index])
-    shape.df = df.from.spdf(SPDF)
-    shape.df = merge(x=shape.df,y=data2[[city.index]],
-                     by.x=spatial.attr[city.index],by.y="space",all.x=T)
-    shape.df = shape.df[order(shape.df$order),] 
-    shape.df$pi.min.rescale = with(shape.df,cut(pi.min,dig.lab = 2,
-                                      breaks=quantile(pi.min,probs=seq(0,1,by=0.25),na.rm=T),
-                                      include.lowest=TRUE))
-    shape.df$record.rescale = with(shape.df,cut(I(100*record),dig.lab =2,
-                                      breaks=c(0,quantile(I(100*record),probs=seq(0.25,1,by=0.25),na.rm=T)),
-                                      include.lowest=FALSE))
-    shape.df$resid.rescale = with(shape.df,cut(abs(resid),dig.lab = 2,
-                                      breaks=seq(0,0.4,by=0.05),
-                                      include.lowest=TRUE))
-    map1<-map.plot(mapdf=shape.df,more.aes=aes(fill=pi.min.rescale),color="grey",size=0.1)+
-        ggtitle(city.names[city.index])+
-#         ggtitle(bquote(atop(.(city.names[city.index]),Pi^"min" )))+
-        labs(x="Longitude",y="Latitude")+
-        scale_fill_brewer(type="seq",palette = "Greys",name=expression(Pi^"min"))+
-#         scale_x_continuous(breaks=seq(min(shape.df$long),max(shape.df$long),length.out=4))+
-        theme(axis.text = element_text(size=6),
-              legend.title=element_text(size=8),legend.text=element_text(size=7),
-              axis.title = element_text(size=8),plot.title = element_text(size=8),
-          plot.margin=unit(c(.05,.05,.05,.05),"npc"))
-    map2<-map.plot(mapdf=shape.df, more.aes=aes(fill=record.rescale),color="grey",size=0.1)+
-        ggtitle(city.names[city.index])+
-#         ggtitle(bquote(atop(.(city.names[city.index]),"Portion of Checkins")))+
-        labs(x="Longitude",y="Latitude")+
-        scale_fill_brewer(type="seq",palette = "Greys",name="Check-ins[%]")+
-#         scale_x_continuous(breaks=seq(min(shape.df$long),max(shape.df$long),length.out=4))+
-        theme(axis.text = element_text(size=6),legend.key.width=unit(1,"line"),
-              legend.title=element_text(size=8),legend.text=element_text(size=7),
-              axis.title = element_text(size=8),plot.title = element_text(size=8),
-          plot.margin=unit(c(.05,.05,.05,.05),"npc"))
-    map3=map.plot(mapdf=shape.df, more.aes=aes(fill=resid.rescale),color="grey",size=0.1)+
-        ggtitle(city.names[city.index])+
-        labs(x="Longitude",y="Latitude")+
-        scale_fill_brewer(type="seq",palette = "Greys",name="Residual")+
-#         scale_x_continuous(breaks=seq(min(shape.df$long),max(shape.df$long),length.out=4))+
-        theme(axis.text = element_text(size=6),legend.key.width=unit(1,"line"),
-              legend.title=element_text(size=8),legend.text=element_text(size=7),
-              axis.title = element_text(size=8),plot.title = element_text(size=8),
-          plot.margin=unit(c(.05,.05,.05,.05),"npc"))
-    list(map1,map2,map3)
+data3 = do.call(rbind,data2)
+#data3 = melt(data3[,c(1:5)],id.vars=c(1,4,5))
+
+eqs3 <- ddply(data3,.(city),function(i){
+    model = lm(i,formula=pi.max~exp(log(record,base=10)) )
+    eq <- substitute(atop(italic(r)^2~"="~r2*","~~italic(p)~"="~pvalue),
+                     list(r2 = format(summary(model)$r.squared, digits = 3),
+                          pvalue = format(summary(model)[[4]][[8]],scientific=TRUE, digits = 3)))
+    as.character(as.expression(eq));                  
 })
-eqs2 <- ddply(do.call(rbind,data2),.(city),function(i){
-    model = lm(i,formula=pi.min~log(record) )
+eqs4 <- ddply(data3,.(city),function(i){
+    i$pi.min.log=log(i$pi.min)
+    i$record.log=log(i$record)
+    model = lm(i,formula=pi.min.log~record.log )
     eq <- substitute(atop(italic(r)^2~"="~r2*","~~italic(p)~"="~pvalue),
                      list(r2 = format(summary(model)$r.squared, digits = 3),
                           pvalue = format(summary(model)[[4]][[8]],scientific=TRUE, digits = 3)))
     as.character(as.expression(eq));                 
 })
-ggd<-ggplot(do.call(rbind,data2),aes(x=record,y=pi.min))+facet_wrap(~city)+
-    geom_point(size=1)+
-#     geom_smooth()+scale_x_log10()+
-    geom_smooth(method=lm,formula=y~x)+
-    xlab("Check-ins\n(c)") +
-    geom_text(data=eqs2,aes(x=0.00001,y=0.35,label=V1),inherit.aes=FALSE,
+
+
+gga2<-ggplot(data3,aes(x=record,y=pi.max))+facet_grid(~city,scales="free_y")+
+    geom_point(aes(shape=resid.max.T),size=1)+
+    geom_text(aes(label=disp.name.max),size=3,vjust=1.1,hjust=0.5)+
+    geom_smooth(method=glm,formula=y~exp(x))+
+    xlab("Check-ins\n(a)") +
+    geom_text(data=eqs3,aes(x=10,y=0.67,label=V1),inherit.aes=FALSE,
                   parse = TRUE,hjust=0,size=3)+
-    ylab(expression(Pi^min)) +ggtitle("Spatial Correlation")+
-    scale_x_log10(labels=percent)+
-    theme(axis.text = element_text(size=8),
+    ylab(expression(Pi^max)) +
+    ggtitle(expression(paste("Spatial Correlation (",Pi^"max"," and Activeness)")))+
+    scale_x_log10()+
+    scale_shape_manual(name="Outlier",values=c(16,2))+
+    theme(axis.text = element_text(size=8),legend.position="none",
           plot.margin=unit(c(.05,.05,.05,.05),"npc"),
               axis.title = element_text(size=10),plot.title = element_text(size=10))
+ggb2<-ggplot(data3,aes(x=record,y=pi.min))+facet_grid(~city,scales="free_y")+
+    geom_point(aes(shape=resid.min.T),size=1)+
+    geom_text(aes(label=disp.name.min),size=3,vjust=1.1,hjust=0.5)+
+    geom_smooth(method=glm,formula=y~x,family=gaussian(link='log'))+
+    xlab("Check-ins\n(b)") +
+    geom_text(data=eqs4,aes(x=10,y=0.1,label=V1),inherit.aes=FALSE,
+                  parse = TRUE,hjust=0,size=3)+
+    ylab(expression(Pi^min)) +
+    ggtitle(expression(paste("Spatial Correlation (",Pi^"min"," and Activeness)")))+
+    scale_x_log10()+scale_y_continuous(limits=c(0.1,1))+
+    scale_shape_manual(name="Outlier",values=c(16,2))+
+    theme(axis.text = element_text(size=8),legend.position="none",
+          plot.margin=unit(c(.05,.05,.05,.05),"npc"),
+              axis.title = element_text(size=10),plot.title = element_text(size=10))
+tiff("plots/pi.spatial.1.tiff",width=8*ppi,height=5*ppi,res=ppi)
+# grid.arrange(arrangeGrob(gga2,ggb2,ncol=2),
+#              gg.outliers,
+#              ncol=1,nrow=2,heights=c(1,1.5))
+grid.arrange(gga2,ggb2,ncol=1,nrow=2,heights=c(1,1))
+dev.off()
+
+
+# 
+# # CA for spatial semantics
+# gg.resid = lapply(1:3, function(city.index){
+#     data = checkin.poly.list[[city.index]][,c("cate_l1",spatial.attr[city.index])]
+#     colnames(data)[2]<-"zip"
+#     data$zip=factor(data$zip)
+#     data$cate_l1=factor(data$cate_l1)
+#     ca.model = ca(xtabs(~zip+cate_l1,data=data))
+#     
+# #     plot(ca.model, mass = TRUE, contrib = "absolute", map ="rowgreen", 
+# #      arrows = c(TRUE, FALSE)) # asymmetric map
+#     lm.model = lm(data2[[city.index]],formula=pi.min~log(record) )
+#     
+#     plot.df1 = data.frame(ca.model$rowcoord[,1:2],"name"=ca.model$rownames,
+#                          "resid"=resid(lm.model),"city"=city.names[city.index])
+#     plot.df1=plot.df1[order(abs(plot.df1$resid)),]
+#     plot.df1$resid.positive = ifelse(plot.df1$resid>0,">0","<=0")
+#     
+#     plot.df2 = data.frame(ca.model$colcoord[,1:2],"name"=ca.model$colnames,
+#                                             "city"=city.names[city.index])
+#     
+#     ggplot(plot.df1,aes(x=X1,y=X2))+
+#         geom_text(data=plot.df2,aes(label=name),size=2.5，alpha=0.8)+
+#         geom_segment(data=plot.df2,x=0,y=0,aes(xend=X1,yend=X2),
+#                      color="grey",arrow=arrow(length=unit(0.5,"cm")))+
+#         geom_point(aes(size=abs(resid),shape=resid.positive),fill="white",alpha=0.7)+
+#         ggtitle(city.names[city.index])+
+#         labs(x=paste0("Dimension 1 (",formatC(summary(ca.model)$scree[1,3],digits=4),"%)"),
+#              y=paste0("Dimension 2 (",formatC(summary(ca.model)$scree[2,3],digits=4),"%)"))+
+#         scale_size_continuous(name="Residual\nValue")+
+#         scale_shape_manual(name="Residual\nSign",values=c(21,24))+
+#         theme(axis.text = element_text(size=6),legend.key.width=unit(1,"line"),
+#               legend.title=element_text(size=8),legend.text=element_text(size=7),
+#               axis.title = element_text(size=8),plot.title = element_text(size=8),
+#           plot.margin=unit(c(.05,.05,.05,.05),"npc"))+
+#         guides(shape=guide_legend(order=1),size=guide_legend(order=2))
+# })
+# 
+# tiff("plots/pi.min.spatial.tiff",width=12*ppi,height=12*ppi,res=ppi)
+# grid.arrange(arrangeGrob(
+#                  arrangeGrob(gg.maps[[1]][[1]],gg.maps[[2]][[1]],gg.maps[[3]][[1]],
+#                              main=textGrob(expression(paste("Spatial Distribution of ",Pi)),
+#                                            vjust=1.5,gp=gpar(fontsize=10)),
+#                              sub=textGrob("(a)",gp=gpar(fontsize=10),vjust=-1),
+#                              ncol=3,widths=c(1,0.9,1.12)),
+#                  arrangeGrob(gg.maps[[1]][[2]],gg.maps[[2]][[2]],gg.maps[[3]][[2]],
+#                              main=textGrob("Spatial Distribution of Check-ins",
+#                                            vjust=1.5,gp=gpar(fontsize=10)),
+#                              sub=textGrob("(b)",gp=gpar(fontsize=10),vjust=-1),
+#                              ncol=3,widths=c(1,0.9,1.12)),
+# #                  arrangeGrob(gg.maps[[1]][[3]],gg.maps[[2]][[3]],gg.maps[[3]][[3]],
+# #                              main=textGrob("Spatial Distribution of Redidual",
+# #                                            vjust=1.5,gp=gpar(fontsize=10)),
+# #                              sub=textGrob("(g)",gp=gpar(fontsize=10),vjust=-1),
+# #                              ncol=3,widths=c(1,0.9,1.12)),
+#              ncol=1),ggd,
+#              arrangeGrob(gg.resid[[1]],gg.resid[[2]],gg.resid[[3]],
+#                              main=textGrob("Relations of Spatial Semantics and Rediduals",
+#                                            vjust=1.5,gp=gpar(fontsize=10)),
+#                              sub=textGrob("(d)",gp=gpar(fontsize=10),vjust=-1),
+#                              ncol=3),
+# #              ggc,ggf,
+#             nrow=3,heights=c(2,0.8,1))
+# # rm(gga,ggb,data)
+# dev.off()
 
 
 
-# CA for spatial semantics
-gg.resid = lapply(1:3, function(city.index){
-    data = checkin.poly.list[[city.index]][,c("cate_l1",spatial.attr[city.index])]
-    colnames(data)[2]<-"zip"
-    data$zip=factor(data$zip)
-    data$cate_l1=factor(data$cate_l1)
-    ca.model = ca(xtabs(~zip+cate_l1,data=data))
+```
+
+```{r}
+ca.time = lapply(1:3, function(city.index){
+    data.ca = checkin.poly.list[[city.index]][,c("cate_l1","hour")]
+    data.ca$hour=factor(data.ca$hour)
+    data.ca$cate_l1=factor(data.ca$cate_l1)
+    ca.model = ca(xtabs(~hour+cate_l1,data=data.ca))
+    cm.sum= summary(ca.model)
+    
+    ca.hours = cm.sum$rows; colnames(ca.hours)[c(5,8)]=c("d1","d2")
+    ca.hours$city = city.guide$city[city.index]
+    ca.hours = cbind(ca.hours,ca.model$rowcoord)
+    colnames(ca.hours)[12:20]=paste("dim",colnames(ca.hours)[12:20],sep="")
+    data.point = entropies.etc.st.df[which(entropies.etc.st.df$city==city.guide$city),]
+    stat = ddply(data.point,.(hour),function(hour){
+        data.frame("pi.max"=with(hour,mean(pi.max)),
+                   "pi.min"=with(hour,mean(pi.min)))
+
+    })
+    stat$delta.pi = with(stat,pi.max-pi.min)
+    ca.hours = cbind(ca.hours,stat)
+    
+    ca.cates = cm.sum$columns; colnames(ca.cates)[c(5,8)]=c("d1","d2")
+    ca.cates$city = city.guide$city[city.index]
+    scree = as.data.frame(cm.sum$scree); colnames(scree)=c("dim","value","perc","cum.perc")
+    
+    m1 <- lm(data=ca.hours[,c(22,12:20)],formula=pi.max~.)
+    m2 <- lm(data=ca.hours[,c(23,12:20)],formula=pi.min~.)
     
 #     plot(ca.model, mass = TRUE, contrib = "absolute", map ="rowgreen", 
 #      arrows = c(TRUE, FALSE)) # asymmetric map
-    lm.model = lm(data2[[city.index]],formula=pi.min~log(record) )
-    
-    plot.df1 = data.frame(ca.model$rowcoord[,1:2],"name"=ca.model$rownames,
-                         "resid"=resid(lm.model),"city"=city.names[city.index])
-    plot.df1=plot.df1[order(abs(plot.df1$resid)),]
-    plot.df1$resid.positive = ifelse(plot.df1$resid>0,">0","<=0")
-    
-    plot.df2 = data.frame(ca.model$colcoord[,1:2],"name"=ca.model$colnames,
-                                            "city"=city.names[city.index])
-    
-    ggplot(plot.df1,aes(x=X1,y=X2))+
-        geom_text(data=plot.df2,aes(label=name),size=2.5，alpha=0.8)+
-        geom_segment(data=plot.df2,x=0,y=0,aes(xend=X1,yend=X2),
-                     color="grey",arrow=arrow(length=unit(0.5,"cm")))+
-        geom_point(aes(size=abs(resid),shape=resid.positive),fill="white",alpha=0.7)+
-        ggtitle(city.names[city.index])+
-        labs(x=paste0("Dimension 1 (",formatC(summary(ca.model)$scree[1,3],digits=4),"%)"),
-             y=paste0("Dimension 2 (",formatC(summary(ca.model)$scree[2,3],digits=4),"%)"))+
-        scale_size_continuous(name="Residual\nValue")+
-        scale_shape_manual(name="Residual\nSign",values=c(21,24))+
-        theme(axis.text = element_text(size=6),legend.key.width=unit(1,"line"),
-              legend.title=element_text(size=8),legend.text=element_text(size=7),
-              axis.title = element_text(size=8),plot.title = element_text(size=8),
-          plot.margin=unit(c(.05,.05,.05,.05),"npc"))+
-        guides(shape=guide_legend(order=1),size=guide_legend(order=2))
-})
-
-tiff("plots/pi.min.spatial.tiff",width=12*ppi,height=12*ppi,res=ppi)
-grid.arrange(arrangeGrob(
-                 arrangeGrob(gg.maps[[1]][[1]],gg.maps[[2]][[1]],gg.maps[[3]][[1]],
-                             main=textGrob(expression(paste("Spatial Distribution of ",Pi)),
-                                           vjust=1.5,gp=gpar(fontsize=10)),
-                             sub=textGrob("(a)",gp=gpar(fontsize=10),vjust=-1),
-                             ncol=3,widths=c(1,0.9,1.12)),
-                 arrangeGrob(gg.maps[[1]][[2]],gg.maps[[2]][[2]],gg.maps[[3]][[2]],
-                             main=textGrob("Spatial Distribution of Check-ins",
-                                           vjust=1.5,gp=gpar(fontsize=10)),
-                             sub=textGrob("(b)",gp=gpar(fontsize=10),vjust=-1),
-                             ncol=3,widths=c(1,0.9,1.12)),
-#                  arrangeGrob(gg.maps[[1]][[3]],gg.maps[[2]][[3]],gg.maps[[3]][[3]],
-#                              main=textGrob("Spatial Distribution of Redidual",
-#                                            vjust=1.5,gp=gpar(fontsize=10)),
-#                              sub=textGrob("(g)",gp=gpar(fontsize=10),vjust=-1),
-#                              ncol=3,widths=c(1,0.9,1.12)),
-             ncol=1),ggd,
-             arrangeGrob(gg.resid[[1]],gg.resid[[2]],gg.resid[[3]],
-                             main=textGrob("Relations of Spatial Semantics and Rediduals",
-                                           vjust=1.5,gp=gpar(fontsize=10)),
-                             sub=textGrob("(d)",gp=gpar(fontsize=10),vjust=-1),
-                             ncol=3),
-#              ggc,ggf,
-            nrow=3,heights=c(2,0.8,1))
-# rm(gga,ggb,data)
-dev.off()
-
-
-
-tiff("plots/pi.k.coefficient.venue.tiff",width=12*ppi,height=5*ppi,res=ppi)
-data = entropies.etc.df[which(entropies.etc.df$Condition=="ST"),]
-data = ddply(data,.(City),function(i){
-    i$Venue.Quantile = with(i,cut(Venues,
-                                  breaks=quantile(Venues,probs=seq(0,1,by=0.25)),
-                                  include.lowest=TRUE,
-                                  labels=paste("Venue Numbers: Quantile",1:4)))
-    i
-})
-eqs <- ddply(data,.(City,Venue.Quantile),function(i){
-    model = glm(i,formula=Pi.min~log(Pi.max),family=gaussian(link="log"))
-    a=model$coefficients[1]
-    k=model$coefficients[2]
-    
-    eq <- substitute(italic(y) ==  e^a %.%  italic(x)^k ,
-                     list(a = format(a, digits = 3),
-                          k = format(k, digits = 3)))
-    as.character(as.expression(eq))
-})
-ggplot(data,aes(x=Pi.max,y=Pi.min))+
-#     geom_line(aes(x=0:1,y=0:1),color="grey",linetype="dashed")+
-    geom_point(alpha=0.4,shape=21,fill="white")+
-    xlab(expression(atop(italic(Pi))^"max" ))+
-    ylab(expression(atop(italic(Pi))^"min" ))+
-    geom_smooth(method=glm,formula=y~log(x),family=gaussian(link="log"))+
-    geom_text(data=eqs,aes(x=0.6,y=0.9,label=V1),inherit.aes=FALSE,
-                  parse = TRUE,hjust=0,size=3.5)+
-#     scale_x_continuous(limit=c(0,1))+
-#     scale_y_continuous(limit=c(0,1))+
-    facet_grid(City~Venue.Quantile)
-dev.off()
-
-tiff("plots/pi.k.coefficient.unalikeability.tiff",width=12*ppi,height=5*ppi,res=ppi)
-data = entropies.etc.df[which(entropies.etc.df$Condition=="ST"),]
-data = ddply(data,.(City),function(i){
-    i$Unalikeability.Quantile = with(i,cut(Unalikeability,
-                                  breaks=quantile(Unalikeability,probs=seq(0,1,by=0.2)),
-                                  include.lowest=TRUE,
-                                  labels=paste("Unalikeability: Quantile",1:5)))
-    i
-})
-eqs <- ddply(data,.(City,Unalikeability.Quantile),function(i){
-    model = glm(i,formula=Pi.min~log(Pi.max),family=gaussian(link="log"))
-    a=model$coefficients[1]
-    k=model$coefficients[2]
-    
-    eq <- substitute(italic(y) ==  e^a %.%  italic(x)^k ,
-                     list(a = format(a, digits = 3),
-                          k = format(k, digits = 3)))
-    as.character(as.expression(eq))
-})
-ggplot(data,aes(x=Pi.max,y=Pi.min))+
-#     geom_line(aes(x=0:1,y=0:1),color="grey",linetype="dashed")+
-    geom_point(alpha=0.4,shape=21,fill="white")+
-    xlab(expression(atop(italic(Pi))^"max" ))+
-    ylab(expression(atop(italic(Pi))^"min" ))+
-    geom_smooth(method=glm,formula=y~log(x),family=gaussian(link="log"))+
-    geom_text(data=eqs,aes(x=0.6,y=0.9,label=V1),inherit.aes=FALSE,
-                  parse = TRUE,hjust=0,size=3.5)+
-#     scale_x_continuous(limit=c(0,1))+
-#     scale_y_continuous(limit=c(0,1))+
-    facet_grid(City~Unalikeability.Quantile)
-dev.off()
-
-tiff("plots/entropies-venues.tiff",width=12*ppi,height=5*ppi,res=ppi)
-eqs <- ddply(data,.(city,variable),function(i){
-    model = lm(i,formula=value~log(Venues)-1)
-    
-#     a=model$coefficients[1]
-    k=model$coefficients[1]
-    
-    eq <- substitute(italic(y) %~%  k %.% log ( italic(x) ),
-                     list(k = format(k, digits = 3)))
-    as.character(as.expression(eq))
-})
-    ggplot(data,aes(x=Venues,y=value))+
-        geom_point(shape=21,fill="white",alpha=0.3,size=1)+
-        ylab("Entropy")+xlab("Number Unique Venues")+
-        geom_smooth(method=glm,formula=y~x)+
-        scale_x_log10(breaks=c(10,100,1000))+
-        geom_text(data=eqs,aes(x=1,y=8.5,label=V1),inherit.aes=FALSE,
-                  parse = TRUE,hjust=0,size=3)+
-        facet_grid(city~variable)
-
-dev.off()
-
-# tiff("plots/entropy.residual.tiff",width=12*ppi,height=6*ppi,res=ppi)
-# data=melt(entropies,id.vars = c("records","unique.venues"))
-# gg.residual<-lapply(split(data,data$variable),function(i){
-#     
-#     list(ggplot(i,aes(x=unique.venues,y=records))+
-#         geom_point(shape=21,fill="white",alpha=0.3,size=1)+
-#         geom_smooth(method=glm,formula=y~log(x))+
-#         xlab("Unique Venues")+ylab("Number of Records")+
-#         scale_y_log10()+
-#         theme_grey(base_size = 10)+
-#         ggtitle(i[1,"variable"]),
-#     ggplot(i,aes(x=unique.venues,y=value))+
-#         geom_point(shape=21,fill="white",alpha=0.3,size=1)+
-#         geom_smooth(method=glm,formula=y~log(x))+
-#         xlab("Unique Venues")+ylab("Entropy")+
-#         theme_grey(base_size = 10)+
-#         ggtitle(i[1,"variable"]),
-#     ggplot(i,aes(x=resid(glm(formula=records~log(unique.venues),
-#                           family=gaussian(link="log"))),
-#                  y=resid( glm(formula=value~log(unique.venues)))))+
-#         geom_point(shape=21,fill="white",alpha=0.3,size=1)+
-# #         geom_smooth(method=glm,formula=y~log(x))+
-#         xlab("Redisual: Records ~ Venues")+
-#         ylab("Redisual: Entropy ~ Venues")+
-#         theme_grey(base_size = 10)+
-#         scale_x_log10()+
-#         ggtitle(i[1,"variable"]))
-# })
-# grid.arrange(gg.residual[[1]][[1]],gg.residual[[2]][[1]],gg.residual[[3]][[1]],
-#              gg.residual[[4]][[1]],gg.residual[[5]][[1]],
-#              gg.residual[[1]][[2]],gg.residual[[2]][[2]],gg.residual[[3]][[2]],
-#              gg.residual[[4]][[2]],gg.residual[[5]][[2]],
-#              gg.residual[[1]][[3]],gg.residual[[2]][[3]],gg.residual[[3]][[3]],
-#              gg.residual[[4]][[3]],gg.residual[[5]][[3]],
-#              ncol=5,nrow=3)
-# 
-# dev.off()
-
-####################
-reduction.list = list(
-
-ggplot(entropies,aes(x=Random,y=Uncorrelated))+
-    geom_point(shape=21,fill="white",alpha=0.3,size=1)+
-    geom_line(aes(x=c(1:8),y=c(1:8)),size=2,alpha=0.5,linetype="dashed")+
-    geom_smooth(method=lm),
-ggplot(entropies,aes(x=Uncorrelated,y=Time))+
-    geom_point(shape=21,fill="white",alpha=0.3,size=1)+
-    geom_line(aes(x=c(1:8),y=c(1:8)),size=2,alpha=0.5,linetype="dashed")+
-    geom_smooth(method=lm),
-ggplot(entropies,aes(x=Uncorrelated,y=Space))+
-    geom_point(shape=21,fill="white",alpha=0.3,size=1)+
-    geom_line(aes(x=c(1:8),y=c(1:8)),size=2,alpha=0.5,linetype="dashed")+
-    geom_smooth(method=lm),
-ggplot(entropies,aes(x=Uncorrelated,y=ST))+
-    geom_point(shape=21,fill="white",alpha=0.3,size=1)+
-    geom_line(aes(x=c(1:8),y=c(1:8)),size=2,alpha=0.5,linetype="dashed")+
-    geom_smooth(method=lm),
-
-ggplot(entropies,aes(x=Random,y=(Random-Uncorrelated)/Random))+
-    geom_point(shape=21,fill="white",alpha=0.3,size=1)+
-    geom_smooth(method=lm)+scale_y_continuous(labels=percent)+
-    ylab("Reduction (Uncorrelated)"),
-ggplot(entropies,aes(x=Uncorrelated,y=(Uncorrelated-Time)/Uncorrelated))+
-    geom_point(shape=21,fill="white",alpha=0.3,size=1)+
-    geom_smooth(method=lm)+scale_y_continuous(labels=percent)+
-    ylab("Reduction (Time)"),
-ggplot(entropies,aes(x=Uncorrelated,y=(Uncorrelated-Space)/Uncorrelated))+
-    geom_point(shape=21,fill="white",alpha=0.3,size=1)+
-    geom_smooth(method=lm)+scale_y_continuous(labels=percent)+
-    ylab("Reduction (Space)"),
-ggplot(entropies,aes(x=Uncorrelated,y=(Uncorrelated-ST)/Uncorrelated))+
-    geom_point(shape=21,fill="white",alpha=0.3,size=1)+
-    geom_smooth(method=lm)+scale_y_continuous(labels=percent)+
-    ylab("Reduction (ST)")
-)
-
-tiff("plots/entropies.reduction.tiff",width=12*ppi,height=4*ppi,res=ppi)
-grid.arrange(reduction.list[[1]],reduction.list[[2]],
-             reduction.list[[3]],reduction.list[[4]],
-             reduction.list[[5]],reduction.list[[6]],
-             reduction.list[[7]],reduction.list[[8]],
-             ncol=4,nrow=2)
-dev.off()
-
-```
-
-
-
-
-
-#### 4. Regularity as lower bounds
-
-##### 4.1 calculation of regularity
-
-```{r,eval=FALSE}
-# reg.s.t = lapply(usersets.active, function(user){
-#     
-#     cls.s = spatial.clustering(user)
-#     cls.t = temporal.clustering(user)
-#     cls = merge(x=cls.s, y=cls.t[c("id","hour.cls")], by.x="id", by.y="id", all.X=TRUE)
-#     cls = merge(x=cls, y = user[c("gid","yearday")], by.x="id", by.y="gid", all.X=TRUE)
-#     
-#     cls$cate_l2=factor(cls$cate_l2)
-#     cls$st = as.factor(paste(cls$hour,cls$sp))
-#     
-#    
-# #     the most probable category for this user considering both spatial and temporal
-#     pi.st = sapply(split(cls,cls$st),function(st){
-#         cate_seq = st$cate_l2
-#         # the most probable category
-#         cate_freq = as.data.frame(table(cate_seq))
-# #         if(length(unique(st$yearday))>1) 
-#             ans = max(cate_freq$Freq)/sum(cate_freq$Freq)
-# #         else ans = NA
-#         ans
-#     })
-#     
-# 
-#     
-#     freq.st = as.data.frame(table(cls$st))
-#     p.st = freq.st$Freq/sum(freq.st$Freq)
-#     
-#     sum(p.st * pi.st,na.rm=TRUE)
-# 
-# #     c("temp"=pi.t,"sp"=pi.s)
-# })
-
-reg.t = sapply(usersets.active, function(user){
-
-    
-    user$cate_l2=factor(user$cate_l2)
-    user$hour = factor(user$hour)
-    
-   
-#     the most probable category for this user in that hour
-    pi.t = sapply(split(user,user$hour),function(hour){
-        cate_seq = hour$cate_l2
-        # the most probable category
-        cate_freq = as.data.frame(table(cate_seq))
-#         if(length(unique(st$yearday))>1) 
-            ans = max(cate_freq$Freq)/sum(cate_freq$Freq)
-#         else ans = NA
-        ans
-    })
     
 
-    
-    freq.t = as.data.frame(table(user$hour))
-    p.t = freq.t$Freq/sum(freq.t$Freq)
-    
-    sum(p.t * pi.t,na.rm=TRUE)
-
-})
-
-```
-```{r,echo=FALSE,fig.width=4,fig.height=3}
-# save(reg.t, file="D:\\Experiments\\R\\data\\reg.t.Rda")
-load("D:\\Experiments\\R\\data\\reg.t.Rda")
-
-gg.reg = ggplot(data.frame("regularity"=reg.t)) + 
-    stat_density(aes(x = regularity, y = ..density..),
-                 position="identity",adjust=2,alpha=0.5,fill="#56B4E9") +
-    xlab(expression(atop(italic(Pi)^"max","\n\n(a)") ) )  +
-    ylab("Density") +
-#     theme(axis.title = element_text(size=10),legend.title=element_blank(),
-#           legend.position="none",legend.background=element_blank())
-    theme(axis.title = element_text(size=10),legend.title=element_blank(),
-          legend.position="none",plot.title = element_text(size=11))+
-    scale_x_continuous(limit=c(0,1))
-
-gg.reg
-
-manipulate(
-    gg.reg  + geom_vline(xintercept =x.max,color = "#E69F00", linetype="dotted", size=2),
-    x.max= slider(0.2,0.6)
-    )
-
-
-```
-
-
-
-##### 4.2 relations with other factors 
-```{r}
-usersets.active = usersets[usersets.active.idx]
-# relation between "regularity" and "hour"
-reg.t.mat = sapply(usersets.active, function(user){
-    
-    user$cate_l2=factor(user$cate_l2)
-   
-#     the most probable category for this user in that hour
-    pi.t = sapply(split(user,user$hour),function(hour){
-        cate_seq = hour$cate_l2
-        # the most probable category
-        cate_freq = as.data.frame(table(cate_seq))
-#         if(length(unique(st$yearday))>1) 
-            ans = max(cate_freq$Freq)/sum(cate_freq$Freq)
-#         else ans = NA
-        ans
-    })
-    
-    pi.t[is.na(pi.t)]=0
-    
-    pi.t
-
-})
-```
-```{r,echo=FALSE,fig.width=4,fig.height=3}
-gg.reg.hour <- ggplot(data.frame("hour"=c(0:23),"reg.mean"=colMeans(data.frame(t(reg.t.mat))),
-       "se"=apply(data.frame(t(reg.t.mat)),2,sd)/sqrt(4422) ),
-       aes(x=hour,y=reg.mean) )+
-    geom_smooth(se=F, method = "lm", formula = y ~ poly(x, 12),color="#56B4E9",size=2) +
-    geom_point(size=1.5) + 
-    geom_errorbar(aes(ymin=reg.mean-2*se, ymax=reg.mean+2*se), colour ="black", size =.3, width=.5)+
-    xlab("Hour of Day\n\n(b)") +
-    ylab(expression(paste(Pi^min, "(", mu %+-% 2*sigma,")"))) +
-#     theme(axis.title = element_text(size=10),legend.title=element_blank(),
-#           legend.position="none",legend.background=element_blank())
-    theme(axis.title = element_text(size=10),plot.title = element_text(size=11))
-gg.reg.hour
-```
-```{r}
-# relations between hour and N
-n.t.mat = sapply(usersets.active, function(user){
-
-    user$cate_l2=factor(user$cate_l2)
-   
-#   n in each hour for this user
-    n.t = sapply(split(user,user$hour),function(hour){
-        length(unique(hour$cate_l2))
-    })
-    
-    n.t[is.na(n.t)]=0
-    
-    n.t
-
-})
-```
-```{r,echo=FALSE,fig.height=3,fig.width=4}
-gg.n.hour <- ggplot(data.frame("hour"=c(0:23),"n.mean"=colMeans(data.frame(t(n.t.mat))),
-       "se"=apply(data.frame(t(n.t.mat)),2,sd)/sqrt(4422) ),
-       aes(x=hour,y=n.mean) )+
-    geom_smooth(se=F, method = "lm", formula = y ~ poly(x, 12),color="#56B4E9",size=2) +
-    geom_point(size=1.5) + 
-    geom_errorbar(aes(ymin=n.mean-2*se, ymax=n.mean+2*se), colour ="black", size =.3, width=.5)+
-    xlab("Hour of Day\n\n(d)") +
-    ylab(expression(paste("Hourly Number of Unique Categories(", mu %+-% 2*sigma,")"))) +
-#     theme(axis.title = element_text(size=10),legend.title=element_blank(),
-#           legend.position="none",legend.background=element_blank())
-    theme(axis.title = element_text(size=10),plot.title = element_text(size=11))
-gg.n.hour
-
-# relations between regulatiry and N
-df.reg.n = data.frame("x"=usersets.stats.act$cates,"y"=reg.t)
-gg.reg.n <- ggplot(df.reg.n)+
-    geom_point(aes(x=x,y=y),alpha=.3,size=1)+
-    geom_smooth(aes(x=x,y=y),method="lm",formula=y~log10(x),size=2) +
-    theme(axis.title = element_text(size=10),legend.title=element_blank(),
-          legend.background=element_blank(),plot.title = element_text(size=11))+
-#     ggtitle("Regularity V.S. Unique categories (N)")+
-    xlab("Number of Unique Categories\n\n(c)") +
-    ylab(expression(paste(Pi^min))) +
-    scale_y_continuous(limits=c(0,1))+
-#     scale_x_log10()+
-    geom_text(aes(x = 75, y = 0.9, label = lm_eqn_log(df.reg.n)), size=3,parse = TRUE)
-gg.reg.n
-
-png(paste0(basedir,"regularity.png"), width = 8*ppi, height = 6*ppi, res=ppi)
-multiplot(gg.reg,gg.reg.n,gg.reg.hour,gg.n.hour,cols=2)
-dev.off()
-
-
-
-# manipulate(
-#     gg.reg  + geom_vline(xintercept =x.max,color = "#E69F00", linetype="dotted", size=2),
-#     x.max= slider(0,1)
-#     )
-```
-#### 5. upper bounds based on Fano's inequality
-
-##### 5.1 Fano's inequality
-
-Fano's inquality states:
-
-$$H(X|Y)\leq H(e)+p(e)\log(N-1)$$
-
-where
-
-$$p(e)=p(X\neq Y)=1-\Pi$$
-
-and 
-
-$$H(e)=-p(e) \log p(e)-(1-p(e)) \log (1-p(e))$$
-
-It is tranlated in our case to:
-
-$$S^{real}\leq -\Pi \log \Pi - (1-\Pi)\log(1-\Pi)+(1-\Pi)\log(N-1)$$
-
-The mathmatical relations is described in the following figure:
-
-```{r,echo=FALSE,fig.width=5,fig.height=3}
-x = seq(from=0,to=1,length=101)
-N = c(1,2,5,20,100,500)
-df = data.frame()
-temp=lapply(N,function(n){
-    y = rep(0,101) 
-    if(n!=1){
-        y[1]=log2(n-1)
-        y[2:100] = (1-x[2:100])*log2(n-1) - x[2:100]*log2(x[2:100]) - (1-x[2:100])*log2(1-x[2:100]) 
-    }
-    newdf = data.frame("pi"=x, "S"=y, "N"=as.factor(n))
-    df <<- rbind(df, newdf)
-    NA
-})
-# png(paste0(basedir,"img\\ceus_relation_pi.s.N.png"), width = 5*ppi, height = 3*ppi, res=ppi,bg = "transparent")
-gg.pi.s.n <- ggplot(df) + 
-    geom_path(aes(x=pi,y=S,group=N,color=N)) +
-    theme(legend.background=element_blank(),legend.title=element_blank(),
-          axis.title = element_text(size=10))+
-    scale_color_discrete( breaks = levels(df$N),
-         labels=list(bquote(italic(N)==.(N[1])),bquote(italic(N)==.(N[2])),
-                     bquote(italic(N)==.(N[3])),bquote(italic(N)==.(N[4])),
-                     bquote(italic(N)==.(N[5])),bquote(italic(N)==.(N[6])))  )+
-    geom_point(aes(x=0.5,y=5.48145),fill="#E69F00",color=NA,alpha=.5,size=4,shape=21)+
-    annotate("text", label = "(italic(Pi)[0]~~italic(S)[0])",
-             parse = TRUE,size=2, x = 0.62, y = 5.5, colour = "black") +
-    annotate("text", label = ",",size=2, x = 0.62, y = 5.5, colour = "black") +
-    xlab(bquote(atop(italic(Pi),"\n\n(a)") ) ) +
-    ylab(bquote(italic(S)^max ) ) 
-#     ggtitle(expression(paste("S"^"max", " ~ (", Pi, ", N)")))
-# dev.off()
-```
-
-
-##### 5.2 calculation of upper bounds 
-
-```{r,echo=FALSE}
-pi.list = lapply(1:3, function(city.index){
-    counter.reset()
-    user.list = user.list.ucls[[city.index]]
-    piset = do.call(rbind, lapply(seq_along(user.list),function(id){
-        counter.print(10)
-        N = length(unique(user.list[[id]]$venue_id))
-     
-        x = seq(from=0,to=1,length=1001)
-        y = rep(0,1001)
-    
-        if(N!=1){
-            y[1]=log2(N-1)
-            y[2:1000] = (1-x[2:1000])*log2(N-1) - x[2:1000]*log2(x[2:1000]) - (1-x[2:1000])*log2(1-x[2:1000]) 
-        }
-    
-        yoffset = y[2:length(y)]
-        yoffset[length(y)]=-0.001
-        entropies = entropies.list[[city.index]]
-        pi.rand = ifelse(entropies[id,"Random"]<=max(y),
-                         x[which( y>=entropies[id,"Random"] & yoffset<entropies[id,"Random"] )],
-                         x[which(y==max(y))] )
-        pi.unc = ifelse(entropies[id,"Uncorrelated"]<=max(y),
-                         x[which( y>=entropies[id,"Uncorrelated"] & yoffset<entropies[id,"Uncorrelated"] )],
-                         x[which(y==max(y))] )
-        pi.time = ifelse(entropies[id,"Time"]<=max(y),
-                         x[which( y>=entropies[id,"Time"] & yoffset<entropies[id,"Time"] )],
-                         x[which(y==max(y))] )
-        pi.space = ifelse(entropies[id,"Space"]<=max(y),
-                         x[which( y>=entropies[id,"Space"] & yoffset<entropies[id,"Space"] )],
-                         x[which(y==max(y))] )
-        pi.st = ifelse(entropies[id,"ST"]<=max(y),
-                         x[which( y>=entropies[id,"ST"] & yoffset<entropies[id,"ST"] )],
-                         x[which(y==max(y))] )
+    gg.ca <-ggplot()+
+        geom_point(data=ca.hours,aes(x=d1/1000,y=d2/1000),shape=21,fill=NA)+
+        geom_text(data=ca.hours,aes(x=d1/1000,y=d2/1000,label=name),color="blue",alpha=0.3)+
+#         geom_point(data=ca.cates,aes(x=d1/1000,y=d2/1000),shape=2)+
+        geom_text(data=ca.cates,aes(x=d1/1000,y=d2/1000,label=name),color="red")+
+#         geom_segment(data=ca.hours,x=0,y=0,aes(xend=d1/1000,yend=d2/1000),
+#                      color="grey",arrow=arrow(length=unit(0.3,"cm")))+
+        labs(x=paste0("Dimension 1 (",formatC(scree$perc[1],digits=4),"%)"),
+             y=paste0("Dimension 2 (",formatC(scree$perc[2],digits=4),"%)"))
         
-        data.frame("id"=id,"Random"=pi.rand,"Uncorrelated"=pi.unc,"Time"=pi.time,
-          "Space"=pi.space,"ST"=pi.st)
-    }))
-    cbind(piset,entropies.list[[city.index]][,c("Records","Venues","Users")])
+    
+
+    list(gg.ca,m1,m2)
 })
 
-tiff("plots/pi.max.cities.tiff",width=12*ppi,height=5*ppi,res=ppi)
-pi.melt= do.call(rbind,lapply(1:3,function(city.index){
-    df = melt(pi.list[[city.index]],id.vars = c("id","Records","Venues","Users"))
-    df$city = city.names[city.index]
-    df
+ca.space = lapply(1:3, function(city.index){
+    data.ca = checkin.poly.list[[city.index]][,c("cate_l1",city.guide$spatial.attr[city.index])]
+    colnames(data.ca)[2]="space"
+    data.ca$space=factor(data.ca$space)
+    data.ca$cate_l1=factor(data.ca$cate_l1)
+    ca.model = ca(xtabs(~space+cate_l1,data=data.ca))
+    cm.sum= summary(ca.model)
+    
+    ca.spaces = cm.sum$rows; colnames(ca.spaces)[c(5,8)]=c("d1","d2")
+    ca.spaces$city = city.guide$city[city.index]
+    ca.spaces = cbind(ca.spaces,ca.model$rowcoord)
+    colnames(ca.spaces)[12:20]=paste("dim",colnames(ca.spaces)[12:20],sep="")
+    data.point = entropies.etc.st.df[which(entropies.etc.st.df$city==city.guide$city[city.index]),]
+    stat = ddply(data.point,.(space),function(space){
+        data.frame("pi.max"=with(space,mean(pi.max)),
+                   "pi.min"=with(space,mean(pi.min)),
+                   "record"=sum(space$record))
+
+    })
+    stat$delta.pi = with(stat,pi.max-pi.min)
+    ca.spaces = cbind(ca.spaces,stat)
+    
+    ca.cates = cm.sum$columns; colnames(ca.cates)[c(5,8)]=c("d1","d2")
+    ca.cates$city = city.guide$city[city.index]
+    scree = as.data.frame(cm.sum$scree); colnames(scree)=c("dim","value","perc","cum.perc")
+    
+    
+#     plot(ca.model, mass = TRUE, contrib = "absolute", map ="rowgreen", 
+#      arrows = c(TRUE, FALSE)) # asymmetric map
+    lmdata = as.data.frame(xtabs(data=data.ca,~space+cate_l1))
+    lmdata$prob = with(lmdata,Freq/sum(Freq))
+    lmdata = dcast(lmdata,space~cate_l1,value.var="prob")
+    ca.spaces = cbind(ca.spaces[1:25],lmdata)
+    colnames(ca.spaces)[27:36]=paste0("cate",c(1:10))
+    m1 <- lm(data=ca.spaces[,c(22,27:36)],pi.max~.)
+    m2 <- lm(data=ca.spaces[,c(23,27:36)],pi.min~.)
+#     m3 <- lm(data=ca.spaces[,c(25,12:20)],delta.pi~.)
+#     ca.spaces$resid = abs(resid(m2))
+
+    gg.ca <-ggplot()+
+        geom_point(data=ca.spaces,aes(x=d1/1000,y=d2/1000),shape=21,fill=NA)+
+        geom_text(data=ca.spaces,aes(x=d1/1000,y=d2/1000,label=name),color="blue",alpha=0.2)+
+#         geom_segment(data=ca.spaces,x=0,y=0,aes(xend=d1/1000,yend=d2/1000),
+#                      color="grey",arrow=arrow(length=unit(0.3,"cm")))+
+#         geom_point(data=ca.cates,aes(x=d1/1000,y=d2/1000),shape=2)+
+        geom_text(data=ca.cates,aes(x=d1/1000,y=d2/1000,label=name),color="red")+
+        labs(x=paste0("Dimension 1 (",formatC(scree$perc[1],digits=4),"%)"),
+             y=paste0("Dimension 2 (",formatC(scree$perc[2],digits=4),"%)"))
+
+    list(gg.ca,m1,m2)
+})
+
+
+```
+
+
+```{r}
+# analyze the outliers
+outlier.stat = do.call(rbind,lapply(1:3,function(city.index){
+    data.total = checkin.poly.list[[city.index]]
+    data.stat = data2[[city.index]]
+    outlier = data.stat[which(data.stat$resid.max.T|data.stat$resid.min.T),
+                        c("space","resid.max.T","resid.min.T")]
+    data.outlier = merge(x=data.total,y=outlier,
+                         by.x=city.guide$spatial.attr[city.index],
+                         by.y="space",all.y=T)
+    
+    stat=ddply(data.outlier,city.guide$spatial.attr[city.index],function(i){
+        df = as.data.frame(xtabs(~cate_l1,data=i))
+        df$resid.max.T = i[1,"resid.max.T"]
+        df$resid.min.T = i[1,"resid.min.T"]
+        df
+    })
+    colnames(stat)[1:3]=c("space","category","Freq")
+    stat$space=factor(stat$space)
+    stat$city = city.guide$city[city.index]
+    stat
 }))
-ggplot(pi.melt)+
-    geom_histogram(aes(x=value,y=..density..),binwidth=0.01,fill=NA,
-                   color="grey",position="identity")+
-    geom_density(aes(x=value),adjust=2)+
-    xlab(expression(atop(italic(Pi)^"max") ) ) +
-    ylab("Probability Density")+
-    scale_y_sqrt()+
-    facet_grid(city~variable)
-dev.off()
+outlier.stat$type=rep(c("A","B","A","C","A","B","B","C","D","C","A","A"),each=10)
 
-# piset$records=entropies$records
-tiff("plots/pi.max.tiff",width=12*ppi,height=5*ppi,res=ppi)
-data=melt(piset,id.vars =c("id","n","records"))
-grid.arrange(
-    ggplot(data)+
-        geom_histogram(aes(x=value,y=..density..),binwidth=0.01,fill=NA,
-                       color="grey",position="identity")+
-            geom_density(aes(x=value),adjust=2)+
-        xlab(expression(atop(italic(Pi)^"max") ) ) +
-        ylab("Probability Density")+
-        facet_wrap(~variable,ncol=5),
-#     ggplot(data,aes(x=value,y=records))+
-#         geom_point(shape=21,fill="white",alpha=0.3,size=1)+
-#         xlab(expression(atop(italic(Pi)^"max") ) ) +
-#         ylab("Number of Records")+
-#         geom_smooth(method=lm,formula=y~I(log(x)))+
-#         scale_y_log10(breaks=c(10,30,100,1000),limit=c(1,3000))+
-#         theme(axis.text.y=element_text(face=c("plain","bold","plain","plain")))+
-#         facet_wrap(~variable,ncol=5),
-    ggplot(data,aes(x=value,y=n))+
-        geom_point(shape=21,fill="white",alpha=0.3,size=1)+
-        xlab(expression(atop(italic(Pi)^"max") ) ) +
-        ylab("Unique Venues")+
-        geom_smooth(method=lm,formula=y~log(x))+
-        scale_y_log10(breaks=c(10,100,1000),limit=c(1,3000))+
-#         theme(axis.text.y=element_text(face=c("plain","bold","plain","plain")))+
-        facet_wrap(~variable,ncol=5),
-    nrow=2,heights=c(1,1.1))
-dev.off()
-```
-
-
-##### 5.3 relations with other factors
-
-```{r}
-gg.pi.n = ggplot(piset,aes(x=n,y=real))+
-    geom_point(alpha=.3,size=1)+
-    stat_quantile(aes(colour = ..quantile..), quantiles = seq(0, 1, by=0.25),size = 1.2,linetype="dashed") +
-    scale_colour_gradient2(name="Quantile",midpoint = 0.5) + 
-#     geom_smooth(aes(x=n,y=real),method="lm",formula=y~x,size=2) +
-    theme(axis.title = element_text(size=10),
-#           legend.title=element_blank(),legend.background=element_blank(),
-          plot.title = element_text(size=11))+
-#     ggtitle("Regularity V.S. Unique categories (N)")+
-    xlab("Number of Unique Categories\n\n(a)") +
-    ylab(expression(Pi^"max"))  +
-    scale_y_continuous(limits=c(0.6,1)) 
-#     scale_x_log10()+
-#     geom_text(aes(x = 75, y = 0.65, label = lm_eqn(piset,piset$n,piset$real)), size=3,parse = TRUE)
-
-
-
-mutual.imp.df = data.frame(
-    "s.unc"= entropy.unc.act,
-    "s.real"= entropy.real.act,
-    "mutual"= entropy.unc.act-entropy.real.act,
-    "pimin" = reg.t,
-    "pimax" = piset$real,
-    "imp1" = piset$real-reg.t,
-    "imp2" = piset$real / reg.t,
-    "n" = piset$n,
-    "hc" = usersets.stats.act$hourcomp)
-
-
-gg.pi.reg <- ggplot(mutual.imp.df,aes(x=pimin,y=pimax,color=log10(n)) )+
-    geom_point(size=1) +
-    geom_smooth( method = "lm",color="#56B4E9",formula = y~x,size=2) +
-    scale_colour_gradient2(name="N",midpoint = 1.3, low="red",high="blue",
-                           breaks=c(0,1,2),
-                           labels=c(expression(10^0), expression(10^1),
-                                    expression(10^2))) +   
-#     geom_errorbar(aes(ymin=mu-2*se, ymax=mu+2*se), colour ="black", size =.3, width=.5)+
-    xlab(expression(atop(italic(Pi)^"min","\n\n(b)") ) ) +
-    ylab(expression(Pi^max)) +
-#     geom_text(aes(x = 0.625, y = 0.7, 
-#                   label = lm_eqn(mutual.imp.df,mutual.imp.df$pimin,mutual.imp.df$pimax)), 
-#               size=3,parse = TRUE,color="black")+
-#     theme(axis.title = element_text(size=10),legend.title=element_blank(),
-#           legend.position="none",legend.background=element_blank())
-    theme(axis.title = element_text(size=10),
-          plot.title = element_text(size=11))
-
-```
-
-
-
-```{r}
-
-
-# gg.pimin.s <- 
-
-
-
-gg.mutual.pimin <- 
-    ggplot(mutual.imp.df,aes(x=mutual,y=pimin,color=log10(n)) )+
-    geom_point(size=1) +
-    scale_colour_gradient2(name="N",midpoint = 1.3, low="red",high="blue",
-                           breaks=c(0,1,2),
-                           labels=c(expression(10^0), expression(10^1),
-                                    expression(10^2))) +
-#     geom_smooth( method = "lm",color="#56B4E9",formula = y~log(x),size=2) +
-    xlab("Mutual Information\n\n(c)" )  +
-    ylab(expression(italic(Pi)^"min" ) ) +
-#     geom_text(aes(x = 0.625, y = 0.75, 
-#                   label = lm_eqn_log(data.frame("x"=mutual.imp.df$mutual,"y"=mutual.imp.df$pimin))), 
-#               size=3,parse = TRUE)+
-    theme(axis.title = element_text(size=10),plot.title = element_text(size=11))
-
-
-gg.mutual.pimax <- 
-    ggplot(mutual.imp.df,aes(x=mutual,y=pimax,color=log10(n)) )+
-    geom_point(size=1) +
-    scale_colour_gradient2(name="N",midpoint = 1.3, low="red",high="blue",
-                           breaks=c(0,1,2),
-                           labels=c(expression(10^0), expression(10^1),
-                                    expression(10^2))) +
-#     geom_smooth( method = "lm",color="#56B4E9",formula = y~x,size=2) +
-    xlab("Mutual Information\n\n(d)" )  +
-    ylab(expression(italic(Pi)^"max" ) ) +
-#     geom_text(aes(x = 0.625, y = 0.75, 
-#                   label = lm_eqn_log(data.frame("x"=mutual.imp.df$mutual,"y"=mutual.imp.df$pimax))), 
-#               size=3,parse = TRUE)+
-    theme(axis.title = element_text(size=10),plot.title = element_text(size=11))
-
-
-gg.mutual.imp1 <- 
-    ggplot(mutual.imp.df,aes(x=mutual,y=imp1,color=log10(n)) )+
-    geom_point(size=1) +
-    scale_colour_gradient2(name="N",midpoint = 1.3, low="red",high="blue",
-                           breaks=c(0,1,2),
-                           labels=c(expression(10^0), expression(10^1),
-                                    expression(10^2))) +
-    geom_smooth( method = "lm",color="#56B4E9",formula = y~x,size=2) +
-    xlab("Mutual Information\n\n(c)" )  +
-    ylab(expression(Delta~Pi == italic(Pi)^"max" - italic(Pi)^"min") ) +
-    geom_text(aes(x = 2, y = 0.75, 
-                  label = lm_eqn(data.frame("x"=mutual.imp.df$mutual,"y"=mutual.imp.df$imp1))),
-              size=3,parse = TRUE,color="black")+
-    theme(axis.title = element_text(size=10),plot.title = element_text(size=11))
-
-gg.mutual.imp2 <- 
-    ggplot(mutual.imp.df,aes(x=mutual,y=imp1,color=log10(hc)) )+
-    geom_point(size=1,alpha=0.8) +
-    scale_colour_gradient2(name="H.C",midpoint = -0.2, low="red",high="blue",
-                           breaks=c(-0.25,-0.15,-0.05,0),
-                           labels=c(0.56,0.71,0.89,1) ) +
-    geom_smooth( method = "lm",color="#56B4E9",formula = y~x,size=2) +
-    xlab("Mutual Information\n\n(d)" )  +
-    ylab(expression(Delta~Pi == italic(Pi)^"max" - italic(Pi)^"min") ) +
-#     geom_text(aes(x = 2, y = 0.75, 
-#                   label = lm_eqn(data.frame("x"=mutual.imp.df$mutual,"y"=mutual.imp.df$imp1))),
-#               size=3,parse = TRUE,color="black")+
-    theme(axis.title = element_text(size=10),plot.title = element_text(size=11))
-
-png(paste0(basedir,"relations.pi.mutual.png"), width = 8*ppi, height = 6*ppi, res=ppi)
-multiplot(gg.pi.n,gg.mutual.imp1,
-          gg.pi.reg,gg.mutual.imp2,cols=2)
-dev.off()
-```
-
-#### 5.4 What predictability can algorithms achieve at least?// regularity
-
-```{r}
-# relation between "regularity" and "hour"
-reg.list = lapply(1:3, function(city.index){
-    counter.reset()
-    user.list = user.list.ucls[[city.index]]
-    #  the most probable category for this user 
-    regularity = lapply(user.list, function(user){
-        counter.print(10)
-        user$venue_id=factor(user$venue_id)
-       
-        # the most probable category for this user 
-        freq.unc = as.data.frame(table(user$venue_id))
-        pi.unc = max(freq.unc$Freq) / sum(freq.unc$Freq)
-        
-        pi.t = sapply(split(user,user$hour),function(hour){
-            venue_seq = hour$venue_id
-            # the most probable category
-            venue_seq = as.data.frame(table(venue_seq))
-            max(venue_seq$Freq)/sum(venue_seq$Freq)
-        })
-#         pi.t[is.na(pi.t)]=0
-        
-        pi.s = sapply(split(user,user[,spatial.attr[city.index]]),
-                                    function(space){
-            venue_seq = space$venue_id
-            # the most probable category
-            venue_seq = as.data.frame(table(venue_seq))
-            max(venue_seq$Freq)/sum(venue_seq$Freq)
-        })
-#         pi.s[is.na(pi.s)]=0
-        
-        user$st=paste(user$hour,user[,spatial.attr[city.index]])
-        pi.st = sapply(split(user,user$st),function(st){
-            venue_seq = st$venue_id
-            # the most probable category
-            venue_seq = as.data.frame(table(venue_seq))
-            max(venue_seq$Freq)/sum(venue_seq$Freq)
-        })
-#         pi.st[is.na(pi.st)]=0
-        
-        list("Uncorrelated"=pi.unc,"Time"=pi.t,"Space"=pi.s,"ST"=pi.st)
+gg.outliers = ggplot(outlier.stat)+facet_wrap(city~space)+
+    geom_histogram(aes(x=category,y=Freq),stat="identity")+
+    coord_flip()+
+    scale_y_sqrt(breaks=c(100,2500,10000))+
+#     scale_y_continuous(limit=c(0,10000))+
+#     scale_y_log10(breaks=c(1,10,100,1000,10000))+
+    annotate("rect",xmin=4.1,xmax=5.9,ymin=5000,ymax=10000,alpha=0.3)+
+    geom_text(aes(label=type),x=5,y=85,color="white")+
+    labs(y="Frequency",x="Check-in Category")+
+    theme(axis.text = element_text(size=7),
+          plot.margin=unit(c(.05,.05,.05,.05),"npc"),
+              axis.title = element_text(size=10),plot.title = element_text(size=10))
     
-    })
+tiff("plots/pi.spatial.2.tiff",width=8*ppi,height=4*ppi,res=ppi)
+gg.outliers 
+dev.off()
+```
+
+```{r}
+# map the outliers 
+gg.maps<-lapply(1:3,function(city.index){
+    SPDF = readOGR(dsn = "../../global/data/shapefiles", layer = city.guide$shapefile.zip[city.index])
+    shape.df = df.from.spdf(SPDF)
+    # get the center of each polygon
+    centroids.df=as.data.frame(coordinates(SPDF))
+    colnames(centroids.df)=c("lon.cent","lat.cent")
+    centroids.df$id=rownames(centroids.df)
+    shape.df = merge(x=shape.df,y=data2[[city.index]],
+                     by.x=city.guide$spatial.attr[city.index],by.y="space",all.x=T)
+    shape.df = merge(x=shape.df,y=centroids.df,by="id",all.x=T)
+    shape.df = shape.df[order(shape.df$order),] 
+
+    map1<-map.plot(mapdf=shape.df,more.aes=aes(fill=resid.max.T),color="grey",size=0.3)+
+#         ggtitle(city.guide$city[city.index])+
+        ggtitle(bquote(atop(.(city.guide$city[city.index])~": Outliers of"~Pi^"max" )))+
+        labs(x="Longitude",y="Latitude")+
+        scale_fill_manual(values=c("white","grey"),name="Outliers")+
+        geom_text(data=shape.df,aes(x=lon.cent,y=lat.cent,label=disp.name.max),size=3)+
+        theme(axis.text = element_text(size=8),legend.position="none",
+              legend.title=element_text(size=8),legend.text=element_text(size=8),
+              axis.title = element_text(size=10),plot.title = element_text(size=10),
+          plot.margin=unit(c(.05,.05,.05,.05),"npc"))
+    map2<-map.plot(mapdf=shape.df,more.aes=aes(fill=resid.min.T),color="grey",size=0.3)+
+#         ggtitle(city.guide$city[city.index])+
+        ggtitle(bquote(atop(.(city.guide$city[city.index])~": Outliers of"~Pi^"min" )))+
+        labs(x="Longitude",y="Latitude")+
+        scale_fill_manual(values=c("white","grey"),name="Outliers")+
+        geom_text(data=shape.df,aes(x=lon.cent,y=lat.cent,label=disp.name.min),size=3)+
+        theme(axis.text = element_text(size=8),legend.position="none",
+              legend.title=element_text(size=8),legend.text=element_text(size=8),
+              axis.title = element_text(size=10),plot.title = element_text(size=10),
+          plot.margin=unit(c(.05,.05,.05,.05),"npc"))
+
+    list(map1,map2)
 })
-
-
-tiff("plots/pi.min.cities.tiff",width=12*ppi,height=5*ppi,res=ppi)
-reg.melt = do.call(rbind,lapply(1:3,function(city.index){
-    regs = reg.list[[city.index]]
-    df = do.call(rbind,lapply(regs,function(reg){
-        data.frame("Uncorrelated"=reg$Uncorrelated,
-                   "Time"=mean(reg$Time,na.rm=T),
-                   "Space"=mean(reg$Space,na.rm=T),
-                   "ST"=mean(reg$ST,na.rm=T))
-    }))
-    df$id=c(1:nrow(df))
-    df$city = city.names[city.index]
-    df = melt(df,id.vars=c("id","city"))
-}))
-ggplot(reg.melt)+
-    geom_histogram(aes(x=value,y=..density..),binwidth=0.01,fill=NA,
-                   color="grey",position="identity")+
-    geom_density(aes(x=value),adjust=2)+
-    xlab(expression(atop(italic(Pi)^"min") ) ) +
-    ylab("Probability Density")+
-    scale_y_sqrt()+
-    facet_grid(city~variable)
-dev.off()
-
-
-pi.max.min=merge(x=pi.melt,y=reg.melt,by=c("id","variable","city"),all.y=TRUE)
-colnames(pi.max.min)[7:8]=c("Max","Min")
-eqs <- ddply(pi.max.min,.(city,variable),function(i){
-    model = lm(i,formula=Max~Min)
-    
-    b=model$coefficients[1]
-    k=model$coefficients[2]
-    
-    eq <- substitute(italic(y) ==  b + k ~ italic(x) ,
-                     list(b = format(b, digits = 3),k = format(k, digits = 3)))
-    as.character(as.expression(eq))
-})
-tiff("plots/pi.max-min.cities.tiff",width=12*ppi,height=5*ppi,res=ppi)
-ggplot(pi.max.min,aes(x=Max,y=Min))+
-    geom_point(shape=21,fill="white",size=1,alpha=0.7)+
-    geom_smooth(method=lm,formula=y~x)+
-    xlab(expression(atop(italic(Pi)^"max") ) ) +
-    ylab(expression(atop(italic(Pi)^"min") ) ) +
-    geom_text(data=eqs,aes(x=0.25,y=0.75,label=V1),inherit.aes=FALSE,
-                  parse = TRUE,hjust=0,size=3)+
-    facet_grid(city~variable)
+tiff("plots/outliers.map.tiff",width=10*ppi,height=7.5*ppi,res=ppi)
+grid.arrange(gg.maps[[1]][[1]],gg.maps[[2]][[1]],gg.maps[[3]][[1]],
+             gg.maps[[1]][[2]],gg.maps[[2]][[2]],gg.maps[[3]][[2]],
+             ncol=3,nrow=2,widths=c(1.05,1,1.1))
 dev.off()
 ```
-
