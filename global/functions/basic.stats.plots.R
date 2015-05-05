@@ -66,7 +66,7 @@ map.plot = function(mapdir=NA,maplayer=NA,mapdf=NA,basemap=NA,
 
     gg.map<- gg.map + 
         geom_polygon(data=shape.df,aes.list,...) + 
-        theme_bw()  + 
+#         theme_bw()  + 
         coord_map() 
     
 }
