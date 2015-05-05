@@ -802,7 +802,7 @@ ggplot(data.hour.coor,aes(x=record,y=value))+#geom_point(size=3,shape=21,fill=NA
     facet_grid(variable~city,scales="free",
                labeller=labeller(variable=label_bquote(Pi["ST"]^.(x))))+
 #     geom_smooth(method=loess,formula=y~x)+
-    geom_smooth(method=lm,formula=y~log(x),se=F)+
+    geom_smooth(method=lm,formula=y~log(x),se=F,color="grey")+
     geom_text(aes(label=hour),size=2.5)+
     xlab("Activeness (Hourly records)") +
     ylab(expression(Pi["ST"])) +
@@ -888,84 +888,96 @@ data.space.coor$delta = with(data.space.coor,(pi.max-pi.min)/pi.min)
 data.space.coor=melt(data.space.coor,id.vars=c(1,2,5))
 data.space.coor$variable<-factor(data.space.coor$variable,
                                 labels=c("max","min",expression(delta)))
-data.space.coor$trans.x<-with(data.space.coor,
-                              ifelse(variable=="max",10,3))
 data.space.coor$outlier<-with(data.space.coor,
-#                               ifelse(space %in% c("60827","60633","60609","60612","60629","60666",
-#                                                   "90045","90028","90036","91302","91330","90067",
-#                                                   "11371","10452","11430","11368","11109","11001"),
-                              ifelse(space %in% c("60629","60666","90045","11371","11430"),
-                                     as.character(space),""))
-
-eqs.space <- dlply(data.space.coor,.(city,variable),function(i){
+                             ifelse(space %in% c("60629","60666","60609","60612","90045","11371","11430","11368","10452"),
+                                    as.character(space),""))
+eqs.prediction = data.frame()
+eqs.space <- ddply(data.space.coor,.(city,variable),function(i){
     if(i[1,"variable"]=="max"){ 
         model = lm(i,formula=value~atan(log(record/max(record))))
-        x = i$record
-        x.trans = atan(log(x/max(x)))
+        eqs.pred=data.frame(record = c(min(i$record):max(i$record)))
+#         eqs.pred$record = with(eqs.pred,atan(log(x/max(x))))
         }
     else if(i[1,"variable"]=="delta"){ 
         model = lm(i,formula=value~atan(log(record/100)))
-        x = i$record
-        x.trans = atan(log(x/100))
+        eqs.pred=data.frame(record = c(min(i$record):max(i$record)))
+#         eqs.pred$record = with(eqs.pred,atan(log(x/100)))
         }
     else{
-        model = lm(i,formula=value~atan(log(record*10)))
-        x=i$record
-        x.trans = atan(log(x*10))
+        model = lm(i,formula=value~atan(log(record*100)))
+        eqs.pred=data.frame(record = c(min(i$record):max(i$record)))
+#         eqs.pred$record = with(eqs.pred,atan(log(x*10)))
         }
 #     model =lm(i,formula=value~log(record))
+
+    eqs.pred$y = predict(model, newdata = eqs.pred);
+    eqs.pred$city = i[1,"city"]
+    eqs.pred$variable = i[1,"variable"]
+    eqs.prediction <<- rbind(eqs.prediction, eqs.pred)
+
     eq <- substitute(atop(italic(r)^2~"="~r2*","~~italic(p)~"="~pvalue),
                      list(r2 = format(summary(model)$r.squared, digits = 3),
                           pvalue = formatC(summary(model)[[4]][[8]],format="f")))
     eq <- as.character(as.expression(eq));
 
-    y = predict(model, newdata = x.trans)
-eq
-    #list(eq, data.frame(x=x,y=y))
+
+    eq
+
 })
 eqs.space$pos.x=rep(c(10,3,10),each=3)
-eqs.space$pos.y=rep(c(0.7,0.1,2.7),3)
-eqs.smooth <-lapply(split(data.space.coor,data.space.coor$variable),function(i){
-    if(i[1,"variable"]=="max"){ 
-        model = lm(i,formula=value~atan(log(record/max(record))))
-        smooth.data <- data.frame(record= atan(log(c(1:max(i$record))/max(i$record))) ) 
-        }
-    else if(i[1,"variable"]=="delta"){ 
-        model = lm(i,formula=value~atan(log(record/100)))
-        smooth.data <- data.frame(record=atan(log(c(1:max(i$record))/100)))  
-        }
-    else{
-        model = lm(i,formula=value~atan(log(record*10)))
-        smooth.data <- data.frame(record=atan(log(c(1:max(i$record))*10)))  
-        }
-    smooth.data$y <- predict(model, newdata = smooth.data) 
-    smooth.data
-})
-# eqs2 <- ddply(data.hour.coor,.(city,variable),function(i){
-#     model = lm(i,formula=value~record) 
-#     eq <- substitute(atop(italic(r)^2~"="~r2*","~~italic(p)~"="~pvalue),
-#                      list(r2 = format(summary(model)$r.squared, digits = 3),
-#                           pvalue = format(summary(model)[[4]][[8]],scientific=TRUE, digits = 3)))
-#     as.character(as.expression(eq));                 
-# })
-# 
-pdf("plots/fig8.coor.space3.pdf",width=7,height=3.5,colormodel = "grey")
+eqs.space$pos.y=rep(c(0.7,1.2,2.7),3)
+
+
+pdf("plots/fig8.coor.space.pdf",width=7,height=3.5,colormodel = "grey")
+theme_new<-theme_set(theme_bw(base_size = 10))
+theme_new<-theme_update(legend.position="none")
 ggplot(data.space.coor,aes(x=record,y=value))+#geom_point(size=3,shape=21,fill=NA)+
     facet_grid(variable~city,scales="free",
                labeller=labeller(variable=label_bquote(Pi["ST"]^.(x))))+
-    geom_smooth(method=lm,formula=y~atan(x-2),se=F)+
-    geom_point(size=1)+
-    geom_text(aes(label=space),vjust=1.5,size=1)+
+    geom_line(data=eqs.prediction,aes(x=record,y=y),color="grey")+
+#     geom_smooth(method=lm,formula=y~atan(x-2),se=F)+
+    geom_point(size=1,aes(shape=(outlier!="")))+
+    geom_text(aes(label=outlier),vjust=1.5,size=2.5)+
     xlab("Activeness (Hourly records)") +
     ylab(expression(Pi["ST"])) +
 #     ggtitle(expression(paste("Temporal Correlation (",Pi["ST"]," and Activeness)")))+
     scale_x_log10()+
     scale_y_continuous(labels=percent)+
-#     geom_text(data=eqs.space,aes(x=pos.x,y=pos.y,label=V1),inherit.aes=FALSE,
-#                   parse = TRUE,hjust=0,vjust=1,size=3)+
-    theme_bw(base_size = 10)
+    geom_text(data=eqs.space,aes(x=pos.x,y=pos.y,label=V1),inherit.aes=FALSE,
+                  parse = TRUE,hjust=0,vjust=1,size=3)#+
+#     theme_bw(base_size = 10)
 #     theme(axis.text = element_text(size=8),legend.position="none",
 #               axis.title = element_text(size=10),plot.title = element_text(size=10))
+dev.off()
+
+space.stat = do.call(rbind,lapply(1:3,function(city.index){
+    data.total = checkin.poly.list[[city.index]][,c(city.guide$spatial.attr[city.index],"cate_l1")]
+    colnames(data.total)[1]="space"
+    stat.byspace=ddply(data.total,.(space),function(i){
+        df = as.data.frame(xtabs(~cate_l1,data=i))
+        df$prob = with(df,Freq/sum(Freq))
+        df
+    })
+#     stat=as.data.frame(xtabs(~cate_l1,data=data.total))
+#     stat$prob=with(stat,Freq/sum(Freq))
+#     stat.byhour$mean.prob = rep(stat$prob,24)
+
+    stat.byspace$city = city.guide$city[city.index]
+    stat.byspace$space = as.character(stat.byspace$space)
+    stat.byspace
+}))
+pdf("plots/fig9.coor.space2.pdf",width=7,height=4.5,colormodel = "grey")
+theme_new<-theme_set(theme_bw(base_size = 10))
+theme_new<-theme_update(legend.position="none",
+          axis.text.x=element_text(angle=50,vjust=1,hjust=1))
+ggplot(space.stat[which(space.stat$space %in% c("60629","60666","60609","60612","90045","11371","11430","11368","10452")),])+
+    facet_wrap(~city+space,nrow=3)+
+#     geom_freqpoly(aes(x=as.integer(cate_l1),group=hour,color=hour),binwidth=1)
+    geom_histogram(aes(x=cate_l1,y=prob),stat="identity")+
+    geom_text(aes(x=cate_l1,y=prob,label=Freq,size=log(Freq)),hjust=1.2,vjust=0.5,angle=90,color="white")+
+#     scale_y_continuous(limits=c(0,0.6))+
+    scale_size_continuous(range=c(0.3,3))+
+    labs(y="PMF [Pr(X=x)]",x="Venue Category")
 dev.off()
 ```
 
@@ -1225,9 +1237,10 @@ ca.space = lapply(1:3, function(city.index){
 # analyze the outliers
 outlier.stat = do.call(rbind,lapply(1:3,function(city.index){
     data.total = checkin.poly.list[[city.index]]
-    data.stat = data2[[city.index]]
-    outlier = data.stat[which(data.stat$resid.max.T|data.stat$resid.min.T),
-                        c("space","resid.max.T","resid.min.T")]
+#     data.stat = data2[[city.index]]
+#     outlier = data.stat[which(data.stat$resid.max.T|data.stat$resid.min.T),
+#                         c("space","resid.max.T","resid.min.T")]
+    outlier = 
     data.outlier = merge(x=data.total,y=outlier,
                          by.x=city.guide$spatial.attr[city.index],
                          by.y="space",all.y=T)
