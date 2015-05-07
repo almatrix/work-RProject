@@ -821,7 +821,7 @@ hour.stat = do.call(rbind,lapply(1:3,function(city.index){
 #     })
 # })
 
-pdf("plots/fig7.coor.time2.pdf",width=7,height=4.5,colormodel = "grey")
+pdf("plots/fig7.hist.time.pdf",width=7,height=4.5,colormodel = "grey")
 theme_new<-theme_set(theme_bw(base_size = 10))
 theme_new<-theme_update(legend.position="none",
           axis.text.x=element_text(angle=50,vjust=1,hjust=1))
@@ -1014,7 +1014,7 @@ venue.stat = lapply(1:3,function(city.index){
 outlier.map<-lapply(1:3,function(city.index){
     theme_new<-theme_set(theme_bw(base_size = 8))
     theme_new<-theme_update(legend.position="none",
-                            plot.margin=unit(c(0,0.05,0,0.05), "cm"))
+                            plot.margin=unit(c(0,0.1,0,0.05), "cm"))
     google.map <- get_map(
         location = make_bbox(lon,lat,data=venue.stat[[city.index]]), 
         zoom = 11,maptype = 'roadmap', color = 'bw')
@@ -1070,7 +1070,8 @@ gg.outlier.table <- ggplot(outlier.table,aes(x=a,y=b)) +
 
 
 
-pdf("plots/fig10.outliers.map.pdf",width=10,height=7,colormodel = "grey")
+# pdf("plots/fig10.outliers.map.pdf",width=10,height=7,colormodel = "grey")
+jpeg("plots/fig10.outliers.map.jpeg",width=10*ppi,height=7*ppi,res=ppi)
 grid.arrange(
     arrangeGrob(outlier.map[[1]][[1]],
                 outlier.map[[1]][[2]][[1]],outlier.map[[1]][[2]][[2]],
