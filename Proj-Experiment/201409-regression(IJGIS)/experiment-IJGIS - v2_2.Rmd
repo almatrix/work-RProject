@@ -174,7 +174,8 @@ gg.Fx=ggplot(do.call(rbind,personal.stat.cdf))+
 #           plot.margin=unit(c(.05,.05,.05,.05),"npc"))
 # tiff("plots/truncated.plfit.tiff",width=8*ppi,height=3.5*ppi,res=ppi)
 # svg("plots/truncated.plfit.svg",width=4*ppi,height=1.75*ppi)
-pdf("plots/fig2.truncated.plfit.pdf",width=7,height=4,colormodel="grey")
+# pdf("plots/fig2.truncated.plfit.pdf",width=7,height=4,family="Arial",colormodel="grey")
+cairo_ps("plots/fig2.truncated.plfit.ps",width=7,height=4,antialias="gray")
 grid.arrange(gg.fx,gg.Fx,nrow=2)
 dev.off()
 
@@ -232,7 +233,7 @@ clusters.list = lapply(1:3,function(city.index){ # for each of the three dataset
     clusters        
 })
 save(clusters.list, file="data/clusters.list.Rda")
-
+load("data/clusters.list.Rda")
 gg.usercls = list();gg.stat=list();
 theme_new<-theme_set(theme_bw(base_size = 10))
 theme_new<-theme_update(legend.justification=c(0,0),legend.position=c(0,0),
@@ -291,8 +292,8 @@ lapply(1:3,function(city.index){
     NA
 
 })
-
-pdf("plots/fig3.user.agg.pdf",width=8,height=4.5,colormodel="grey")
+cairo_ps("plots/fig3.user.agg.ps",width=8,height=4.5,antialias = "gray")
+# pdf("plots/fig3.user.agg.pdf",width=8,height=4.5,colormodel="grey")
 grid.arrange(gg.usercls[[1]][[6]],gg.usercls[[1]][[3]],gg.usercls[[1]][[1]],
              gg.stat[[1]]+annotate("rect",xmin=800,xmax=1200,ymin=0.9,ymax=1.05,fill=NA,color="grey"),
              gg.stat[[2]]+annotate("rect",xmin=800,xmax=1200,ymin=0.9,ymax=1.05,fill=NA,color="grey"),
