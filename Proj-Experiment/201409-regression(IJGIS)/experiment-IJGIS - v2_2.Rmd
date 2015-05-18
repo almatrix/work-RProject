@@ -22,6 +22,7 @@ library(SDMTools)
 library(ca)
 library(plyr)
 #library(MASS)#fitdistr
+library(ggmap)#get_map
 
 source("../../global/functions/prepare.checkin.R")
 source("../../global/functions/basic.stats.plots.R")
@@ -83,7 +84,8 @@ gg.maps = lapply(1:3, function(city.index){
         annotate("text",x=city.guide$coord.x[city.index],y=city.guide$coord.y[city.index],
                  size=3,hjust=0,label=city.guide$label[city.index])
 })
-tiff("plots/fig1.data.review.tiff", width=10*ppi,height=4*ppi,res=ppi)
+# tiff("plots/fig1.data.review.tiff", width=10*ppi,height=4*ppi,res=ppi)
+pdf("plots/fig1.data.review.pdf",width=10,height=4,colormodel = "grey")
 grid.arrange(gg.maps[[1]],gg.maps[[2]],gg.maps[[3]],
              nrow=1, ncol=3, widths=c(1,0.85,1.15))
 dev.off()
@@ -174,9 +176,11 @@ gg.Fx=ggplot(do.call(rbind,personal.stat.cdf))+
 #           plot.margin=unit(c(.05,.05,.05,.05),"npc"))
 # tiff("plots/truncated.plfit.tiff",width=8*ppi,height=3.5*ppi,res=ppi)
 # svg("plots/truncated.plfit.svg",width=4*ppi,height=1.75*ppi)
-pdf("plots/fig2.truncated.plfit.pdf",width=7,height=4,colormodel="grey")
+# pdf("plots/fig2.truncated.plfit.pdf",width=7,height=4,colormodel="grey")
+postscript("plots/fig2.truncated.plfit.ps",width=7,height=4,bg="transparent",colormodel="gray",horizontal = F)
 grid.arrange(gg.fx,gg.Fx,nrow=2)
 dev.off()
+
 
 ```
 
@@ -232,7 +236,7 @@ clusters.list = lapply(1:3,function(city.index){ # for each of the three dataset
     clusters        
 })
 save(clusters.list, file="data/clusters.list.Rda")
-
+load("data/clusters.list.Rda")
 gg.usercls = list();gg.stat=list();
 theme_new<-theme_set(theme_bw(base_size = 10))
 theme_new<-theme_update(legend.justification=c(0,0),legend.position=c(0,0),
@@ -292,7 +296,9 @@ lapply(1:3,function(city.index){
 
 })
 
-pdf("plots/fig3.user.agg.pdf",width=8,height=4.5,colormodel="grey")
+# cairo_pdf("plots/fig3.user.agg.pdf",width=8,height=4.5,antialias = "gray")
+# svg("plots/fig3.user.agg.svg",width=8,height=4.5,antialias = "gray")
+postscript("plots/fig3.user.agg.ps",width=8,height=4.5,bg="transparent",colormodel="gray",horizontal = F)
 grid.arrange(gg.usercls[[1]][[6]],gg.usercls[[1]][[3]],gg.usercls[[1]][[1]],
              gg.stat[[1]]+annotate("rect",xmin=800,xmax=1200,ymin=0.9,ymax=1.05,fill=NA,color="grey"),
              gg.stat[[2]]+annotate("rect",xmin=800,xmax=1200,ymin=0.9,ymax=1.05,fill=NA,color="grey"),
@@ -683,7 +689,7 @@ colnames(time.space)=c("hour","space")
 entropies.etc.st.df = cbind(entropies.etc.st.df,time.space) 
 
 
-```#
+```
 
 ```{r}
 ## plotting
@@ -695,7 +701,8 @@ data.pi.density$Condition = factor(data.pi.density$Condition)
 data.pi.density$Condition = relevel(data.pi.density$Condition,"Time")
 
 
-pdf("plots/fig4.pi.density.pdf",width=7,height=3.5,colormodel="grey")
+# pdf("plots/fig4.pi.density.pdf",width=7,height=3.5,colormodel="grey")
+postscript("plots/fig4.pi.density.ps",width=7,height=3.5,bg="transparent",colormodel="gray",horizontal = F)
 ggplot(data.pi.density)+
     geom_histogram(aes(x=value,y=..density..,group=variable),binwidth=0.01,fill=NA,
                    color="grey",position="identity")+
@@ -719,8 +726,8 @@ data.individual.coor = melt(entropies.etc.df[which(entropies.etc.df$Condition=="
                             id.vars=c(3,4))
 data.individual.coor$variable<-factor(data.individual.coor$variable,
                                       labels=c("max","min",expression(delta)))
-
-pdf("plots/fig5.coor.indiv.pdf",width=7,height=3.5,colormodel="grey")
+postscript("plots/fig5.coor.indiv.ps",width=7,height=3.5,bg="transparent",colormodel="gray",horizontal = F)
+# pdf("plots/fig5.coor.indiv.pdf",width=7,height=3.5,colormodel="grey")
 ggplot(data.individual.coor,
        aes(x=Records,y=value))+
     facet_grid(variable~City,scale="free",
@@ -770,14 +777,15 @@ eqs$pos.y=rep(c(0.88,0.5,0.75),3)
 #     as.character(as.expression(eq));                 
 # })
 # 
-pdf("plots/fig6.coor.time.pdf",width=7,height=3.5,colormodel = "grey")
+# pdf("plots/fig6.coor.time.pdf",width=7,height=3.5,colormodel = "grey")
+postscript("plots/fig6.coor.time.ps",width=7,height=4.1,bg="transparent",colormodel="gray",horizontal = F)
 ggplot(data.hour.coor,aes(x=record,y=value))+#geom_point(size=3,shape=21,fill=NA)+
     facet_grid(variable~city,scales="free",
                labeller=labeller(variable=label_bquote(Pi["ST"]^.(x))))+
 #     geom_smooth(method=loess,formula=y~x)+
     geom_smooth(method=lm,formula=y~log(x),se=F,color="grey")+
-    geom_text(data=data.hour.coor[!(data.hour.coor$hour %in% c("01","05","19")),],aes(label=hour),size=2)+
-    geom_text(data=data.hour.coor[which(data.hour.coor$hour %in% c("01","05","19")),],aes(label=hour),size=3)+
+    geom_text(data=data.hour.coor[!(data.hour.coor$hour %in% c("01","05","19")),],aes(label=hour),size=1.5,color="#666666")+
+    geom_text(data=data.hour.coor[which(data.hour.coor$hour %in% c("01","05","19")),],aes(label=hour),size=2)+
     xlab("Hourly check-in frequency") +
     ylab(expression(Pi["ST"])) +
 #     ggtitle(expression(paste("Temporal Correlation (",Pi["ST"]," and Activeness)")))+
@@ -822,29 +830,21 @@ hour.stat = do.call(rbind,lapply(1:3,function(city.index){
 #     })
 # })
 
-pdf("plots/fig7.hist.time.pdf",width=7,height=4.5,colormodel = "grey")
+hour.stat$log.freq=with(hour.stat,ifelse(Freq==0,0,log(Freq)))
+postscript("plots/fig7.hist.time.ps",width=7,height=4,bg="transparent",colormodel="gray",horizontal = F)
+# pdf("plots/fig7.hist.time.pdf",width=7,height=4,colormodel = "grey")
 theme_new<-theme_set(theme_bw(base_size = 10))
 theme_new<-theme_update(legend.position="none",
           axis.text.x=element_text(angle=50,vjust=1,hjust=1))
+
 ggplot(hour.stat[which(hour.stat$hour %in% c("01","05","19")),])+
     facet_grid(city~hour)+
 #     geom_freqpoly(aes(x=as.integer(cate_l1),group=hour,color=hour),binwidth=1)
     geom_histogram(aes(x=cate_l1,y=prob),stat="identity")+
-    geom_text(aes(x=cate_l1,y=prob,label=Freq,size=log(Freq)),vjust=-0.2)+
+    geom_text(aes(x=cate_l1,y=prob,label=Freq,size=log.freq),vjust=-0.2)+
     scale_y_continuous(limits=c(0,0.6))+
-    scale_size_continuous(range=c(0.3,3))+
+    scale_size_continuous(range=c(0.3,2.5))+
     labs(y="PMF [Pr(X=x)]",x="Venue Category")
-#     geom_histogram(aes(x=cate_l1,y=mean.prob),stat="identity",fill=NA,color="grey")
-#     coord_flip()+
-#     scale_y_log10()
-#     scale_y_sqrt(breaks=c(100,2500,10000))+
-#     scale_y_continuous(limit=c(0,10000))+
-#     scale_y_log10(breaks=c(1,10,100,1000,10000))+
-#     annotate("rect",xmin=4.1,xmax=5.9,ymin=5000,ymax=10000,alpha=0.3)+
-#     geom_text(aes(label=type),x=5,y=85,color="white")+
-#     theme(axis.text = element_text(size=7),legend.position="none",
-#           axis.text.x=element_text(angle=45,vjust=1,hjust=1),
-#           axis.title = element_text(size=10),plot.title = element_text(size=10))
 dev.off()
 ```
 
@@ -939,8 +939,8 @@ eqs.space <- ddply(data.space.coor,.(city,variable),function(i){
 eqs.space$pos.x=rep(c(10,3,10),each=3)
 eqs.space$pos.y=rep(c(0.7,1.2,2.7),3)
 
-
-pdf("plots/fig8.coor.space.pdf",width=8,height=4.5,colormodel = "grey")
+postscript("plots/fig8.coor.space.ps",width=8,height=4.5,bg="transparent",colormodel="gray",horizontal = F)
+# pdf("plots/fig8.coor.space.pdf",width=8,height=4.5,colormodel = "grey")
 theme_new<-theme_set(theme_bw(base_size = 10))
 #theme_new<-theme_update(legend.position="none")
 ggplot(data.space.coor,aes(x=record,y=value))+
@@ -977,15 +977,16 @@ space.stat = do.call(rbind,lapply(1:3,function(city.index){
     stat.byspace
 }))
 space.stat=merge(space.stat,outlier.list,by.x="space",by.y="name")
-
-pdf("plots/fig9.hist.space.pdf",width=7,height=4.5,colormodel = "grey")
+space.stat$log.freq=with(space.stat,ifelse(Freq==0,0,log(Freq)))
+postscript("plots/fig9.hist.space.ps",width=7,height=4,bg="transparent",colormodel="gray",horizontal = F)
+# pdf("plots/fig9.hist.space.pdf",width=7,height=4.5,colormodel = "grey")
 theme_new<-theme_set(theme_bw(base_size = 10))
 theme_new<-theme_update(legend.position="none",
           axis.text.x=element_text(angle=50,vjust=1,hjust=1))
 ggplot(space.stat)+
     facet_wrap(~city+space,nrow=3)+
     geom_histogram(aes(x=cate_l1,y=prob),stat="identity")+
-    geom_text(aes(x=cate_l1,y=prob,label=Freq,size=log(Freq)),hjust=1.2,vjust=0.5,angle=90,color="white")+
+    geom_text(aes(x=cate_l1,y=prob,label=Freq,size=log.freq),hjust=1.2,vjust=0.5,angle=90,color="white")+
     geom_text(aes(x=5,y=0.75,label=type),size=3)+
     scale_size_continuous(range=c(0.3,3))+
     labs(y="PMF [Pr(X=x)]",x="Venue Category")
@@ -1071,8 +1072,8 @@ gg.outlier.table <- ggplot(outlier.table,aes(x=a,y=b)) +
 
 
 
-# pdf("plots/fig10.outliers.map.pdf",width=10,height=7,colormodel = "grey")
-jpeg("plots/fig10.outliers.map.jpeg",width=10*ppi,height=7*ppi,res=ppi)
+pdf("plots/fig10.outliers.map.pdf",width=10,height=7,colormodel = "grey")
+# jpeg("plots/fig10.outliers.map.jpeg",width=10*ppi,height=7*ppi,res=ppi)
 grid.arrange(
     arrangeGrob(outlier.map[[1]][[1]],
                 outlier.map[[1]][[2]][[1]],outlier.map[[1]][[2]][[2]],
