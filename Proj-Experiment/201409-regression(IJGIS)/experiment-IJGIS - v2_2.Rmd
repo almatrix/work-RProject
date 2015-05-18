@@ -950,7 +950,7 @@ eqs.space$pos.x=rep(c(10,3,10),each=3)
 eqs.space$pos.y=rep(c(0.7,1.2,2.7),3)
 
 postscript("plots/fig8.coor.space.ps",width=8,height=4.5,bg="transparent",colormodel="gray",horizontal = F)
-# pdf("plots/fig8.coor.space.pdf",width=8,height=4.5,colormodel = "grey")
+pdf("plots/fig8.coor.space.pdf",width=8,height=4.5,colormodel = "grey")
 theme_new<-theme_set(theme_bw(base_size = 10))
 #theme_new<-theme_update(legend.position="none")
 ggplot(data.space.coor,aes(x=record,y=value))+
@@ -959,8 +959,8 @@ ggplot(data.space.coor,aes(x=record,y=value))+
     geom_line(data=smooth.space,aes(x=record,y=y),color="grey")+
 #     geom_smooth(method=lm,formula=y~atan(x-2),se=F)+
     geom_point(aes(shape=type,size=type))+
-#     geom_rect(data=data.space.coor[which(data.space.coor$type%in%c("A","B")),],
-#         aes(xmin=exp(log(record)-0.23),xmax=exp(log(record)+0.23),ymin=value-0.1*(max(value)-min(value)),ymax=value),fill="#eeeeee")+
+#     geom_textbox(data=data.space.coor[which(data.space.coor$type %in% c("A","B")),],aes(label=label),size=2,bgcol = NA, vjust=1.5,bgfill="#eeeeee",expand_h=2)+
+   
     geom_text(aes(label=label),vjust=1.5,size=2.5)+
     xlab("Check-in frequency by zip code") +
     ylab(expression(Pi["ST"])) +
