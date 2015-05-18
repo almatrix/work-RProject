@@ -41,48 +41,11 @@
 /rgb { setrgbcolor } bind def
 /s   { scalefont setfont } bind def
 % end   .ps.prolog
-% begin encoding
-/WinAnsiEncoding [
- /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef
- /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef
- /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef
- /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef
- /space /exclam /quotedbl /numbersign /dollar /percent /ampersand /quoteright
- /parenleft /parenright /asterisk /plus /comma /minus /period /slash
- /zero /one /two /three /four /five /six /seven
- /eight /nine /colon /semicolon /less /equal /greater /question
- /at /A /B /C /D /E /F /G
- /H /I /J /K /L /M /N /O
- /P /Q /R /S /T /U /V /W
- /X /Y /Z /bracketleft /backslash /bracketright /asciicircum /underscore
- /grave /a /b /c /d /e /f /g
- /h /i /j /k /l /m /n /o
- /p /q /r /s /t /u /v /w
- /x /y /z /braceleft /bar /braceright /asciitilde /.notdef
- /Euro /.notdef /quotesinglbase /florin /quotedblbase /ellipsis /dagger /daggerdbl
- /circumflex /perthousand /Scaron /guilsinglleft /OE /.notdef /Zcaron /.notdef
- /.notdef /quoteleft /quoteright /quotedblleft /quotedblright /bullet /endash /emdash
- /tilde /trademark /scaron /guilsinglright /oe /.notdef /zcaron /Ydieresis
- /space /exclamdown /cent /sterling /currency /yen /brokenbar /section
- /dieresis /copyright /ordfeminine /guillemotleft /logicalnot /hyphen /registered /macron
- /degree /plusminus /twosuperior /threesuperior /acute /mu /paragraph /periodcentered
- /cedilla /onesuperior /ordmasculine /guillemotright /onequarter /onehalf /threequarters /questiondown
- /Agrave /Aacute /Acircumflex /Atilde /Adieresis /Aring /AE /Ccedilla
- /Egrave /Eacute /Ecircumflex /Edieresis /Igrave /Iacute /Icircumflex /Idieresis
- /Eth /Ntilde /Ograve /Oacute /Ocircumflex /Otilde /Odieresis /multiply
- /Oslash /Ugrave /Uacute /Ucircumflex /Udieresis /Yacute /Thorn /germandbls
- /agrave /aacute /acircumflex /atilde /adieresis /aring /ae /ccedilla
- /egrave /eacute /ecircumflex /edieresis /igrave /iacute /icircumflex /idieresis
- /eth /ntilde /ograve /oacute /ocircumflex /otilde /odieresis /divide
- /oslash /ugrave /uacute /ucircumflex /udieresis /yacute /thorn /ydieresis
-]
- def
-% end encoding
 %%IncludeResource: font Helvetica
 /Helvetica findfont
 dup length dict begin
   {1 index /FID ne {def} {pop pop} ifelse} forall
-  /Encoding WinAnsiEncoding def
+  /Encoding ISOLatin1Encoding def
   currentdict
   end
 /Font1 exch definefont pop
@@ -90,7 +53,7 @@ dup length dict begin
 /Helvetica-Bold findfont
 dup length dict begin
   {1 index /FID ne {def} {pop pop} ifelse} forall
-  /Encoding WinAnsiEncoding def
+  /Encoding ISOLatin1Encoding def
   currentdict
   end
 /Font2 exch definefont pop
@@ -98,7 +61,7 @@ dup length dict begin
 /Helvetica-Oblique findfont
 dup length dict begin
   {1 index /FID ne {def} {pop pop} ifelse} forall
-  /Encoding WinAnsiEncoding def
+  /Encoding ISOLatin1Encoding def
   currentdict
   end
 /Font3 exch definefont pop
@@ -106,7 +69,7 @@ dup length dict begin
 /Helvetica-BoldOblique findfont
 dup length dict begin
   {1 index /FID ne {def} {pop pop} ifelse} forall
-  /Encoding WinAnsiEncoding def
+  /Encoding ISOLatin1Encoding def
   currentdict
   end
 /Font4 exch definefont pop
@@ -231,24 +194,6 @@ o
 192.25 499.81 12.89 2.86 r p2
 206.57 499.81 12.89 3.19 r p2
 220.89 499.81 12.89 0.94 r p2
-/Font1 findfont 4 s
-1 setgray
-214.45 503.00 (98) 1.20 90 t
-200.13 502.67 (88) 1.20 90 t
-142.86 502.58 (85) 1.20 90 t
-/Font1 findfont 6 s
-100.62 521.01 (652) 1.20 90 t
-/Font1 findfont 4 s
-228.77 500.76 (29) 1.20 90 t
-/Font1 findfont 1 s
-127.46 499.81 (0) 1.20 90 t
-/Font1 findfont 4 s
-185.81 502.74 (90) 1.20 90 t
-171.50 501.50 (52) 1.20 90 t
-/Font1 findfont 2 s
-113.50 499.94 (4) 1.20 90 t
-/Font1 findfont 3 s
-156.82 500.56 (23) 1.20 90 t
 /Font1 findfont 9 s
 0 setgray
 155.74 523.91 (B) .5 0 t
@@ -366,26 +311,6 @@ o
 341.91 499.81 12.89 0.07 r p2
 356.23 499.81 12.89 2.50 r p2
 370.55 499.81 12.89 1.58 r p2
-/Font1 findfont 6 s
-1 setgray
-336.19 505.03 (419) 1.20 90 t
-/Font1 findfont 5 s
-378.79 501.39 (127) 1.20 90 t
-292.87 502.97 (254) 1.20 90 t
-/Font1 findfont 4 s
-321.15 500.42 (49) 1.20 90 t
-/Font1 findfont 5 s
-364.47 502.32 (201) 1.20 90 t
-/Font1 findfont 4 s
-263.87 500.60 (63) 1.20 90 t
-/Font1 findfont 1 s
-277.12 499.81 (0) 1.20 90 t
-/Font1 findfont 2 s
-349.07 499.89 (6) 1.20 90 t
-/Font1 findfont 5 s
-307.19 503.14 (267) 1.20 90 t
-/Font1 findfont 7 s
-250.63 519.00 (1542) 1.20 90 t
 /Font1 findfont 9 s
 0 setgray
 305.40 523.91 (B) .5 0 t
@@ -503,26 +428,6 @@ o
 491.56 499.81 12.89 0.04 r p2
 505.88 499.81 12.89 1.17 r p2
 520.20 499.81 12.89 30.48 r p2
-/Font1 findfont 7 s
-1 setgray
-529.16 530.30 (3436) 1.20 90 t
-/Font1 findfont 3 s
-398.85 500.01 (22) 1.20 90 t
-/Font1 findfont 1 s
-412.45 499.81 (0) 1.20 90 t
-/Font1 findfont 5 s
-514.12 500.99 (132) 1.20 90 t
-485.48 501.60 (201) 1.20 90 t
-/Font1 findfont 4 s
-470.81 500.12 (34) 1.20 90 t
-/Font1 findfont 2 s
-498.73 499.86 (5) 1.20 90 t
-/Font1 findfont 5 s
-442.53 502.15 (263) 1.20 90 t
-/Font1 findfont 3 s
-456.13 499.94 (14) 1.20 90 t
-/Font1 findfont 1 s
-426.77 499.81 (0) 1.20 90 t
 /Font1 findfont 9 s
 0 setgray
 455.05 523.91 (A) .5 0 t
@@ -640,27 +545,6 @@ o
 192.25 443.68 12.89 0.00 r p2
 206.57 443.68 12.89 0.06 r p2
 220.89 443.68 12.89 34.54 r p2
-/Font1 findfont 5 s
-1 setgray
-157.54 443.97 (107) 1.20 90 t
-/Font1 findfont 4 s
-185.81 443.93 (89) 1.20 90 t
-/Font1 findfont 1 s
-113.14 443.68 (0) 1.20 90 t
-/Font1 findfont 3 s
-171.14 443.71 (11) 1.20 90 t
-/Font1 findfont 6 s
-143.58 444.93 (461) 1.20 90 t
-/Font1 findfont 3 s
-99.54 443.71 (11) 1.20 90 t
-/Font1 findfont 1 s
-127.46 443.68 (0) 1.20 90 t
-/Font1 findfont 8 s
-230.21 478.22 (12764) 1.20 90 t
-/Font1 findfont 3 s
-214.09 443.75 (23) 1.20 90 t
-/Font1 findfont 1 s
-199.06 443.68 (0) 1.20 90 t
 /Font1 findfont 9 s
 0 setgray
 155.74 467.78 (A) .5 0 t
@@ -778,24 +662,6 @@ o
 341.91 443.68 12.89 0.05 r p2
 356.23 443.68 12.89 0.60 r p2
 370.55 443.68 12.89 31.19 r p2
-/Font1 findfont 6 s
-1 setgray
-336.19 444.39 (358) 1.20 90 t
-/Font1 findfont 4 s
-321.15 443.80 (61) 1.20 90 t
-/Font1 findfont 3 s
-349.43 443.73 (23) 1.20 90 t
-/Font1 findfont 9 s
-380.22 474.87 (15837) 1.20 90 t
-/Font1 findfont 4 s
-278.19 443.75 (32) 1.20 90 t
-/Font1 findfont 5 s
-307.19 444.04 (183) 1.20 90 t
-264.23 443.93 (123) 1.20 90 t
-364.47 444.28 (305) 1.20 90 t
-249.91 444.11 (217) 1.20 90 t
-/Font1 findfont 7 s
-293.59 446.36 (1361) 1.20 90 t
 /Font1 findfont 9 s
 0 setgray
 305.40 467.78 (A) .5 0 t
@@ -913,25 +779,6 @@ o
 491.56 443.68 12.89 0.96 r p2
 505.88 443.68 12.89 0.79 r p2
 520.20 443.68 12.89 0.41 r p2
-/Font1 findfont 7 s
-1 setgray
-400.29 471.65 (2091) 1.20 90 t
-/Font1 findfont 1 s
-412.45 443.71 (2) 1.20 90 t
-/Font1 findfont 5 s
-442.53 445.96 (170) 1.20 90 t
-/Font1 findfont 4 s
-513.76 444.47 (59) 1.20 90 t
-/Font1 findfont 1 s
-426.77 443.70 (1) 1.20 90 t
-/Font1 findfont 4 s
-499.44 444.65 (72) 1.20 90 t
-/Font1 findfont 5 s
-456.85 445.77 (156) 1.20 90 t
-/Font1 findfont 4 s
-485.12 444.83 (86) 1.20 90 t
-470.81 444.43 (56) 1.20 90 t
-528.08 444.10 (31) 1.20 90 t
 /Font1 findfont 9 s
 0 setgray
 455.05 467.78 (B) .5 0 t
@@ -1049,24 +896,6 @@ o
 192.25 387.55 12.89 2.31 r p2
 206.57 387.55 12.89 0.80 r p2
 220.89 387.55 12.89 1.70 r p2
-/Font1 findfont 4 s
-1 setgray
-214.45 388.36 (81) 1.20 90 t
-/Font1 findfont 5 s
-186.17 389.28 (174) 1.20 90 t
-200.49 389.87 (234) 1.20 90 t
-229.13 389.26 (172) 1.20 90 t
-/Font1 findfont 7 s
-100.98 407.93 (2060) 1.20 90 t
-/Font1 findfont 2 s
-113.50 387.58 (3) 1.20 90 t
-/Font1 findfont 1 s
-127.46 387.55 (0) 1.20 90 t
-/Font1 findfont 5 s
-157.54 389.51 (198) 1.20 90 t
-171.85 390.98 (346) 1.20 90 t
-/Font1 findfont 6 s
-143.58 391.66 (415) 1.20 90 t
 /Font1 findfont 9 s
 0 setgray
 155.74 411.65 (B) .5 0 t
@@ -1184,26 +1013,6 @@ o
 341.91 387.55 12.89 0.01 r p2
 356.23 387.55 12.89 0.04 r p2
 370.55 387.55 12.89 35.99 r p2
-/Font1 findfont 2 s
-1 setgray
-334.75 387.57 (5) 1.20 90 t
-/Font1 findfont 1 s
-348.71 387.56 (2) 1.20 90 t
-/Font1 findfont 8 s
-379.86 423.54 (8768) 1.20 90 t
-/Font1 findfont 1 s
-277.12 387.55 (0) 1.20 90 t
-/Font1 findfont 4 s
-292.51 387.80 (61) 1.20 90 t
-/Font1 findfont 3 s
-363.75 387.60 (10) 1.20 90 t
-/Font1 findfont 1 s
-320.07 387.56 (1) 1.20 90 t
-262.80 387.55 (0) 1.20 90 t
-/Font1 findfont 3 s
-306.47 387.66 (25) 1.20 90 t
-/Font1 findfont 2 s
-248.84 387.57 (5) 1.20 90 t
 /Font1 findfont 9 s
 0 setgray
 305.40 411.65 (A) .5 0 t
@@ -1321,25 +1130,6 @@ o
 491.56 387.55 12.89 0.00 r p2
 505.88 387.55 12.89 0.15 r p2
 520.20 387.55 12.89 35.03 r p2
-/Font1 findfont 2 s
-1 setgray
-470.09 387.57 (6) 1.20 90 t
-/Font1 findfont 4 s
-456.49 387.68 (56) 1.20 90 t
-/Font1 findfont 9 s
-529.88 422.58 (15706) 1.20 90 t
-/Font1 findfont 4 s
-485.12 387.74 (83) 1.20 90 t
-/Font1 findfont 1 s
-498.37 387.55 (0) 1.20 90 t
-/Font1 findfont 4 s
-513.76 387.71 (69) 1.20 90 t
-/Font1 findfont 1 s
-398.13 387.56 (1) 1.20 90 t
-412.45 387.55 (0) 1.20 90 t
-426.77 387.55 (0) 1.20 90 t
-/Font1 findfont 6 s
-442.89 388.48 (415) 1.20 90 t
 /Font1 findfont 9 s
 0 setgray
 455.05 411.65 (A) .5 0 t
