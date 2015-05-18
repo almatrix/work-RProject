@@ -950,7 +950,7 @@ eqs.space$pos.x=rep(c(10,3,10),each=3)
 eqs.space$pos.y=rep(c(0.7,1.2,2.7),3)
 
 postscript("plots/fig8.coor.space.ps",width=8,height=4.5,bg="transparent",colormodel="gray",horizontal = F)
-pdf("plots/fig8.coor.space.pdf",width=8,height=4.5,colormodel = "grey")
+# pdf("plots/fig8.coor.space.pdf",width=8,height=4.5,colormodel = "grey")
 theme_new<-theme_set(theme_bw(base_size = 10))
 #theme_new<-theme_update(legend.position="none")
 ggplot(data.space.coor,aes(x=record,y=value))+
