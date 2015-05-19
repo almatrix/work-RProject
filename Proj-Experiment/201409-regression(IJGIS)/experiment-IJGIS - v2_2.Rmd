@@ -29,6 +29,7 @@ source("../../global/functions/basic.stats.plots.R")
 source("../../global/functions/spatial.analysis.R")
 source("../../global/functions/etc.R")
 source("../../global/functions/truncated.power.law.R")
+source("../../global/functions/geom_textbox.R")
 
 # ############
 # global variable
@@ -71,29 +72,56 @@ save(checkin.poly.list,file="data/checkin.poly.list.Rda")
 load("data/checkin.poly.list.Rda")
 
 ######
-gg.maps = lapply(1:3, function(city.index){
+maps.data = lapply(1:3, function(city.index){
     point.data = checkin.poly.list[[city.index]]
-#     sample.index = sample(1:nrow(point.data),floor(nrow(point.data)*0.2))
-    point.plot(point.data,
-#                alpha=0.3,size=1,fill=NA,color="#333333",
-               shape=21,color="white",fill="#111111",size=1,alpha=0.2,
+    
+    ###########
+    # make statistics
+    point.data$latlon=with(point.data,paste(lat,lon))
+    point.data.stat = as.data.frame(xtabs(~latlon,data=point.data))
+    point.data.stat = merge(point.data.stat,point.data[,c("lat","lon","latlon")],
+                            by="latlon",all.x=T)
+    
+    point.data.stat = point.data.stat[order(point.data.stat$Freq),c(2:4)]
+    
+    point.data.stat
+})
+
+theme_new<-theme_set(theme_bw(base_size = 8))
+theme_new<-theme_update(legend.position="none")
+gg.maps = lapply(1:3, function(city.index){
+    plot.data = maps.data[[city.index]]
+    plot.data$log.freq = with(plot.data,log(Freq))
+#     plot.data$log.freq.inv = with(plot.data,2*mean(log.freq)-log.freq)
+    point.plot(plot.data,
+               more.aes=aes_string(size="log.freq"),
+               shape=21,fill="black",color="white",alpha=0.2,
                basemap = map.plot(mapdir="../../global/data/shapefiles",
                                   maplayer=city.guide$shapefile.boundary[city.index],
                                   size=0.2,color="grey",fill=NA))+
         ggtitle(city.guide$city[city.index])+
-        xlab("Longitude")+ylab("Latitude")+theme_bw(base_size = 10)#+
-#         annotate("text",x=city.guide$coord.x[city.index],y=city.guide$coord.y[city.index],
-#                  size=3,hjust=0,label=city.guide$label[city.index])
+        xlab("Longitude")+ylab("Latitude")+
+        scale_size_continuous(range=c(0.5,4.5))
+                   
+    
+# #     sample.index = sample(1:nrow(point.data),floor(nrow(point.data)*0.2))
+#     point.plot(point.data,
+# #                alpha=0.3,size=1,fill=NA,color="#333333",
+#                shape=21,color="white",fill="black",size=1.2,alpha=0.2,
+#                basemap = map.plot(mapdir="../../global/data/shapefiles",
+#                                   maplayer=city.guide$shapefile.boundary[city.index],
+#                                   size=0.2,color="grey",fill=NA))+
+#         ggtitle(city.guide$city[city.index])+
+#         xlab("Longitude")+ylab("Latitude")+theme_bw(base_size = 10)#+
+# #         annotate("text",x=city.guide$coord.x[city.index],y=city.guide$coord.y[city.index],
+# #                  size=3,hjust=0,label=city.guide$label[city.index])
 })
-tiff("plots/fig1.data.review.tiff", width=10*ppi,height=4*ppi,res=ppi)
+tiff("plots/fig1.data.review.tiff", width=7.5*ppi,height=3*ppi,res=ppi)
 # pdf("plots/fig1.data.review.pdf",width=10,height=4,colormodel = "grey")
 grid.arrange(gg.maps[[1]],gg.maps[[2]],gg.maps[[3]],
-             nrow=1, ncol=3, widths=c(1,0.85,1.15))
+             nrow=1, ncol=3, widths=c(1,0.9,1.15))
 dev.off()
-#####
-tiff("plots/test.tiff",width=4*ppi,height=4*ppi,res=ppi)
-gg.maps[[1]]
-dev.off()
+
 ```
 
 ##### 1.2 Data sparsity 
@@ -241,15 +269,16 @@ clusters.list = lapply(1:3,function(city.index){ # for each of the three dataset
 })
 save(clusters.list, file="data/clusters.list.Rda")
 load("data/clusters.list.Rda")
-gg.usercls = list();gg.stat=list();
-theme_new<-theme_set(theme_bw(base_size = 10))
-theme_new<-theme_update(legend.justification=c(0,0),legend.position=c(0,0),
-                        legend.text = element_text(size=9),
-                        legend.title=element_text(size=8),
-                        legend.key.height=unit(1,"line"),
-                        legend.key.width=unit(1,"line"))
+gg.usercls = list();
+# theme_new<-theme_set(theme_bw(base_size = 10))
+# theme_new<-theme_update(legend.justification=c(0,0),legend.position=c(0,0),
+#                         legend.text = element_text(size=9),
+#                         legend.title=element_text(size=8),
+#                         legend.key.height=unit(1,"line"),
+#                         legend.key.width=unit(1,"line"))
+stats=data.frame()
 lapply(1:3,function(city.index){
-    stats=data.frame()
+    
     gg.usercls[[city.index]] <<- lapply(clusters.list[[city.index]],function(i){
     #     idx<<-idx+1
         
@@ -261,53 +290,47 @@ lapply(1:3,function(city.index){
             scale_y_continuous(limits=c(0,1.8))+
             xlab("Number of records per cluster")+
             ylab("Probability density")+
-#             theme(axis.text.x=element_text(face=c("plain","bold","plain","plain")))+
-    #         geom_vline(xintercept=xintercepts[idx])+
             annotate("text",x=100,y=1.6,size=2.7,
-                      label=paste("Between SS / Total SS:",format.percent(i[[2]]),
+                      label=paste("Number of clusters [k]:",nrow(i[[3]]),
+                                  "\nBetween SS / Total SS:",format.percent(i[[2]]),
                                   "\nClusters (> 30 records):",
-                                  format.percent(length(which(i[[3]]$Freq>=30))/nrow(i[[3]]))))+
-            ggtitle(paste0(nrow(i[[3]])," Clusters (",city.guide$city[city.index],")"))
-#             theme(strip.text=element_text(size=8),axis.text = element_text(size=8),
-#                       axis.title = element_text(size=8),plot.title = element_text(size=10),
-#                   plot.margin=unit(c(.05,.05,.05,.05),"npc"))
+                                  format.percent(length(which(i[[3]]$Freq>=30))/nrow(i[[3]]))))
     
-        stats <<- rbind(stats,data.frame("Clusters"=nrow(i[[3]]),
+        stats <<- rbind(stats,data.frame("city"=city.guide$city[city.index],
+                            "Clusters"=nrow(i[[3]]),
                             "heteg.preserv."=i[[2]],
                             "over.30"=length(which(i[[3]]$Freq>=30))/nrow(i[[3]])))
         gg                     
     })
     
-    
-    gg.stat[[city.index]] <<- ggplot(melt(data=stats,id.vars="Clusters"),aes(x=Clusters,y=value))+
-        geom_line(aes(group=variable))+geom_point(aes(shape=variable,group=variable))+
-    #     theme_grey(base_size = 10)+
-        ggtitle(paste0("Trend (",city.guide$city[city.index],")"))+
-        xlab("Number of clusters [k]")+
-        ylab("Proportion")+
-        scale_shape_discrete(name="Criteria")+
-        scale_y_continuous(labels=percent)
-#         theme(legend.justification=c(0,0),legend.position=c(0,0),
-#               legend.text = element_text(size=6),legend.title=element_text(size=8),
-#               legend.key.height=unit(1,"line"),legend.key.width=unit(1,"line"))
-
-#         theme(strip.text=element_text(size=8),axis.text = element_text(size=8),
-#               axis.title = element_text(size=8),plot.title = element_text(size=10),
-#               
-#               plot.margin=unit(c(.05,.05,.05,.05),"npc"))
-    
     NA
 
 })
+stats$xmin=c(rep(700,16),rep(1800,9))
+stats$xmax=c(rep(1300,16),rep(5500,9))
+stats$ymin=rep(0.95,25)
+stats$ymax=rep(1.00,25)
 
-# cairo_pdf("plots/fig3.user.agg.pdf",width=8,height=4.5,antialias = "gray")
-# svg("plots/fig3.user.agg.svg",width=8,height=4.5,antialias = "gray")
-postscript("plots/fig3.user.agg.ps",width=8,height=4.5,bg="transparent",colormodel="gray",horizontal = F)
-grid.arrange(gg.usercls[[1]][[6]],gg.usercls[[1]][[3]],gg.usercls[[1]][[1]],
-             gg.stat[[1]]+annotate("rect",xmin=800,xmax=1200,ymin=0.9,ymax=1.05,fill=NA,color="grey"),
-             gg.stat[[2]]+annotate("rect",xmin=800,xmax=1200,ymin=0.9,ymax=1.05,fill=NA,color="grey"),
-             gg.stat[[3]]+annotate("rect",xmin=2100,xmax=2900,ymin=0.9,ymax=1.05,fill=NA,color="grey"),
-             ncol=3,nrow=2)
+gg.stat <- ggplot(melt(stats,id.vars=c(1,2,5:8)),
+                  aes(x=Clusters,y=value,group=variable,shape=variable))+
+    facet_grid(~city,scale="free")+
+    geom_rect(aes(xmin=xmin,xmax=xmax,ymin=ymin,ymax=ymax),fill="#cccccc",color=NA)+
+    geom_hline(yintercept=0.95,linetype="dotted",color="#333333",size=0.7)+
+    geom_line()+
+    geom_point(size=2,fill="black",color="white",)+
+    xlab("Number of clusters [k]")+
+    ylab("Proportion")+
+    scale_shape_manual(name="Criteria",breaks=c("heteg.preserv.", "over.30"),
+                       labels=c("Heterogeneity perservation", "Clusters with over 30 records"),
+                      values=c(21,24))+
+    scale_y_continuous(labels=percent)
+    
+
+postscript("plots/fig3.user.agg.ps",width=8,height=5,bg="transparent",colormodel="gray",horizontal = F)
+grid.arrange(arrangeGrob(gg.usercls[[1]][[6]],
+                         gg.usercls[[1]][[3]],gg.usercls[[1]][[1]],
+             ncol=3,nrow=1,main="Example for Chicago (a)"),
+             arrangeGrob(gg.stat,main="Overall trend for three cities (b)"),ncol=1,nrow=2)
 dev.off()
 
 # choose the number of clusters based the plotting result
@@ -791,10 +814,14 @@ ggplot(data.hour.coor,aes(x=record,y=value))+#geom_point(size=3,shape=21,fill=NA
 #     geom_smooth(method=loess,formula=y~x)+
     geom_smooth(method=lm,formula=y~log(x),se=F,color="grey")+
     
-    geom_point(data=data.hour.coor[!(data.hour.coor$hour %in% c("01","05","19")),],size=5,shape=21,fill="#999999",color="#eeeeee")+
-    geom_text(data=data.hour.coor[!(data.hour.coor$hour %in% c("01","05","19")),],aes(label=hour),size=2,color="#efefef")+
-    geom_point(data=data.hour.coor[which(data.hour.coor$hour %in% c("01","05","19")),],size=6,shape=21,fill="#666666",color="#eeeeee")+
-    geom_text(data=data.hour.coor[which(data.hour.coor$hour %in% c("01","05","19")),],aes(label=hour),size=2.5,color="white")+
+    geom_point(data=data.hour.coor[!(data.hour.coor$hour %in% c("01","05","19")),],
+               size=5,shape=21,fill="#666666",color=NA)+
+    geom_text(data=data.hour.coor[!(data.hour.coor$hour %in% c("01","05","19")),],
+              aes(label=hour),size=2,color="#efefef")+
+    geom_point(data=data.hour.coor[which(data.hour.coor$hour %in% c("01","05","19")),],
+               size=6,shape=21,fill="#333333",color=NA)+
+    geom_text(data=data.hour.coor[which(data.hour.coor$hour %in% c("01","05","19")),],
+              aes(label=hour),size=2.5,color="white")+
     
     xlab("Hourly check-in frequency") +
     ylab(expression(Pi["ST"])) +
@@ -957,19 +984,20 @@ ggplot(data.space.coor,aes(x=record,y=value))+
     facet_grid(variable~city,scales="free",
                labeller=labeller(variable=label_bquote(Pi["ST"]^.(x))))+
     geom_line(data=smooth.space,aes(x=record,y=y),color="grey")+
-#     geom_smooth(method=lm,formula=y~atan(x-2),se=F)+
-    geom_point(aes(shape=type,size=type))+
-#     geom_textbox(data=data.space.coor[which(data.space.coor$type %in% c("A","B")),],aes(label=label),size=2,bgcol = NA, vjust=1.5,bgfill="#eeeeee",expand_h=2)+
-   
-    geom_text(aes(label=label),vjust=1.5,size=2.5)+
+    geom_point(aes(shape=type,size=type),fill="black",color="white")+
+    geom_textbox(data=data.space.coor[which(data.space.coor$type %in% c("A","B")),],aes(label=label),size=2,bgcol = NA, bgfill="white", vjust=1.5, expand_h=1,expand_w=1)+
+#     geom_text(aes(label=label),size=2.5,vjust=1.5)+
     xlab("Check-in frequency by zip code") +
     ylab(expression(Pi["ST"])) +
     scale_x_log10()+
     scale_y_continuous(labels=percent)+
-    scale_shape_manual(name="",labels=c("Outlier A","Outlier B","Normal Region"),values=c(17,15,16))+
-    scale_size_manual(name="",labels=c("Outlier A","Outlier B","Normal Region"),values=c(2,2,0.8))+
+    scale_shape_manual(name="",labels=c("Outlier type A","Outlier type B","Normal region"),
+                       values=c(24,22,21))+
+    scale_size_manual(name="",labels=c("Outlier type A","Outlier type B","Normal region"),
+                      values=c(2.5,2.5,1.5))+
     geom_text(data=eqs.space,aes(x=pos.x,y=pos.y,label=V1),inherit.aes=FALSE,
                   parse = TRUE,hjust=0,vjust=1,size=3)
+
 dev.off()
 ```
 
@@ -1083,9 +1111,8 @@ gg.outlier.table <- ggplot(outlier.table,aes(x=a,y=b)) +
                     xmin=1, xmax=9, ymin=1, ymax=9)
 
 
-
+# postscript("plots/fig10.outliers.map.ps",width=10,height=7,bg="transparent",colormodel="gray",horizontal = F)
 pdf("plots/fig10.outliers.map.pdf",width=10,height=7,colormodel = "grey")
-# jpeg("plots/fig10.outliers.map.jpeg",width=10*ppi,height=7*ppi,res=ppi)
 grid.arrange(
     arrangeGrob(outlier.map[[1]][[1]],
                 outlier.map[[1]][[2]][[1]],outlier.map[[1]][[2]][[2]],

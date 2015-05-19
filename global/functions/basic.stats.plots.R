@@ -38,7 +38,7 @@ point.plot = function(point, x = "lon", y="lat", more.aes=NULL,
     aes.list = append.aes(aes_string(x=x, y=y),more.aes)
 
     gg.map + geom_point(data=point,aes.list,...) +
-        theme_bw(base_size = 8)  + 
+#         theme_bw(base_size = 8)  + 
         coord_map(xlim=xlim,ylim=ylim)
     
 }
@@ -120,7 +120,7 @@ map.animation.plot= function(point,SPDF,basemap=NA, title="",
         a <- map.plot(mapdf = mapdf, more.aes = more.aes, 
                       basemap = basemap, ...)+
             ggtitle(paste(title, i[1,split.attr],": 00")) +
-            theme_bw(base_size=20) + 
+#             theme_bw(base_size=20) + 
             xlab("") + ylab("") 
         
         print(a)
