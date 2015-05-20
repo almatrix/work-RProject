@@ -1,23 +1,108 @@
+---
+output: word_document
+---
 
 Dear Mr. Weibel, dear reviewers!
 
 First of all, we'd like to thank you for reviewing our paper and offering us constructive comments. These comments have helped us a lot in the revision process. In terms of the data source, we have added two more datasets and improved the preproceesing. In terms of the approach and experiment, we have improved our algorithms, redesigned the experiment and performed deeper analysis on our results.  As for the appearance, we have imporved the structure of the paper and tried to make it clear 1) what is predictability and 2) how can our findings contribute to the research field. In general, a total rework has been done based on your helpful comments. 
 
 Since a bunch of major changes have been made, we hope a brief explaination for the altered structure in the following could help:
-- In the introduction, we explicitly defined the topic terms *check-in behavior* and *predictability*. This helps the readers to get a big picture of our research immediately. We also explained the research gap in the field of predicting with LBSN dataset as well as the motivation/goals of our research: 1) to better evaluate the existing algorithm and 2) to give insights towards improving the existing algorithms.
-- In section 2, we explained the datasets used in the experiment as an example. We now include three Foursquare datasets from Chicago, Los Angeles and New York City, because more datasets can help with the consistency of our conclusion. We also find a truncated power law distribution in the user contribution, thus we perform some preprocessing steps to ensure the statistical validity. 
-- In section 3, we formally define *predictability* as well as its upper and lower bounds. The algorithm has been improved to deal with the small sample issues, and the result of predictability are given for all the three datasets under three kinds of contextual information(Temporal, Spatial and Spatiotemporal). Thus, the result provides useful reference to better evalute the performance of existing algorithms.
-- Section 4 focuses on providing practical insights for the improvements of exsiting algorithms. This is achieved by analysing the variation pattern of predictability with check-in frequency from three different perspectives: individual, temporal and spatial. 
-- In section 5, we summarized our findings, discussed the contributions as well as how our work can be extended to other LBSN datasets in differnt usage scenarios. 
 
-The artical now has 6745 words and 10 figures, all of which have been redesigned in black-white style. It is 15 pages long without the figures and 18 pages with the figures. In the following we answer all your comments as deatied as possible.
+- in the **introduction**, we explicitly defined the topic terms *check-in behavior* and *predictability*. This helps the readers to get a big picture of our research immediately. We also explained the research gap in the field of predicting with LBSN dataset as well as the motivation/goals of our research: 1) to better evaluate the existing algorithm and 2) to give insights towards improving the existing algorithms.
+- In **section 2**, we explained the datasets used in the experiment as an example. We now include three Foursquare datasets from Chicago, Los Angeles and New York City, because more datasets can help with the consistency of our conclusion. We also find a truncated power law distribution in the user contribution, thus we perform some preprocessing steps to ensure the statistical validity. 
+- In **section 3**, we formally define *predictability* as well as its upper and lower bounds. The algorithm has been improved to deal with the small sample issues, and the result of predictability are given for all the three datasets under three kinds of contextual information(Temporal, Spatial and Spatiotemporal). Thus, the result provides useful reference to better evalute the performance of existing algorithms.
+- **Section 4** focuses on providing practical insights for the improvements of exsiting algorithms. This is achieved by analysing the variation pattern of predictability with check-in frequency from three different perspectives: individual, temporal and spatial. 
+- In **section 5**, we summarized our findings, discussed the contributions as well as how our work can be extended to other LBSN datasets in differnt usage scenarios. 
+
+The artical now has 6745 words and 10 figures, all of which have been redesigned in black-white style. It is 15 pages long without the figures (18 pages with the figures). In the following we answer all your comments as detailed as possible.
 
 
 =====================
 
-Editor's comments
+**Editor's comments**
 
 =====================
 
+```
+1. don't try to oversell your method and results (is it really a *fundamental* question that you are solving, and if so, why is it fundamental?).
+```
+
+fdafdda
+
+```
+2. try to be clear from the outset what "predictability" is about (it takes several pages until we learn *what* indeed is being predicted). 
+```
+
+```
+3. you should better explain what your results mean -- not in a mathematical sense (you explain that rather well), but against an application context. You should critically and self-critically discuss these results and explain e.g. what they mean for researchers who are working with Foursquare data. 
+```
+
+```
+4. Along these lines, you mention in the abstract that your results are generalizable. Generalizable in what respect and to what extent? 
+```
+
+```
+5. From past experience of colourful submissions we suggest that graphs and tables should use black and white texture and symbols almost without exception. 
+```
+
+=====================
+
+**Review 1's comments**
+
+=====================
+
+```
+1. How was this data accessed? Check-ins published via tweets? Private access to the Foursquare dataset? There is a brief mention of “feeds such as Twitter” but the collection method should be made explicit. 
+```
+
+```
+2. it should be pointed out in section 2.1 that the Foursquare category hierarchy was originally constructed via user-contributions and later standardized by the governing organization, namely Foursquare. 
+```
+
+```
+3. how the hour completeness value was calculated. Is the data aggregated at all? And if so, by day, week, month? 
+```
+
+```
+4. I see that it is the “place and time of check-in,” but how is that represented numerically? How does the “place,” or spatial location of the place play in to the entropy models described. 
+```
+
+```
+5. a significant statement is made concerning “hourly number above two” and the relationship with early hours of the day versus later hours of the day. This would benefit from further exploration or discussion as to why this might be the case.
+```
+
+```
+6. in Figure 6b where PI^unc conveys a flat density function that peaks at 0.26. As stated, this indicates that max predictability strongly varies from user to user. This is an incredibly important point that appears to be overlooked in the discussion and conclusion section and only mentioned briefly in section 4.3. 
+```
+
+```
+7. Figure 1. Please label the axes
+```
+
+```
+8. A number of Figures are difficult to read in B&W. 
+```
+
+=====================
+
+**Review 2's comments**
+
+=====================
+
+```
+1. I would welcome a more sophisticated introduction and motivation why it can be benefical to predict urban movement patterns.
+```
+
+```
+2. it is hardly possible to find and discuss all relevant literature. Still, in a final version, the authors could also consider to discuss: 
+```
+
+```
+3.
 
 
+=====================
+
+**Review 3's comments**
+
+=====================
