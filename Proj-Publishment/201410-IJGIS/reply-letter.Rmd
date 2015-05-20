@@ -4,7 +4,7 @@ output: word_document
 
 Dear Mr. Weibel, dear reviewers!
 
-First of all, we'd like to thank you for reviewing our paper and offering us constructive comments. These comments have helped us a lot in the revision process. In terms of the data source, we have added two more datasets and improved the preproceesing. In terms of the approach and experiment, we have improved our algorithms, redesigned the experiment and performed deeper analysis on our results.  As for the appearance, we have imporved the structure of the paper and tried to make it clear 1) what is predictability and 2) how can our findings contribute to the research field. In general, a total rework has been done based on your helpful comments. 
+First of all, we'd like to thank you for reviewing our paper and offering us constructive comments. These comments have helped us a lot in the revision process. In terms of the data source, we have added two more datasets and improved the preproceesing. In terms of the approach and experiment, we have improved our algorithms, redesigned the experiment and performed deeper analysis on our results.  Regarding presentation, we have imporved the structure of the paper and tried to make the following questions clear 1) what is predictability and 2) how can our findings contribute to the research field. In general, a total rework has been done based on your helpful comments. 
 
 Since a bunch of major changes have been made, we hope a brief explaination for the altered structure in the following could help:
 
@@ -24,26 +24,33 @@ The artical now has 6745 words and 10 figures, all of which have been redesigned
 =====================
 
 ```
-1. don't try to oversell your method and results (is it really a *fundamental* question that you are solving, and if so, why is it fundamental?).
+1. "In particular, don't try to oversell your method and results (is it really a *fundamental* question that you are solving, and if so, why is it fundamental?)."
 ```
 
-fdafdda
+After carefully looking up *fundamental* in the dictionary, we realized that we might have used the word wrong. Although what we really want to express is some "basic" understanding of a dataset before application, the word "fundamental" could imply more and seem overselling. Therefore, in the resubmitted version, we have carefully avoided any suspecious expressions such as "fundamental" and sticked to a tone of "one out of the differnt and important questions".
+
 
 ```
-2. try to be clear from the outset what "predictability" is about (it takes several pages until we learn *what* indeed is being predicted). 
+2. "try to be clear from the outset what "predictability" is about (it takes several pages until we learn *what* indeed is being predicted)."
 ```
 
-```
-3. you should better explain what your results mean -- not in a mathematical sense (you explain that rather well), but against an application context. You should critically and self-critically discuss these results and explain e.g. what they mean for researchers who are working with Foursquare data. 
-```
+We have reorganized the structure and pointed out what "predictability" is in the very beginning of the paper. First of all, we make it clear in the title "predictability of check-in behavior". Then in the introduction, we explicitly define both "check-in behavior" and "predictability". Along with the definition in the introduction, we also provided a link to the formal definition of the term in the main text. Thus, readers should be able to understand our research topic easily.
+
 
 ```
-4. Along these lines, you mention in the abstract that your results are generalizable. Generalizable in what respect and to what extent? 
+3. "you should better explain what your results mean -- not in a mathematical sense (you explain that rather well), but against an application context." + "Along these lines, you mention in the abstract that your results are generalizable. Generalizable in what respect and to what extent?"
 ```
 
+We have worked on this from two aspects. First, we discussed how the values of our results (25%-90%) could be useful for application. The values could serve as an impartial reference to evalute the performance of existing algorithms. Second, an entire new section (Section 4) is employed to analyze our result from differnt perspectives, hoping to provide useful insights for researchers to improve their prediction algorithms.
+
+The two aspects (how to evaluate + how to improve) are the two main goals of the resubmitted paper. We have reorganized the structure as well as the introduction and discussion along with these. Also, in the discussion part, we discussed how researchers can use our findings or perform similar analysis according to their own application scenarios. 
+
+
 ```
-5. From past experience of colourful submissions we suggest that graphs and tables should use black and white texture and symbols almost without exception. 
+4. "graphs and tables should use black and white texture and symbols almost without exception." 
 ```
+
+All the 10 figures in the resubmitted version have been redesigned into black and white style, hoping to make our research also friendly to colleagues without easy access to color printers. 
 
 =====================
 
@@ -52,36 +59,65 @@ fdafdda
 =====================
 
 ```
-1. How was this data accessed? Check-ins published via tweets? Private access to the Foursquare dataset? There is a brief mention of “feeds such as Twitter” but the collection method should be made explicit. 
+1. "How was this data accessed? Check-ins published via tweets? Private access to the Foursquare dataset? There is a brief mention of “feeds such as Twitter” but the collection method should be made explicit."
 ```
 
-```
-2. it should be pointed out in section 2.1 that the Foursquare category hierarchy was originally constructed via user-contributions and later standardized by the governing organization, namely Foursquare. 
-```
+Because of the space limit, we can still briefly introduce our dataset. However, we have tried to cover the listed questions in Section 2.1. We don't have private access to Foursquare dataset, and our dataset is crawled with the Twitter API and Foursquare API. 
+
 
 ```
-3. how the hour completeness value was calculated. Is the data aggregated at all? And if so, by day, week, month? 
+2. "it should be pointed out in section 2.1 that the Foursquare category hierarchy was originally constructed via user-contributions and later standardized by the governing organization, namely Foursquare."
 ```
 
-```
-4. I see that it is the “place and time of check-in,” but how is that represented numerically? How does the “place,” or spatial location of the place play in to the entropy models described. 
-```
+It's really a good point. It shows that the Foursquare categories do not just reflect the interest of some organizations but that of the users, thus the semantics attached with the dataset is more meaningful to study the user behavior. Therefore, we just added this point in our main text in section 2.1.
+
 
 ```
-5. a significant statement is made concerning “hourly number above two” and the relationship with early hours of the day versus later hours of the day. This would benefit from further exploration or discussion as to why this might be the case.
+3. "how the hour completeness value was calculated. Is the data aggregated at all? And if so, by day, week, month?"
 ```
 
-```
-6. in Figure 6b where PI^unc conveys a flat density function that peaks at 0.26. As stated, this indicates that max predictability strongly varies from user to user. This is an incredibly important point that appears to be overlooked in the discussion and conclusion section and only mentioned briefly in section 4.3. 
-```
+Just for your information: the data is aggregated by day in the earlier preprocssing process. However, it might not be important any more since we have totally changed our preprocssing approach. We are not satisfied of using only the data from 4000+ users whereas the raw data includes millions of users, and the potential of the dataset is not fully leveraged. Therefore, we have changed our preprocessing approach by aggregating users based on their similarity. The related content can be found in section 2.2.
+
 
 ```
-7. Figure 1. Please label the axes
+4. "I see that it is the “place and time of check-in,” but how is that represented numerically? How does the “place,” or spatial location of the place play in to the entropy models described."
 ```
 
+"Place" is represented numerically by the zip code region of the check-in, and "time" is represented by the hour of check-in. Equation (7) is where these spatiotemporal information comes to play, in the form of conditional entropy. The related content can be found in line 218-223.
+
+
 ```
-8. A number of Figures are difficult to read in B&W. 
+5. "In the last sentence of section 4.3 a significant statement is made concerning “hourly number above two” and the relationship with early hours of the day versus later hours of the day. This would benefit from further exploration or discussion as to why this might be the case."
 ```
+
+Since we have changed the preprocessing approach, the earlier finding is not relevant. However, we get and agree with your point. Hence, in the resubmitted version, we  performed our analysis in a more sophiscated way in Section 4, where a lot of new findings / underlying reasons are explored and discussed.
+
+
+```
+6. "One statement that should be focused on quite a bit more (at least mentioned in the discussion and conclusion section) is apparent in Figure 6b where PI^unc conveys a flat density function that peaks at 0.26. As stated, this indicates that max predictability strongly varies from user to user. This is an incredibly important point that appears to be overlooked in the discussion and conclusion section and only mentioned briefly in section 4.3."
+```
+
+Similar to Comment 5, the finding is not relevant in the context of our new experiment. We now focus on the contextualized value and do not compute PI^unc in the new version. The reason is simply that no one will use none information to make prediction. Thus computing the predictability without contextual (conditional) information is not quite useful. 
+
+However, we still use an entire subsection to performe detailed analysis from the perspective of user/individual. The related analysis can be found in section 4.1 (as well as the conclusion section).
+
+```
+7. "Figure 1. Please label the axes"
+```
+
+The axes have been added and the figures have been redesigned.
+
+```
+8. "A number of Figures are difficult to read in B&W."
+```
+
+All the figures in the resubmitted paper have been redesigned in B&W now. 
+
+```
+9."Grammatical issues in the last sentence of the abstract.  Overall, grammar and spelling are quite good, but give it another look."
+```
+
+Thanks. We have tried our best to express as clearly as we can. However, since none of us are native speakers, there still could be some language problems. Nevertheless, we will be able to send our document to a professional proof reader as long as the you and the other reviewers are pleased with the main content.
 
 =====================
 
@@ -90,19 +126,157 @@ fdafdda
 =====================
 
 ```
-1. I would welcome a more sophisticated introduction and motivation why it can be benefical to predict urban movement patterns.
+1. "They preprocess this data and retrieve only 4,368 users that have a larger sampling size than 30."
 ```
 
-```
-2. it is hardly possible to find and discuss all relevant literature. Still, in a final version, the authors could also consider to discuss: 
-```
+It's true. Since there are in fact millions of users, 4000+ users can not fully levearge the potential of the dataset. Moreover, it severely limits our conclusion to be only valid for these 4000+ users. Thus we are not satified with our preprocessing step.
+
+In the resubmitted version, we have changed our preprocessing step by aggregating users based on their similarity. This approach has been widely used in the literature related with "collaborative filtering". Our later analysis in section 4.1 also proved the validity of such preprocessing. 
+
 
 ```
-3.
+2. "I would welcome a more sophisticated introduction and motivation why it can be benefical to predict urban movement patterns." + "It is not always that clear, why it is also important to predict them."
+```
 
+We have altered the structure of the introduction section. The topic of the resubmitted paper is also constrained clearly to the "human spatiotemporal behavior", more specifically, the "check-in behavior". There are plenty of applications in differnt fields as listed in line 32-36, and many of them requires not just understanding but predicting. 
+
+As far as we are concerned, predicting is one of the inevitable directions from understanding. And there is already plenty of research working on prediction algorithm, see line 66-69. The research questions of this paper is then twofolded: 1) how to impartially evalute an algorithm and 2) how to efficiently improve an algorithm.
+
+```
+3. "it is hardly possible to find and discuss all relevant literature. Still, in a final version, the authors could also consider to discuss: Preo¸tiuc-Pietro and Cohn 2013, Parent *et al.* 2013, Krueger *et al.* 2014 ..."
+```
+
+Thanks for providing us these interesting literature. We have included them accordingly to raise the completeness of our literature review. 
+
+```
+4. "It would be more interesting, how well the movement behavior of the society in general (not only Foursqaure users) is predictable with the information from Foursquare, which is, however, not in the cope of this paper."
+```
+
+The paper states in the introduction the relation between the entire movement behavior of the society (or human spatiotemporal behavior) and the check-in behavior that are stuided. Also, a more clear explanation can be found in the last paragraph of the dicussion section (line 474-484). Since the representativeness of check-in behavior towards the entire movement of the society is unknown to us (and would be a tricky taks to explore), the conclusion cannot be easily extended. Still, the check-in behavior provides us special perspectives to understand the entire movement behavior.
+
+```
+5. "I would welcome a data table that lists results for different cities in the world, as I reckon that the outcome highly depends on the geographic area."
+```
+
+We agree that only one dataset from one city (New York City) makes our findings/conclusions vulnerable. Therefore we included two more datasets from Chicago and Los Angeles. We chose these three cities because they contain quite active check-in activies in both Foursquare and Twitter (as section 2.1 stated, only the Foursquare check-in records that are published via Twitter are available for us). 
+
+Furthermore, Section 4.3 investigates the variation patterns of predictability from spatial perspectives, and some geographic influences of either universal or local nature have been identified.  
+
+```
+6. The paper appears long to me. 18 pages + Figures. As a guide, the average length of research articles in IJGISc is 18 published pages (about 5-6,000 words plus tables and figures). 
+```
+
+We have kept an eye on the lenth of the paper. The paper now has 6745 words and 18 pages with figures. 
 
 =====================
 
 **Review 3's comments**
 
 =====================
+
+```
+1. "By presenting the work as addressing a "fundamental question" the authors put forth the notion of "predictability" in very general terms, independent of what is actually being predicted.  This in my opinion is a seriously flawed approach, because there are all kinds of different things we might want to predict from this kind of data, and to characterise a specific analysis of specific aspects of one data set as providing a general notion of "predictability" is misguided."
+```
+
+It's true and we totally got your point. Hence, the resubmitted version has improved on this from the title, the introduction as well as the paper structure. We state clearly from the title that we are prediting "check-in behavior". In the introduction, we also define the term "check-in behavior" to make it clear to the readers (see line 60-65). Following, we also define the term "predictability" and provide a link to a formal definition in the main text (see line 78-83). We hope our research question and reserch scope could be quite clear to the readers after the revision. 
+
+
+```
+2. "What I found lacking is a bigger picture of how the results from this work are of practical use for understanding human mobility as it relates to check in behaviour. The result that intrinsic predictability (based on the measures defined here) ranges from 43% to 93% is not particularly meaningful to me."
+```
+
+We got your point, and we have to say that your comment has thouroughly changed (and improved) our work. Ealier we gave merely two numbers without explaining its practical use for applications. In the revised paper, however, we always stick to the practical aspect. 
+
+First, in the introduction, we clearly throw two research questions that are of practical use: 1) how to impartially evaluate existing algorithms and 2) how to efficiently imporve exisiting algorithms. 
+
+The two research questions thus form the new structure of the new paper. Section 3 directly gives the results of predictability in the investigated dataset, explains what role the values can play in the algorithm evaluation. Section 4 analyzed the results of predictability and unravelled the varation patterns of predictability from differnt perspectives. These analysis can provide useful insights for algorithm designers with respect to efficiently diagnoze and improve their algorithms. 
+
+The findings are accordingly discussed in the final section. Except for discussing how our findings can be directly used in practice, we also discussed how readers can extend our appraoch/analysis to their practical usage scenarios (line 443-473). 
+
+
+```
+3. "The fact that semantic categories combined with spatial and temporal information provide useful information for spatial prediction has been previously explored, though not from the theoretical perspective presented here.  It would be good to provide reference to that work, which is more closely relevant to this work than the mobility prediction work for mobile phones."
+```
+
+We have provided references to related work of combining spatial and temporal information in the main text (see line 182-184). They can in fact also better support us using spatial and temporal information to compute predictability.
+
+The related work on mobile phones are combined with GPS trajectories, and are shorten to one sentence (line 42-45). We still keep them because they are also important proxies for human spatiotemporal behavior, as the LBSN dataset is. The relation between human spatiotemporal behavior and check-in behavior is also explained in the introduction (line 51-65).
+
+
+```
+4. "More critically, after reading through the paper I am still left with the questions of what prediction exactly is being measured.  It appears that what we are getting limits on is what kinds of semantic, spatial, and temporal categories co-occur for check-ins. " 
+```
+
+```
+5. "The upper bound of 93% so far as I understand from the paper is a prediction of the category type of features which are checked-in, though the way the paper is written it seems like the authors are claiming more. This comes from the fact that they refer to “spatiotemporal mobility patterns” rather than “spatiotemporal patterns”— mobility being the operative word here implies prediction of spatial trajectories through time, though I do not see evidence that this measure really captures that."
+```
+
+In the ealier version, we did not make it clear to the readers what predictability is and what we are predicting. Thus the paper was quite misleading and confusing. The predictability is now clearly defined to reference the predictions of the exact venue that are checked in (see the definition of check-in behavior in line 60-63, the definition of predictability in line 78-82, as well as the formal definition in the beginning of section 3). 
+
+Besides, mobility, as you mentioned, implies something differnt, and would make our paper more confusing. Therefore, we have also avoided using mobility throughout the paper, and stick to the notion "check-in behavior" as we have defined.
+
+```
+6. "methodologically the use of entropy to characterise the “predictability” is only a marginal improvement over previous work as it appears to be essentially a re-working of the referenced Song Et Al. paper, with different data and variables."
+```
+
+You are right. The methodology of using entropy to characterise perdictability is proposed by Song et al., and we are more extending/adapting it to differnt datasets. However, we also would like to point it out that we were not intended to contribute to research with this paper from the perspective methodoloy. Yet, because we did not clarify our research questions in the first place, it was for sure confusing what we are contributing. 
+
+We hope the problem would not exist any more with the revised paper. The contributions of this paper lay on the answer to the two research questions that would of practical use for LBSN research. 
+
+We also want to add that in the revised version, we take into consideration of the small sample issue that are oftentimes occur with LBSN dataset. As far as we are concerned, this is not just an improvement over the previous work from Song et al, but also an additional insight for LBSN research.  
+
+```
+7. "it needs significant re-work clarifying the practical significance of the results as well as adding additional data sources which would support the generalisability of the results."
+```
+
+We agree that only one dataset makes our conclusoion quite vulnerable. Therefore, we also include another two datasets from Chicago and Los Angeles. Please also be kind enough to find more detailed explainations to this comment in our reply to Comment 5 of Review 2. He/she has provided us similar comments.
+
+```
+8. "page 1: "… such kind of dataset .." needs to be reworded"
+```
+
+We have reworded the expression throughout the paper.
+
+```
+9. "zealous" does not mean what the authors seem to think it means here. 
+```
+
+We have also changed our expressions (see line 49-50).
+
+```
+10. "The organization of the paper makes it difficult to read." +
+"It is only by the third page that we find out what the contribution of the paper is. I would propose that the authors start at the beginning with the main problem of theoretically characterising the predictability-potential of geo-social data, and explain why this is important. This latter point— why it is important is never really addressed."
+```
+
+Thanks for the suggestions. We have heavily altered our structure based on your suggestions. In the introduction, we explain why this is important with two research questions/gaps in the research field. Please also find more detailed explainations with respect to the paper struction in our reply of Comment 2 of yours.
+
+```
+11. Section 2.2 - Why not just say that social media users do not constitute of a random sample of the entire population? More important, why is the fact that social media users are not representative of the entire population have any bearing on the purpose of this paper — describing the theoretical bounds of predictability of mobility patterns based on social media data. It is only going to ever be used to predict mobility of social media users anyhow. 
+```
+
+In the revised version, we tried to better clarify this point in the final paragraph of the discussion section. We mentioned this "representativeness" issue because many researchers question this aspect as they are not convinced of using LBSN dataset as proxies. The final paragraph aims to make connections between human spatiotemporal behavior and check-in behavior. Nevertheless, your also made your point that this data is only going to be used for predicting social media users only. Based on your comments, we have also shorten this part and made the dicussion more concise.
+
+```
+12. "Figure 1 requires axis labels. The figure label should describe what the circle size denotes."
+```
+
+Axes have been added for figure 1. Also the lable explains what the circle size denotes. Please see the caption of Figure 1.
+
+```
+13. "Figure 4- The figure label should define srand, sunc, and sst. Figure 4b could be enlarged. Also the colors of all of these figures will need to be adjusted so that they are also visible in greyscale."
+```
+
+We have redesigned our experiment (and algorithms). The revised paper computes only three types of conditional entropy. Srand and Sunc is not used any more. The reason is that no one will use none information to make predictions. Thus computing the predictability without contextual (conditional) information is not quite useful. 
+
+In line with the new experiment, all the figures have been updated. Each of them has also been redesigned in greyscale. 
+
+
+```
+14. "The spatial information is described as “the place of check-in” — does that mean place name labels or is it a cell in a discrete spatial mesh? How would it be different if a continuous spatial distribution (or distribution on a network) were used? Likewise with the temporal information."
+```
+
+The spatial information is numerically represented by zip code region. The cell defined by zip code is either too large or too small; furthremore, it will typically represent some local characteristics of that region. Our analysis in section 4.3 from the spatial perspective has also confirmed that. As far as we are concerned, a continuous spatial distribution would not reveal such interesting patterns. 
+
+Another resaon of us not using continuous distribution (for both spatial and temporal) is that we suspect the data would be too sparse to build a continuous distribution. Continuous distribution can be regarded as a very fine-grained discreate distribution. The fact is exerting such fine-grained spatial or temporal conditions would oftentimes wind up with no data.
+
+
