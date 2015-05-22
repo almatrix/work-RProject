@@ -1,0 +1,1102 @@
+---
+title: "[ijgis-revision]Theoretical predictability of check-in behavior"
+author: " "
+date: "Thursday, May 21, 2015"
+output: html_document
+---
+
+**Note:** 
+```
+This document shows the general workflow of the experiment, and it is in line with our revised paper. 
+
+This document provides more details about the experiment (the data, the code, etc.), while for more detailed discussions on the experimental results one should refer to the paper.
+```
+
+
+**Brief information for the paper:**
+```
+First submission date: 16.11.2014
+Title: Assessing the Limits of Predictability in Location-based Social Networks - A Case Study of Foursquare
+First decision date: 26.01.2015
+-----------
+Revision: Jan - May, 2015
+-----------
+Second submission: 21.05.2015
+Title: Theoretical Predictability of User’s Check-in Behaviour in Location-based Social Networks: An example of Foursquare
+```
+
+#### 0. Brief introduction to the paper:
+
+- The **topic** of this paper is to investigate the predictability of check-in behavior in LBSN. 
+
+We further clarify our research topic by defining the two topic terms *check-in behavior* and *predictability*.
+
+> Check-in behavior: the actions or mannerisms of mobile users reporting their whereabouts via a LBSN provider.
+
+> Predictability: the degree to which a correct prediction of user’s check-in behaviour can be made based on the dataset, and it is quantified by an interval of upper and lower bounds with respect to the prediction precision of the dataset.
+
+Hence, we are investigating the theoretical boundaries of prediction accurarcy when predicting a user's check-in venue given some of his/her contextual information (e.g., time, space).
+
+- The paper has two main **research goals**:
+
+    + to explore the theoretical predicatability of check-in behavior in LBSN; 
+    + to provide useful insights for researchers with variation patterns of predictability.
+
+- These two goals correspond to the two **research questions** in the research field of "predicting user's whereabouts with LBSN":
+
+    + how to impartially evaluate an algorithm? (If the limitation/potential of a dataset is unknown, a single value of prediction accurarcy would not be as meaningful.)
+    + how to efficiently improve an algorithm? (If the varition pattern of predictability is unknown, algorithm designers could have no clue towards improving their algorithms.)
+
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+# load libraries, functions and define global variables
+library(rgeos)
+library(rgdal)
+library(scales)
+library(reshape2)
+library(ggplot2)
+library(gridExtra)
+library(SDMTools)
+#library(TSA)
+library(ca)
+library(plyr)
+#library(MASS)#fitdistr
+library(ggmap)#get_map
+
+source("../../global/functions/prepare.checkin.R")
+source("../../global/functions/basic.stats.plots.R")
+source("../../global/functions/spatial.analysis.R")
+source("../../global/functions/etc.R")
+source("../../global/functions/truncated.power.law.R")
+source("../../global/functions/geom_textbox.R")
+
+# ############
+# global variable
+crs.wgs84.str = "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
+city.guide=data.frame("city"=c("Chicago","Los Angeles","New York City"),
+                      "coord.x"=c(-87.92,-118.64,-74.23),
+                      "coord.y"=c(41.7,33.82,40.85),
+                      "spatial.attr" = c("ZIP","Zip_Num","POSTAL"),
+                      "shapefile.boundary" = c("bounds_ChicagoCity_WGS84",
+                                               "bounds_LA_City_WGS84","NYC_borough_boundaries_WGS84"),
+                      "shapefile.zip" = c("Chicago-ZipCodes","LA_Zipcodes","NYC_zipcode"),
+                      "csvfile"=c("ChicagoCity","LosAngelesCity","NewYorkCity"),
+#                       "label"=c("Area:234.0 sq mi\nPopulation:2,695,598(2010)\nCheck-ins:183,837",
+#                                 "Area:503 sq mi\nPopulation:3,884,307(2013)\nCheck-ins:138,211",
+#                                 "Area:468.9 sq mi\nPopulation:8,405,837(2013)\nCheck-ins:579,786"),
+                      stringsAsFactors=FALSE)
+
+```
+
+#### 1. Dataset and preprocessing
+
+The experimantal datasets are crawled from three cities in USA, namely Chicago, Los Angeles and New York City. The reason for choosing these three study sites is because users in these cities have high level of activity in both Foursquare and Twitter. (Foursquare only makes the check-ins that are published via Twitter public.)
+
+The dataset looks as follows. Each point corresponds to a unique venue, with its size representing its check-in frequency. The first 6 rows in each dataset will also be provided after the map to show the structure of the datasets. 
+
+```{r,echo=FALSE, eval=FALSE}
+checkin.poly.list = lapply(1:3, function(city.index){
+    checkin = prepare.checkin(paste0("../../global/data/csv-raw/",
+                                     city.guide$csvfile[city.index],".csv"),
+                             is.raw=TRUE, weather.data=NA, 
+                             convert.time=TRUE, add.history=FALSE)
+    SPDF = readOGR(dsn = "../../global/data/shapefiles", 
+                   layer = city.guide$shapefile.zip[city.index])
+    
+    na.omit(point.in.poly(checkin, SPDF, copy.attr=city.guide$spatial.attr[city.index]))
+})
+# save(checkin.poly.list,file="data/checkin.poly.list.Rda")
+```
+```{r, echo=FALSE}
+load("data/checkin.poly.list.Rda")
+```
+```{r, echo=FALSE,message=FALSE,warning=FALSE,results='hide',fig.width=10, fig.height=4}
+######
+maps.data = lapply(1:3, function(city.index){
+    point.data = checkin.poly.list[[city.index]]
+    
+    ###########
+    # make statistics
+    point.data$latlon=with(point.data,paste(lat,lon))
+    point.data.stat = as.data.frame(xtabs(~latlon,data=point.data))
+    point.data.stat = merge(point.data.stat,point.data[,c("lat","lon","latlon")],
+                            by="latlon",all.x=T)
+    
+    point.data.stat = point.data.stat[order(point.data.stat$Freq),c(2:4)]
+    
+    point.data.stat
+})
+
+theme_new<-theme_set(theme_bw(base_size = 8))
+theme_new<-theme_update(legend.position="none")
+gg.maps = lapply(1:3, function(city.index){
+    plot.data = maps.data[[city.index]]
+    plot.data$log.freq = with(plot.data,log(Freq))
+#     plot.data$log.freq.inv = with(plot.data,2*mean(log.freq)-log.freq)
+    point.plot(plot.data,
+               more.aes=aes_string(size="log.freq"),
+               shape=21,fill="black",color="white",alpha=0.2,
+               basemap = map.plot(mapdir="../../global/data/shapefiles",
+                                  maplayer=city.guide$shapefile.boundary[city.index],
+                                  size=0.2,color="grey",fill=NA))+
+        ggtitle(city.guide$city[city.index])+
+        xlab("Longitude")+ylab("Latitude")+
+        scale_size_continuous(range=c(0.5,4.5))
+})
+
+grid.arrange(gg.maps[[1]],gg.maps[[2]],gg.maps[[3]],
+             nrow=1, ncol=3, widths=c(1,0.9,1.15))
+```
+```{r,echo=FALSE,eval=FALSE}
+tiff("plots/fig1.data.review.tiff", width=7.5*ppi,height=3*ppi,res=ppi)
+# pdf("plots/fig1.data.review.pdf",width=10,height=4,colormodel = "grey")
+grid.arrange(gg.maps[[1]],gg.maps[[2]],gg.maps[[3]],
+             nrow=1, ncol=3, widths=c(1,0.9,1.15))
+dev.off()
+```
+```{r,echo=FALSE}
+# summary
+print(city.guide$city[1])
+head(checkin.poly.list[[1]][,c("gid","user_id","venue_id","lat","lon","localtime","cate_l1","cate_l2",city.guide$spatial.attr[1])])
+print(city.guide$city[2])
+head(checkin.poly.list[[2]][,c("gid","user_id","venue_id","lat","lon","localtime","cate_l1","cate_l2",city.guide$spatial.attr[2])])
+print(city.guide$city[3])
+head(checkin.poly.list[[3]][,c("gid","user_id","venue_id","lat","lon","localtime","cate_l1","cate_l2",city.guide$spatial.attr[3])])
+```
+
+We find the dataset is large but sparse. More specifically, we find a truncated power law distribution w.r.t. the user contribution.
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+personal.stat.frequency<-lapply(1:3,function(city.index){
+    checkin = checkin.poly.list[[city.index]]
+    # the observation of personal checkin frequency
+    user.freq = as.data.frame(table(checkin$user_id)) 
+    user.freq$city = city.guide$city[city.index]
+
+    user.freq
+})
+
+personal.stat.density<-lapply(1:3,function(city.index){
+    user.freq = personal.stat.frequency[[city.index]] # personal checkin frequency
+    count.freq = as.data.frame(table(user.freq$Freq)) # stats on the observed frequncy
+    colnames(count.freq)=c("Freq","Freq.Freq")
+    count.freq$Freq=as.integer(as.character(count.freq$Freq)) # back to numbers
+    count.freq$prob=count.freq$Freq.Freq/sum(count.freq$Freq.Freq) # probability of observing this frequency
+    count.freq$city = city.guide$city[city.index]
+    
+    count.freq
+                           
+})
+
+# cdf
+personal.stat.cdf <- lapply(1:3,function(city.index){
+    user.freq = personal.stat.frequency[[city.index]]
+    cdf = summarize(user.freq,Frequency = unique(Freq), ecdf = ecdf(Freq)(unique(Freq)))
+    cdf$city = city.guide$city[city.index]
+    cdf
+})
+```
+```{r,eval=FALSE}
+# simulating
+truncated.para = lapply(1:3,function(city.index){
+    model = nls(ecdf~truncated.plfit.cdf(Frequency,x0,beta,ka),
+        data=personal.stat.cdf[[city.index]],trace=TRUE,algorithm="port",
+        start=list(x0=0,beta=1,ka=100),
+        lower=c(x0=0,beta=1,ka=100),upper=c(x0=5,beta=3,ka=800))
+    summary(model)$parameters[,1]
+    
+})
+truncated.para = data.frame(do.call(rbind,truncated.para),"city"=city.guide$city)
+```
+```{r,echo=FALSE}
+#save(truncated.para,file="data/truncated.para.Rda")
+load("data/truncated.para.Rda")
+```
+```{r,message=FALSE,warning=FALSE,echo=FALSE}
+truncated.para$city=city.guide$city
+
+truncated.simu = ddply(truncated.para,.(city),summarize,
+    x = c(1:1000,2000,4000),
+    fx = truncated.plfit.df(c(1:1000,2000,4000),x0,beta,ka),
+    Fx = truncated.plfit.cdf(c(1:1000,2000,4000),x0,beta,ka))
+truncated.eqs = ddply(truncated.para,.(city),function(i){
+    truncated.plfit.print(i$x0,i$beta,i$ka)
+})
+
+```
+```{r,echo=FALSE,message=FALSE,warning=FALSE,fig.height=5.5,fig.width=10}
+######################
+gg.fx = ggplot(do.call(rbind,personal.stat.density))+
+    geom_line(data=truncated.simu,aes(x=x,y=fx),size=2,color="#999999")+
+    geom_point(aes(x=Freq,y=prob),size=1)+
+#     geom_smooth(aes(x=Freq,y=prob,linetype="Power Law"),se=F,color="blue",alpha=0.8,
+#                 formula=y~x,method=lm)+
+    scale_x_log10(breaks=c(10,30,100,1000))+scale_y_log10(limits=c(0.00001,0.4),label=percent)+
+    xlab("Personal check-in frequency [x]")+ylab("PMF [Pr(X=x)]")+
+    geom_text(data=truncated.eqs,x=1,y=-1,aes(label=V1),
+              inherit.aes=FALSE,parse = TRUE,hjust=0,size=2.2)+
+    facet_wrap(~city)+theme_bw(base_size = 10)
+#     theme(strip.text=element_text(size=8),axis.text = element_text(size=8),
+#               axis.title = element_text(size=8),plot.title = element_text(size=10),
+#           plot.margin=unit(c(.05,.05,.05,.05),"npc"))
+gg.Fx=ggplot(do.call(rbind,personal.stat.cdf))+
+    geom_line(data=truncated.simu,aes(x=x,y=Fx),size=2,color="#999999")+
+    geom_point(aes(x=Frequency,y=ecdf),size=1)+
+#     geom_smooth(aes(x=Frequency,y=ecdf,linetype="Power Law"),se=F,color="black",alpha=0.8,
+#                 formula=y~x,method=glm,family=gaussian(link='log'))+
+    scale_x_log10(breaks=c(10,30,100,1000))+scale_y_continuous(label=percent)+
+    labs(x="Personal check-in frequency [x]",y="CDF [Pr(X<=x)]")+
+    facet_wrap(~city)+theme_bw(base_size = 10)
+#     theme(strip.text=element_text(size=8),axis.text = element_text(size=8),
+#               axis.title = element_text(size=8),plot.title = element_text(size=10),
+#           plot.margin=unit(c(.05,.05,.05,.05),"npc"))
+
+grid.arrange(gg.fx,gg.Fx,nrow=2)
+
+```
+```{r,eval=FALSE,echo=FALSE}
+# tiff("plots/truncated.plfit.tiff",width=8*ppi,height=3.5*ppi,res=ppi)
+# svg("plots/truncated.plfit.svg",width=4*ppi,height=1.75*ppi)
+# pdf("plots/fig2.truncated.plfit.pdf",width=7,height=4,colormodel="grey")
+postscript("plots/fig2.truncated.plfit.ps",width=7,height=4,bg="transparent",colormodel="gray",horizontal = F)
+grid.arrange(gg.fx,gg.Fx,nrow=2)
+dev.off()
+
+```
+
+The fact that more than 90% users have less than 30 personal records (see the second subplot in the figure above) would make statistics questionable. There are basically two ways to deal with it:
+
+- to filter the 90% users out;
+- to aggregate the user by their similarity.
+
+Both of them are very common practics. Here we adopt the second option because we want to leverage the entire potential of the dataset. The aggregation is done in the following steps:
+
+- describe each user $u_{i}$ by a historical *visit vector*;
+- compute *user similarity* from the cosine distance between their *visit vector*;
+- use *k-means* to cluster/aggregate the user:
+    + determine a suitable $k$ from the trend;
+    + use the determined $k$ to perform aggregation.
+    
+```{r,eval=FALSE,warning=FALSE,message=FALSE,results='hide'}
+nr.cls.candidates = list(c(200,500,1000,2000,3000,4000,5000,6000),
+                   c(200,500,1000,2000,3000,4000,5000,6000),
+                   c(200,500,1000,2500,5000,7500,10000,12500,15000))
+clusters.list = lapply(1:3,function(city.index){ # for each of the three datasets
+     
+    checkin = checkin.poly.list[[city.index]] # get the ith checkin dataset
+    
+    user.list.all = split(checkin,checkin$user_id)
+    # create user vector
+    counter.reset(); time=Sys.time();
+    point.vectors = sapply(user.list.all,function(user){
+        counter.print(500)
+        table(user$cate_l2)
+    })
+    time.print(Sys.time(), time, paste("creating user vectors for city",
+                                       city.index,"takes"))
+    
+    # now we should discuss how we decide the number of clusters.
+    # It should be a compromise between the between_variances and 
+    # the records in each cluster. We should keep as much variance 
+    # as possible, while make sure there are still enough records
+    # in each cluster for valid statistics.
+    # ! computational heavy !
+    nr.clusters = nr.cls.candidates[[city.index]]
+    clusters = lapply(nr.clusters,function(i){
+       time = Sys.time();
+       clusters = kmeans(t(point.vectors),centers=i,iter.max = 1000)
+       time.print(Sys.time(), time, "creating user clusters takes")
+            
+       pct.ss = clusters$betweenss / clusters$totss
+       user.sizes = sapply(user.list.all,function(user){
+           nrow(user)
+       })
+       agg.sizes = as.data.frame(xtabs(data=data.frame("size"=user.sizes,
+                                                       "cls"=clusters$cluster),
+                                       size~cls))
+            
+       list(clusters,pct.ss,agg.sizes)
+    })
+    # save the result out because it is quite heavy computation
+    save(clusters,file=paste0("data/clusters_",city.index,".Rda"))
+    
+    clusters        
+})
+```
+```{r,echo=FALSE,results='hide',message=FALSE,warning=FALSE,fig.width=10,fig.height=6.25}
+# save(clusters.list, file="data/clusters.list.Rda")
+load("data/clusters.list.Rda")
+gg.usercls = list(); stats=data.frame()
+theme_new<-theme_set(theme_bw(base_size = 10))
+lapply(1:3,function(city.index){
+    
+    gg.usercls[[city.index]] <<- lapply(clusters.list[[city.index]],function(i){
+    #     idx<<-idx+1
+        
+        gg<-ggplot(i[[3]])+
+            geom_histogram(aes(x=Freq,y=..density..),binwidth=0.05,fill=NA,color="grey")+
+            geom_density(aes(x=Freq),adjust=2)+
+    #         scale_x_log10(breaks=c(1,10,30,xintercepts[idx],100,1000),limits=c(2,3000))+
+            scale_x_log10(breaks=c(10,30,100,1000),limits=c(2,3000))+
+            scale_y_continuous(limits=c(0,1.8))+
+            xlab("Number of records per cluster")+
+            ylab("Probability density")+
+            annotate("text",x=100,y=1.6,size=2.7,
+                      label=paste("Number of clusters [k]:",nrow(i[[3]]),
+                                  "\nBetween SS / Total SS:",format.percent(i[[2]]),
+                                  "\nClusters (> 30 records):",
+                                  format.percent(length(which(i[[3]]$Freq>=30))/nrow(i[[3]]))))
+    
+        stats <<- rbind(stats,data.frame("city"=city.guide$city[city.index],
+                            "Clusters"=nrow(i[[3]]),
+                            "heteg.preserv."=i[[2]],
+                            "over.30"=length(which(i[[3]]$Freq>=30))/nrow(i[[3]])))
+        gg                     
+    })
+    
+    NA
+
+})
+stats$xmin=c(rep(700,16),rep(1800,9))
+stats$xmax=c(rep(1300,16),rep(5500,9))
+stats$ymin=rep(0.95,25)
+stats$ymax=rep(1.00,25)
+
+gg.stat <- ggplot(melt(stats,id.vars=c(1,2,5:8)),
+                  aes(x=Clusters,y=value,group=variable,shape=variable))+
+    facet_grid(~city,scale="free")+
+    geom_rect(aes(xmin=xmin,xmax=xmax,ymin=ymin,ymax=ymax),fill="#cccccc",color=NA)+
+    geom_hline(yintercept=0.95,linetype="dotted",color="#333333",size=0.7)+
+    geom_line()+
+    geom_point(size=2,fill="black",color="white",)+
+    xlab("Number of clusters [k]")+
+    ylab("Proportion")+
+    scale_shape_manual(name="Criteria",breaks=c("heteg.preserv.", "over.30"),
+                       labels=c("Heterogeneity perservation", "Clusters with over 30 records"),
+                      values=c(21,24))+
+    scale_y_continuous(labels=percent)
+
+grid.arrange(arrangeGrob(gg.usercls[[1]][[6]],
+                         gg.usercls[[1]][[3]],gg.usercls[[1]][[1]],
+             ncol=3,nrow=1,main="Example for Chicago (a)"),
+             arrangeGrob(gg.stat,main="Overall trend for three cities (b)"),ncol=1,nrow=2)
+```
+
+```{r,echo=FALSE,eval=FALSE}
+postscript("plots/fig3.user.agg.ps",width=8,height=5,bg="transparent",colormodel="gray",horizontal = F)
+grid.arrange(arrangeGrob(gg.usercls[[1]][[6]],
+                         gg.usercls[[1]][[3]],gg.usercls[[1]][[1]],
+             ncol=3,nrow=1,main="Example for Chicago (a)"),
+             arrangeGrob(gg.stat,main="Overall trend for three cities (b)"),ncol=1,nrow=2)
+dev.off()
+
+```
+
+We decided *k* for the three cities are 1000, 1000 and 2500 respectively. The datasets are aggregated accordingly. 
+
+```{r,eval=FALSE}
+# choose the number of clusters based the plotting result
+nr.cls.final.id = c(3,3,4) # 1000, 1000, 2500
+# user aggregation and respliting
+user.list.ucls = lapply(1:3,function(city.index){
+    counter.reset();
+    checkin = checkin.poly.list[[city.index]]
+    checkin$cluster.id = sapply(checkin$user_id,function(user){
+        counter.print(4000)
+        clusters.in.city = clusters.list[[city.index]]
+        clusters.final = clusters.in.city[[nr.cls.final.id[city.index]]]
+        clusters.final[[1]]$cluster[as.character(user)] # the cluster id for that user
+    })
+#     save(checkin,file=paste0("data/checkin.poly.cls_",city.index,".Rda"))
+#     load(paste0("data/checkin.poly.cls_",city.index,".Rda"))
+    split(checkin,checkin$cluster.id)
+})
+```
+
+#### 2. Predictability (upper and lower bounds)
+
+The upper bound of predictability is determined by Fano's inequality which gives numerical relations between *propability of making error* and *entropy*. We use three types of context (temporal, spatial and spatiotemporal) to decide three groups of *conditional entropy*. Here temporal context is represented by the hour of check-in; spatial context is represented by the zip code region of check-in, and spatiotemporal is represented by both. 
+
+One point to add here is related with the small sample issue that oftentimes occur with LBSN dataset, especially when a contexutal condition is exerted. To deal with the small sample issue, some corrections must be made accordingly. 
+
+```{r,eval=FALSE}
+##########################
+# main function to decide predictability 
+get.predictability = function(data,cond.col,condition.name,prior.freq){
+
+    freq.joint = get.freq.dataframe(data=data,"venue_id",cond.col,
+                                    p.cond=T,p.joint=F)
+    
+    N = sum(freq.joint$Freq)
+    L = length(unique(data$venue_id))
+    
+    in.condition = ddply(freq.joint, .(condition), function(i){
+        n = sum(i$Freq)
+        l = length(unique(i$venue_id))
+
+        prior.freq = merge(x=i, y=prior.freq, by=c("obs"),all.x=T)
+        prior.freq$p.adjusted = with(prior.freq, 
+                                     get.p.adjusted(p.cond.x, n, p.cond.y) )
+#         # adjusted for small samples (Mueller, 1955)
+        H.v = with(i,sum( -1 * p.cond * log2(p.cond) + 1/2/n))
+
+        pi.max = get.pi.max.from.entropy(H.v, l+1) # one for "others"
+
+        pi.min = max(prior.freq$p.adjusted)
+
+        data.frame(#"condition.value"=as.character(i[1,"condition"]),
+                   "entropy"=H.v,
+                   "pi.min"=pi.min,
+                   "pi.max"=pi.max,
+                   "record"=n)
+    })
+    
+    H = sum(with(in.condition, record / N * entropy))
+    pi.max = get.pi.max.from.entropy(H, N)
+    pi.min = with(in.condition, weighted.mean(pi.min, record))
+    
+    list("mean"=data.frame("Condition"=condition.name,"Entropy"=H,
+               "Pi.max"=pi.max,"Pi.min"=pi.min),
+         "detail"=in.condition)
+}
+
+# adjusted probability
+get.p.adjusted = function(p,n,prior,confidence=0.95){
+    # pi.min should also consider the small sample correction
+    # using Wilson score interval
+    # extended from Wilson 1927
+    z = qnorm(1-1/2*(1-confidence))  # confidence interval 
+        
+    # CI should be weighted average of p and prior 
+    n/(n+z^2) *p + (z^2)/(n+z^2) * prior
+}
+
+# Fano's inequality
+get.pi.max.from.entropy = function(entropy,N){
+    x = seq(from=0,to=1,length=1001)
+    y = rep(0,1001)
+    if(N!=1){
+        y[1]=log2(N-1)
+        y[2:1000] = (1-x[2:1000])*log2(N-1) - x[2:1000]*log2(x[2:1000]) - (1-x[2:1000])*log2(1-x[2:1000]) 
+    }
+    yoffset = y[2:length(y)]
+    yoffset[length(y)]=-0.001
+    
+    if(length(entropy)==1){
+        ans = ifelse(entropy<=max(y),x[which( y>=entropy & yoffset<entropy )],
+           x[which(y==max(y))] )
+    } else{
+        ans = sapply(entropy,function(i){
+            ifelse(i<=max(y),x[which( y>=i & yoffset<i )],
+                   x[which(y==max(y))] )
+        })
+    }
+    
+    ans
+}
+
+# marginal distribution (frequency statistics)
+get.freq.dataframe = function(data,obs.col,cond.col=NA,p.joint=T,p.cond=F,p.marg=F){
+    
+    if(length(cond.col)==1){
+        if(is.na(cond.col)){
+            freq = as.data.frame(xtabs(data=data,paste("~",obs.col),drop.unused.levels=T))  
+        }else{
+            data$new.col = paste(data[,obs.col],data[,cond.col],sep="@")
+            freq = as.data.frame(xtabs(data=data,~new.col,drop.unused.levels=T))
+            col.info = data.frame(do.call(rbind,strsplit(as.character(freq$new.col),
+                                                       "@",fixed=TRUE)))
+            colnames(col.info)=c(obs.col,"condition")
+            freq = cbind(col.info,freq)
+            colnames(freq)=c(obs.col,"condition","obs","Freq")
+            
+            marg.freq = ddply(freq,.(condition),function(in.condition){
+                sum(in.condition$Freq)
+            })
+            colnames(marg.freq)[2]="marg.freq"
+            
+            freq = merge(x=freq,y=marg.freq,all.x=T)
+    }}else{
+        data$condition = do.call(paste,lapply(cond.col,function(col){
+            data[,col]
+        }))
+        data$new.col = paste(data[,obs.col],data$condition,sep="@")
+        
+        freq = as.data.frame(xtabs(data=data,~new.col,drop.unused.levels=T))
+        col.info = data.frame(do.call(rbind,strsplit(as.character(freq$new.col),
+                                                   "@",fixed=TRUE)))
+        freq = cbind(col.info,freq)
+        colnames(freq)=c(obs.col,"condition","obs","Freq")
+        
+        marg.freq = ddply(freq,.(condition),function(in.condition){
+            sum(in.condition$Freq)
+        })
+        colnames(marg.freq)[2]="marg.freq"
+        
+        freq = merge(x=freq,y=marg.freq,all.x=T)
+    }
+    
+    
+    if(p.joint){
+        freq$p.joint = with(freq, Freq / sum(Freq))
+    }
+    
+    if(p.cond){
+        if(length(cond.col)==1 && is.na(cond.col)){
+            stop("you must specify the condition for conditional probability.")}
+        freq$p.cond = with(freq, Freq / marg.freq)
+    }
+    
+    if(p.marg){
+        if(length(cond.col)==1 && is.na(cond.col)){
+            stop("you must specify the condition for marginal probability.")}
+        freq$p.marg = with(freq, marg.freq / sum(Freq))
+    }
+    
+    freq
+}
+```
+```{r,eval=FALSE}
+# decide entropy, upper bound, lower bound, etc. for all the study sites
+entropies.etc.list = lapply(1:3,function(city.index){
+    user.list = user.list.ucls[[city.index]]
+    data.global = checkin.poly.list[[city.index]]
+    spatial.attr = city.guide$spatial.attr[city.index]
+    
+    prior.unc = get.freq.dataframe(data=data.global,"venue_id")
+    prior.time = get.freq.dataframe(data=data.global,"venue_id","hour",
+                                    p.joint=F,p.cond=T)
+    prior.space = get.freq.dataframe(data=data.global,"venue_id",spatial.attr,
+                                     p.joint=F,p.cond=T)
+    prior.st = get.freq.dataframe(data=data.global,"venue_id",c("hour",spatial.attr),
+                                  p.joint=F,p.cond=T)
+
+
+    counter.reset()
+    lapply(user.list,function(i){
+        counter.print(10)
+
+        time = get.predictability(i,"hour","Hour",prior.time)
+        space = get.predictability(i,spatial.attr,"Space",prior.space)
+        st = get.predictability(i,c("hour",spatial.attr),"ST",prior.st)
+        
+        total.records = nrow(i)
+        unique.venues = length(unique(i$venue_id))
+        unique.users = length(unique(i$user_id))
+
+        df = rbind(rand,unc,time$mean,space$mean,st$mean)
+        df$Cluster.id = i[1,"cluster.id"]
+        df$Records = nrow(i)
+        df$Venues = length(unique(i$venue_id))
+        df$Users = length(unique(i$user_id))
+        df$City = city.guide$city[city.index]
+        
+        st.detail = as.data.frame(st$detail)
+        st.detail$city = city.guide$city[city.index]
+
+        
+        list(df,st.detail)
+    })
+    
+})
+```
+```{r,echo=FALSE}
+load("data/entropies.etc.list.Rda")
+```
+```{r,message=FALSE,warning=FALSE}
+entropies.etc.df=do.call(rbind,lapply(1:3,function(city.index){
+    entropies.etc.city = entropies.etc.list[[city.index]]
+    df = do.call(rbind,lapply(1:length(entropies.etc.city),function(i){
+        entropies.etc.city[[i]][[1]]
+    }))
+    df$City = city.guide$city[city.index]
+    df
+}))
+entropies.etc.df$delta = with(entropies.etc.df,(Pi.max-Pi.min)/Pi.min)
+
+entropies.etc.st.df=do.call(rbind,lapply(1:3,function(city.index){
+    entropies.etc.city = entropies.etc.list[[city.index]]
+    df = do.call(rbind,lapply(1:length(entropies.etc.city),function(i){
+        entropies.etc.city[[i]][[2]]
+    }))
+    df$city = city.guide$city[city.index]
+    df
+    
+}))
+
+
+time.space = data.frame(do.call(rbind,strsplit(as.character(entropies.etc.st.df$condition),
+                                                   " ",fixed=TRUE)))
+colnames(time.space)=c("hour","space")
+entropies.etc.st.df = cbind(entropies.etc.st.df,time.space) 
+
+```
+
+The result of predictability is depicted as follows:
+```{r,echo=FALSE,warning=FALSE,message=FALSE,fig.width=10,fig.height=5}
+## plotting
+data.pi.density = entropies.etc.df[which(entropies.etc.df$Condition %in% c("Hour","Space","ST")),c(1,3,4,6,9)]
+data.pi.density = melt(data=data.pi.density,id.vars=c("Condition","City","Records"))
+data.pi.density$Condition = as.character(data.pi.density$Condition)
+data.pi.density$Condition[which(data.pi.density$Condition=="Hour")]="Time"
+data.pi.density$Condition = factor(data.pi.density$Condition)
+data.pi.density$Condition = relevel(data.pi.density$Condition,"Time")
+
+gg.pi.density = ggplot(data.pi.density)+
+    geom_histogram(aes(x=value,y=..density..,group=variable),binwidth=0.01,fill=NA,
+                   color="grey",position="identity")+
+    geom_density(aes(x=value,group=variable,linetype=variable),adjust=3,alpha=0.5)+
+    xlab(expression(atop(italic(Pi)) ) ) +
+    scale_x_continuous(labels=percent)+
+    ylab("Probability density")+
+#     scale_y_sqrt()+
+    scale_linetype_manual(name="",values=c(2,1),breaks=c("Pi.max","Pi.min"),
+                          labels=c(expression(atop(italic(Pi))^"max" ),
+                                   expression(atop(italic(Pi))^"min" )))+
+    facet_grid(Condition~City)+theme_bw(base_size = 10)
+
+gg.pi.density
+```
+```{r,echo=FALSE,eval=FALSE}
+# pdf("plots/fig4.pi.density.pdf",width=7,height=3.5,colormodel="grey")
+postscript("plots/fig4.pi.density.ps",width=7,height=3.5,bg="transparent",colormodel="gray",horizontal = F)
+gg.pi.density
+dev.off()
+```
+
+So far the predictability has bee determined. We find that for all the three study sites, predictability is about [15%, 65%] under temporal condition, [25%, 75%] under spatial condition, and [25%, 90%] under spatiotemporal condition.
+
+Put into simple words these findings can be interpreted as follows: by considering spatiotemporal contextual information any prediction algorithm will at least make around 25% correct predictions, simply because the dataset inevitably causes this number. In turn, the same algorithm can be tuned up to a maximum value of 90%. The remaining information (i.e. the missing 10%) is not feasible due to inherent contained uncertainties. Hence, if for any prediction algorithm a prediction accuracy of 30% is being stated, it means that besides the inherited 25% regularity in user’s check-in behaviour, the algorithm is actually responsible for the remaining 5% gain in accuracy (which would not exactly be a good value). Furthermore, we would also know that there is still much room left for this algorithm to improve its accuracy.
+
+A follow-up question that occurs naturally will then be: *How can one achieve the improvements?* We assume that the precision of prediction is not equal across different kinds of contextual conditions. Instead, the overall precision is to some degree a result of neutralization (some conditions contribute positively; some others might lower the achieved precision). If the variation patterns of predictability underlying different conditions could be revealed, one might gain better knowledge on how to improve some algorithm. This information will be revealed in the following.
+
+#### 3. Variation patterns of predictability
+
+The variation patterns of predictability will be observed from three perspectives: individual, temporal and spatial. We will observe the variation between *predictability* and *the check-in frequency* under each perspective. And *predictability* is observed with three related quantities: $\Pi_{ST}^{max}$,$\Pi_{ST}^{min}$,$\Pi_{ST}^{delta}$.
+
+##### 3.1. Individual perspective
+```{r,echo=FALSE,message=FALSE,warning=FALSE,fig.width=10,fig.height=5}
+data.individual.coor = melt(entropies.etc.df[which(entropies.etc.df$Condition=="ST"),c(3,4,6,9,10)],
+                            id.vars=c(3,4))
+data.individual.coor$variable<-factor(data.individual.coor$variable,
+                                      labels=c("max","min",expression(delta)))
+gg.individual = ggplot(data.individual.coor,
+       aes(x=Records,y=value))+
+    facet_grid(variable~City,scale="free",
+               labeller=labeller(variable=label_bquote(Pi["ST"]^.(x))))+
+    geom_point(size=1,shape=21,fill="#eeeeee",color="#333333")+
+    scale_x_log10()+scale_y_continuous(labels=percent)+
+    labs(x="Individual check-in frequency",y=expression(Pi["ST"]))+
+    theme_bw(base_size = 10)
+gg.individual
+```
+```{r,echo=FALSE,eval=FALSE}
+postscript("plots/fig5.coor.indiv.ps",width=7,height=3.5,bg="transparent",colormodel="gray",horizontal = F)
+# pdf("plots/fig5.coor.indiv.pdf",width=7,height=3.5,colormodel="grey")
+
+#     theme(axis.text = element_text(size=8),legend.position="none",
+#               axis.title = element_text(size=10),plot.title = element_text(size=10))
+gg.individual
+dev.off()
+
+```
+
+To explain the dispersed nature of the scatterplots in this figure:
+
++ Hypothesis A: Foursquare users might show some similar check-in patterns, regardless of how frequently they are actually using the service. If this is true, it would be quite reasonable to leverage the “collective wisdom” under certain spatiotemporal contexts to predict the behaviour of the inactive users or even new users. 
++ Hypothesis B: the more active users might provide more information from which to be learned, which is good for the purpose of predicting. However, their activities tend to be more dynamic, which increases the challenge in predicting. Thus the final dispersed distribution could result from both perspectives. 
+
+Either way, this figure shows that the **common practice of filtering inactive users is not quite efficient for improving the overall performance of a prediction algorithm**.
+
+##### 3.2. Temporal perspective
+**a. correlation**
+```{r,echo=FALSE,message=FALSE,warning=FALSE,fig.width=10,fig.height=5}
+data.hour.coor = ddply(entropies.etc.st.df,.(city),function(city){
+    stat = ddply(city,.(hour),function(hour){
+        data.frame("pi.max"=with(hour,mean(pi.max)),
+                   "pi.min"=with(hour,mean(pi.min)),
+                    "record"=with(hour,sum(record)))
+#         data.frame("record"=with(hour,sum(record)),
+#                    "pi"=with(hour,c(mean(pi.min),mean(pi.max))),
+#                    "type"=c("min","max"))
+    })
+#     stat$record = stat$record / sum(stat$record) 
+    stat
+})
+data.hour.coor$delta = with(data.hour.coor,(pi.max-pi.min)/pi.min)
+data.hour.coor=melt(data.hour.coor,id.vars=c(1,2,5))
+data.hour.coor$variable<-factor(data.hour.coor$variable,
+                                labels=c("max","min",expression(delta)))
+
+eqs <- ddply(data.hour.coor,.(city,variable),function(i){
+    model = lm(i,formula=value~log(record)) 
+    eq <- substitute(atop(italic(r)^2~"="~r2*","~~italic(p)~"="~pvalue),
+                     list(r2 = format(summary(model)$r.squared, digits = 3),
+                          pvalue = formatC(summary(model)[[4]][[8]],format="f")))
+    as.character(as.expression(eq));                 
+})
+eqs$pos.x=rep(c(5000,3500,20000),each=3)
+eqs$pos.y=rep(c(0.88,0.5,0.75),3)
+
+gg.coor.time <-ggplot(data.hour.coor,aes(x=record,y=value))+#geom_point(size=3,shape=21,fill=NA)+
+    facet_grid(variable~city,scales="free",
+               labeller=labeller(variable=label_bquote(Pi["ST"]^.(x))))+
+#     geom_smooth(method=loess,formula=y~x)+
+    geom_smooth(method=lm,formula=y~log(x),se=F,color="grey")+
+    
+    geom_point(data=data.hour.coor[!(data.hour.coor$hour %in% c("01","05","19")),],
+               size=5,shape=21,fill="#666666",color=NA)+
+    geom_text(data=data.hour.coor[!(data.hour.coor$hour %in% c("01","05","19")),],
+              aes(label=hour),size=2,color="#efefef")+
+    geom_point(data=data.hour.coor[which(data.hour.coor$hour %in% c("01","05","19")),],
+               size=6,shape=21,fill="#333333",color=NA)+
+    geom_text(data=data.hour.coor[which(data.hour.coor$hour %in% c("01","05","19")),],
+              aes(label=hour),size=2.5,color="white")+
+    
+    xlab("Hourly check-in frequency") +
+    ylab(expression(Pi["ST"])) +
+#     ggtitle(expression(paste("Temporal Correlation (",Pi["ST"]," and Activeness)")))+
+#     scale_x_log10()+
+    scale_y_continuous(labels=percent)+
+    geom_text(data=eqs,aes(x=pos.x,y=pos.y,label=V1),inherit.aes=FALSE,
+                  parse = TRUE,hjust=0,vjust=1,size=3)+theme_bw(base_size = 10)
+#     theme(axis.text = element_text(size=8),legend.position="none",
+#               axis.title = element_text(size=10),plot.title = element_text(size=10))
+
+gg.coor.time 
+```
+```{r,echo=FALSE,eval=FALSE}
+postscript("plots/fig6.coor.time.ps",width=8,height=4,bg="transparent",colormodel="gray",horizontal = F)
+gg.coor.time 
+dev.off()
+```
+
+The negative correlations in the upper six subplots suggest that **busier hourly slots provide poorer initial prediction accuracy**. In other words: these slots still provide plenty of room for refining the prediction accuracy. Additionally, the positive correlations shown in the lower three subplots suggest that busier hourly slots also provide stronger leverage effects with respect to improving algorithms. Both of these aspects indicate that focusing on the busy time slots can help to diagnose and improve a prediction algorithm both effectively and efficiently.
+
+**b. histogram/density**
+```{r,echo=FALSE,fig.width=10,fig.height=5,warning=FALSE,message=FALSE}
+hour.stat = do.call(rbind,lapply(1:3,function(city.index){
+    data.total = checkin.poly.list[[city.index]][,c("hour","cate_l1")]
+    
+    stat.byhour=ddply(data.total,.(hour),function(i){
+        df = as.data.frame(xtabs(~cate_l1,data=i))
+        df$prob = with(df,Freq/sum(Freq))
+        df
+    })
+
+    stat.byhour$city = city.guide$city[city.index]
+    stat.byhour
+}))
+
+theme_new<-theme_set(theme_bw(base_size = 10))
+theme_new<-theme_update(legend.position="none",
+          axis.text.x=element_text(angle=50,vjust=1,hjust=1))
+gg.hist.time <- ggplot(hour.stat[which(hour.stat$hour %in% c("01","05","19")),])+
+    facet_grid(city~hour)+
+#     geom_freqpoly(aes(x=as.integer(cate_l1),group=hour,color=hour),binwidth=1)
+    geom_histogram(aes(x=cate_l1,y=prob),stat="identity")+
+    scale_y_continuous(limits=c(0,0.6))+
+    scale_size_continuous(range=c(0.3,2.5))+
+    labs(y="PMF [Pr(X=x)]",x="Venue Category")
+
+gg.hist.time
+```
+```{r,echo=FALSE,eval=FALSE}
+postscript("plots/fig7.hist.time.ps",width=7,height=4,bg="transparent",colormodel="gray",horizontal = F)
+# pdf("plots/fig7.hist.time.pdf",width=7,height=4,colormodel = "grey")
+gg.hist.time 
+dev.off()
+```
+
+According to the figure above, the reason for **higher predictability in less busy hours could be related to simpler temporal semantics**. In 1 am and 5 am, the users rarely check in at venues of categories other than Nightlife Spot and Travel and Transport. Especially, with the majority checking in at Travel and Transport venues, the predictability in 5 am is extremely high, while the room for improvements is quite narrow. In other words: if the users just check in at a limited number of venue types it is quite likely to achieve precise predictions. In contrast, in the busy hours users tend to pursue much more diverse activities and the temporal semantics are much more complex for predictions. 
+
+Therefore, the indication here is that **more effort should be invested in further enriching the busy hours with more detailed contextual information**. In contrast, the predictions for hours showing low activity rates might be rather accurate by just simply considering temporal contextual information. Improving the prediction accuracy for these hourly slots is not worth the effort. Fortunately, the busy hours come with a much richer wealth of data to learn from; therefore it is also practical to shift the focus to these busy time slots only.
+
+##### 3.3. Spatial perspective
+```{r,echo=FALSE}
+outlier.list = data.frame(
+    "name" = c("60609","60612","60629","60666",
+                 "90045",
+                 "10452","11368","11371","11430",""),
+    "type" =  c("B","B","A","A",
+                 "A",
+                 "B","B","A","A","C"),
+    "desc" = c(
+                "Baseball park",
+                "Sports arena",
+                "Airport",
+                "Airport",
+                "Airport",
+                "Baseball park",
+                "Baseball park",
+                "Airport",
+                "Airport",
+                ""),
+    "desc.2" = c("US Celluar Field",
+                "United Center",
+                "Chicago Midway International Airport",
+                "O’Hare International Airport",
+                "Los Angeles International Airport",
+                "Yanke Stadium",
+                "Citi Field",
+                "LaGuardia Airport",
+                "John F. Kennedy International Airport",
+                "")
+    )
+outlier.list$name=as.character(outlier.list$name)
+outlier.list$desc = as.character(outlier.list$desc)
+outlier.list$desc.2 = as.character(outlier.list$desc.2)
+
+```
+
+**a. correlation**
+```{r,echo=FALSE,message=FALSE,warning=FALSE,fig.width=10,fig.height=5}
+data.space.coor = ddply(entropies.etc.st.df,.(city),function(city){
+    stat = ddply(city,.(space),function(space){
+        data.frame("pi.max"=with(space,mean(pi.max)),
+                   "pi.min"=with(space,mean(pi.min)),
+                   "record"=with(space,sum(record)))
+    })
+    stat
+})
+data.space.coor$delta = with(data.space.coor,(pi.max-pi.min)/pi.min)
+data.space.coor=melt(data.space.coor,id.vars=c(1,2,5))
+data.space.coor$variable<-factor(data.space.coor$variable,
+                                labels=c("max","min",expression(delta)))
+data.space.coor$outlier<-with(data.space.coor,
+                             ifelse(space %in% outlier.list$name,T,F))
+data.space.coor$label<-with(data.space.coor,
+                            ifelse(outlier,as.character(space),""))
+data.space.coor=merge(x=data.space.coor,y=outlier.list,
+                      by.x="label",by.y="name",all.x=T)
+
+smooth.space<-data.frame()
+eqs.space <- ddply(data.space.coor,.(city,variable),function(i){
+    if(i[1,"variable"]=="max"){ 
+        model = lm(i,formula=value~atan(log(record/max(record))))
+        eqs.pred=data.frame(record = c(min(i$record):max(i$record)))
+        }
+    else if(i[1,"variable"]=="delta"){ 
+        model = lm(i,formula=value~atan(log(record/100)))
+        eqs.pred=data.frame(record = c(min(i$record):max(i$record)))
+        }
+    else{
+        model = lm(i,formula=value~atan(log(record*100)))
+        eqs.pred=data.frame(record = c(min(i$record):max(i$record)))
+        }
+#     model =lm(i,formula=value~log(record))
+    
+    # regression model statistics
+    eq <- substitute(atop(italic(r)^2~"="~r2*","~~italic(p)~"="~pvalue),
+                     list(r2 = format(summary(model)$r.squared, digits = 3),
+                          pvalue = formatC(summary(model)[[4]][[8]],format="f")))
+    eq <- as.character(as.expression(eq));
+
+    # regression line
+    eqs.pred$y = predict(model, newdata = eqs.pred);
+    eqs.pred$variable=i[1,"variable"]
+    eqs.pred$city=i[1,"city"]
+    smooth.space <<- rbind(smooth.space,eqs.pred)
+    
+    eq
+})
+eqs.space$pos.x=rep(c(10,3,10),each=3)
+eqs.space$pos.y=rep(c(0.7,1.2,2.7),3)
+
+
+theme_new<-theme_set(theme_bw(base_size = 10))
+#theme_new<-theme_update(legend.position="none")
+gg.coor.space<-ggplot(data.space.coor,aes(x=record,y=value))+
+    facet_grid(variable~city,scales="free",
+               labeller=labeller(variable=label_bquote(Pi["ST"]^.(x))))+
+    geom_line(data=smooth.space,aes(x=record,y=y),color="grey")+
+    geom_point(aes(shape=type,size=type),fill="black",color="white")+
+    geom_textbox(data=data.space.coor[which(data.space.coor$type %in% c("A","B")),],aes(label=label),size=2,bgcol = NA, bgfill="white", vjust=1.5, expand_h=1,expand_w=1)+
+#     geom_text(aes(label=label),size=2.5,vjust=1.5)+
+    xlab("Check-in frequency by zip code") +
+    ylab(expression(Pi["ST"])) +
+    scale_x_log10()+
+    scale_y_continuous(labels=percent)+
+    scale_shape_manual(name="",labels=c("Outlier type A","Outlier type B","Normal region"),
+                       values=c(24,22,21))+
+    scale_size_manual(name="",labels=c("Outlier type A","Outlier type B","Normal region"),
+                      values=c(2.5,2.5,1.5))+
+    geom_text(data=eqs.space,aes(x=pos.x,y=pos.y,label=V1),inherit.aes=FALSE,
+                  parse = TRUE,hjust=0,vjust=1,size=3)
+
+gg.coor.space
+```
+```{r,echo=FALSE,eval=FALSE}
+postscript("plots/fig8.coor.space.ps",width=8,height=4.5,bg="transparent",colormodel="gray",horizontal = F)
+# pdf("plots/fig8.coor.space.pdf",width=8,height=4.5,colormodel = "grey")
+gg.coor.space
+dev.off()
+```
+
+The revealed correlations exhibit quite similar patterns to that of the temporal perspective. Therefore, we assume similar underlying reasons to be effective: **the heavily frequented spatial regions also tend to contain complicated semantics because of the complex functions they typically provide. Hence, the initial prediction accuracy is low while the efficiency for improvement is quite high.**
+
+However, compared with the temporal correlations, the spatial correlation figure distinguishes itself by showing several noticeable outliers. In these outlier zip code areas, users are frequently checking in, while the predictability is yet still high. Thus, it would be interesting to further investigate the outliers and find out *why these regions do not follow the general trend*. We further classified the outliers into two categories: A and B. Outliers of type A are located far below or above the general trend line, while outliers of type B tend to reside closer to the general trend line. Hence, it would also be interesting to *reveal the differences between type A and B outliers*. 
+
+**b. histogram/density**
+```{r,echo=FALSE,message=FALSE,warning=FALSE,fig.width=10,fig.height=5}
+space.stat = do.call(rbind,lapply(1:3,function(city.index){
+    data.total = checkin.poly.list[[city.index]][,c(city.guide$spatial.attr[city.index],"cate_l1")]
+    colnames(data.total)[1]="space"
+    stat.byspace=ddply(data.total,.(space),function(i){
+        df = as.data.frame(xtabs(~cate_l1,data=i))
+        df$prob = with(df,Freq/sum(Freq))
+        df
+    })
+
+    stat.byspace$city = city.guide$city[city.index]
+    stat.byspace$space = as.character(stat.byspace$space)
+    stat.byspace
+}))
+space.stat=merge(space.stat,outlier.list,by.x="space",by.y="name")
+space.stat$log.freq=with(space.stat,ifelse(Freq==0,0,log(Freq)))
+
+theme_new<-theme_set(theme_bw(base_size = 10))
+theme_new<-theme_update(legend.position="none",
+          axis.text.x=element_text(angle=50,vjust=1,hjust=1))
+gg.hist.space<-ggplot(space.stat)+
+    facet_wrap(~city+space,nrow=3)+
+    geom_histogram(aes(x=cate_l1,y=prob),stat="identity")+
+#     geom_text(aes(x=cate_l1,y=prob,label=Freq,size=log.freq),hjust=1.2,vjust=0.5,angle=90,color="white")+
+    geom_text(aes(x=5,y=0.75,label=type),size=3)+
+    scale_size_continuous(range=c(0.3,3))+
+    labs(y="PMF [Pr(X=x)]",x="Venue Category")
+
+gg.hist.space
+```
+```{r,echo=FALSE,eval=FALSE}
+postscript("plots/fig9.hist.space.ps",width=7,height=4,bg="transparent",colormodel="gray",horizontal = F)
+# pdf("plots/fig9.hist.space.pdf",width=7,height=4.5,colormodel = "grey")
+gg.hist.space
+dev.off()
+```
+
+This figure shows that, regardless of the outlier category, all outlier regions are dominated by just one single semantic category each (Travel and Transport in case of type A, Arts and Entertainment in case of type B). However, the dominance of the single category in regions of type A is stronger than that of type B. Hence, these outliers again strengthen our assumptions that were drawn earlier: **simpler semantics result in higher initial prediction accuracy while providing lower improvement efficiency**. 
+
+
+**c. map the outliers**
+```{r,echo=FALSE,message=FALSE,warning=FALSE,fig.width=10,fig.height=7}
+# make statstics for the points (not category) in the outliers
+venue.stat = lapply(1:3,function(city.index){
+    data.total = checkin.poly.list[[city.index]][,c(city.guide$spatial.attr[city.index],"lat","lon")]
+    colnames(data.total)[1]="space"
+    data.total$venue_loc = with(data.total,paste0(lat,lon))
+    stat=as.data.frame(xtabs(~venue_loc,data=data.total))
+    
+    stat = merge(stat,
+                 unique(data.total[,c("venue_loc","lat","lon","space")]),
+                 by="venue_loc",all.x=T)
+    
+    stat$city = city.guide$city[city.index]
+    stat$space = as.character(stat$space)
+
+    stat=merge(stat,outlier.list,by.x="space",by.y="name")
+    stat
+})
+
+outlier.map<-lapply(1:3,function(city.index){
+    theme_new<-theme_set(theme_bw(base_size = 8))
+    theme_new<-theme_update(legend.position="none",
+                            plot.margin=unit(c(0,0.1,0,0.05), "cm"))
+    google.map <- get_map(
+        location = make_bbox(lon,lat,data=venue.stat[[city.index]]), 
+        zoom = 11,maptype = 'roadmap', color = 'bw')
+    al1MAP = ggmap(google.map)+
+        geom_point(data=venue.stat[[city.index]],
+                   aes(x=lon,y=lat,size=Freq),
+                   shape=21,fill="white",alpha=0.5)+
+        scale_size_continuous(range=c(0.5,5))+
+        xlab("Longitude")+ylab("Latitude")+
+        ggtitle(paste("Outliers for",city.guide$city[city.index]))
+    
+    sub.df = split(venue.stat[[city.index]],venue.stat[[city.index]]$space)
+    submap<-lapply(sub.df,function(i){
+        zoom.level = ifelse(i[1,"space"] %in% c("60609","60629","60666","90045"),
+                            13,ifelse(i[1,"space"]=="11371",15,14))
+        google.submap <- get_map(
+            location=make_bbox(lon,lat,data=i,f=0.1),
+            zoom=zoom.level,maptype='roadmap',color='bw')
+        sub = ggmap(google.submap)+
+            geom_point(data=i,aes(x=lon,y=lat,size=Freq),
+                       shape=21,fill="white",alpha=0.5)+
+            scale_size_continuous(range=c(1,12))+
+            xlab("Longitude")+ylab("Latitude")+
+            ggtitle(paste("Postal Region",i[1,"space"],
+                          "(",as.character(i[1,"type"]),")"))
+    })
+    
+    list(al1MAP,submap)
+})
+
+
+outlier.table <- data.frame(a=1:9, b=1:9)
+outlier.table$city = c(rep(city.guide$city[1],4),city.guide$city[2],
+                       rep(city.guide$city[3],4))
+outlier.table <- cbind(outlier.table,outlier.list[1:9,])
+
+
+colnames(outlier.table)[3:7]=c("City","Postal region","Outlier Type",
+                               "Geographic Phenomena","Dominant Venue")
+
+theme_new<-theme_update(axis.text=element_blank(),axis.ticks=element_blank(),
+                        axis.line=element_blank(),axis.title=element_blank(),
+                        panel.border=element_blank(),panel.grid=element_blank())
+gg.outlier.table <- ggplot(outlier.table,aes(x=a,y=b)) +
+    geom_blank()+
+#   geom_point(colour="blue") + 
+#   geom_point(data=mydata[10:13, ], aes(x=a, y=b), colour="red", size=5) + 
+  annotation_custom(tableGrob(outlier.table[,c(3:7)],
+                              padding.v = unit(3, "mm"),
+                              gpar.coretext = gpar(cex = 0.6),
+                              gpar.coltext = gpar(cex = 0.6, fontface = "bold"),
+                              gpar.rowtext = gpar(cex = 0.6, fontface = "italic")),
+                    xmin=1, xmax=9, ymin=1, ymax=9)
+
+grid.arrange(
+    arrangeGrob(outlier.map[[1]][[1]],
+                outlier.map[[1]][[2]][[1]],outlier.map[[1]][[2]][[2]],
+                outlier.map[[1]][[2]][[3]],outlier.map[[1]][[2]][[4]],
+                ncol=5),
+    arrangeGrob(outlier.map[[2]][[1]],
+                outlier.map[[2]][[2]][[1]],
+                gg.outlier.table,
+                ncol=3,widths=c(1,1,3)),
+    arrangeGrob(outlier.map[[3]][[1]],
+                outlier.map[[3]][[2]][[1]],outlier.map[[3]][[2]][[2]],
+                outlier.map[[3]][[2]][[3]],outlier.map[[3]][[2]][[4]],
+                ncol=5),
+    ncol=1,nrow=3
+    )
+
+```
+```{r,echo=FALSE,eval=FALSE}
+# postscript("plots/fig10.outliers.map.ps",width=10,height=7,bg="transparent",colormodel="gray",horizontal = F)
+pdf("plots/fig10.outliers.map.pdf",width=10,height=7,colormodel = "grey")
+grid.arrange(
+    arrangeGrob(outlier.map[[1]][[1]],
+                outlier.map[[1]][[2]][[1]],outlier.map[[1]][[2]][[2]],
+                outlier.map[[1]][[2]][[3]],outlier.map[[1]][[2]][[4]],
+                ncol=5),
+    arrangeGrob(outlier.map[[2]][[1]],
+                outlier.map[[2]][[2]][[1]],
+                gg.outlier.table,
+                ncol=3,widths=c(1,1,3)),
+    arrangeGrob(outlier.map[[3]][[1]],
+                outlier.map[[3]][[2]][[1]],outlier.map[[3]][[2]][[2]],
+                outlier.map[[3]][[2]][[3]],outlier.map[[3]][[2]][[4]],
+                ncol=5),
+    ncol=1,nrow=3
+    )
+dev.off()
+
+
+```
+
+When the outlier instances are all mapped back into geographic space, some interesting facts about the differences between type A and B outliers can be noticed. It is found that each outlier region of type A contains a large airport. In contrast, each outlier region of type B comprises a large sports stadium (see the table in the centre). The figure shows **how tremendously certain types of venues can impact human’s check-in behaviour**.
+
+It is supposable that **the dominance of some venue types is a general phenomenon**. That is, we can expect international airports to attract an enormous number of check-ins in most cities, even beyond our study sites. In contrast, **the dominance of some other types of venues might be explicitly local effects; and can therefore not be generalized to a universal viewpoint as easily**. Baseball, for example, is one of the most popular sports in the United States. Therefore, baseball parks strongly impact human’s check-in behaviour. Compared to New York City, the inhabitants of Chicago obviously also show a great passion on basketball. Therefore the United Center, which is the home to the *Chicago Bulls* of the National Basketball Association (NBA), dominates the check-in behaviour in the corresponding zip code area.
+
