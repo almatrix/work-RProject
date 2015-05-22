@@ -172,26 +172,18 @@ freq.plot = function(checkin, title="",cols=2, rows=5){
 ######################################################
 ## plot the temporal aspects in the checkin data
 time.distribution.plot =  function(checkin, title="", cols=2, rows=5){
-    list.category = lapply(split(checkin,checkin$cate_l1), function(i){
-        df = stats_checkin_by_hour(i, category = i[1,"cate_l1"])
-    })
-    
-    df = do.call(rbind,list.category)
+    cate.on.hour = xtabs2(data = checkin, obs.col = "cate_l1", 
+                          cond.col = "hour",p.joint = T)
 
     ## plot
-    ggplot(df, aes(x=hour,y=I(100*prop))) + 
+    ggplot(cate.on.hour, aes(x=condition,y=p.joint)) + 
         geom_bar(stat="identity") +
         facet_wrap(~cate_l1, ncol=cols, nrow=rows) +
         ggtitle(title)+
-        coord_cartesian(ylim = c(0,13)) +
-#         scale_y_continuous(name="Probability [%]",labels  = percent) +
-        scale_y_continuous(name="Probability [%]") +
-        scale_x_discrete(name="Hour",breaks=levels(df$hour), 
+        scale_y_continuous(name="Probability Mass Function (PMF)",labels=percent) +
+        scale_x_discrete(name="Hour",breaks=levels(cate.on.hour$condition), 
                          labels=c("0","","","3","","","6","","","9","","","12",
-                                  "","","15","","","18","","","21","","23"))+ 
-        theme(axis.title = element_text(size=10),axis.text=element_text(size=8),
-              plot.title = element_text(size=10),#legend.position="none",
-              legend.title = element_text(size=8),legend.text = element_text(size = 8))
+                                  "","","15","","","18","","","21","","23"))
 }
 
 
@@ -430,6 +422,81 @@ stats_by_date_hour <- function(df, category=NA) {
     df_date_hour
 }
 
+
+## FUNCTION
+## description:     statistics for frequency / probability / conditional probability
+## input:           data: a dataframe for statistics
+##                  obs.col: the name of columns for computing frequency / probability
+##                  cond.col: a vector specifying the names of columns of conditions 
+##                          if conditional probaility is desired
+##                  wgt.col: the name of columns for weighted frequency
+##                  p.joint, p.cond, p.marg: type of frequency desired in the output
+## output:          a dataframe (similar output as xtabs/table + probability)
+xtabs2 = function(data,obs.col,cond.col=NA,wgt.col=NA,
+                  p.joint=F,p.cond=F,p.marg=F){
+    
+    if(length(cond.col)==1 && is.na(cond.col)){ # no conditional frequency/probability
+        if(is.na(wgt.col)){
+            freq = as.data.frame(xtabs(data=data,paste("~",obs.col),
+                                       drop.unused.levels=T))
+        }else{
+            freq = as.data.frame(xtabs(data=data,paste(wgt.col,"~",obs.col),
+                                       drop.unused.levels=T))
+        }
+    }else{ 
+        if(length(cond.col)>1){# more than one columns are specified for condition
+            # make a new column from all the specified condition columns
+            data$condition = do.call(paste,lapply(cond.col,function(col){
+                data[,col]
+            }))
+            # build a new column from condition column + observation column
+            data$new.col = paste(data[,obs.col],data$condition,sep="@")
+        }else{
+            # build a new column from condition column + observation column
+            data$new.col = paste(data[,obs.col],data[,cond.col],sep="@")
+        }
+        
+        # make statistics based on the new column (save memory)
+        if(is.na(wgt.col)){
+            freq = as.data.frame(xtabs(data=data,~new.col,
+                                       drop.unused.levels=T))
+        }else{
+            freq = as.data.frame(xtabs(data=data,paste(wgt.col,"~new.col"),
+                                       drop.unused.levels=T))
+        }
+        # column information recovery after frequency statitics
+        col.info = data.frame(do.call(rbind,strsplit(as.character(freq$new.col),
+                                                     "@",fixed=TRUE)))
+        freq = cbind(col.info,freq)
+        colnames(freq)=c(obs.col,"condition","obs","Freq")
+        
+        # marginal frequency
+        marg.freq = ddply(freq,.(condition),function(in.condition){
+            sum(in.condition$Freq)
+        })
+        colnames(marg.freq)[2]="marg.freq"
+        
+        freq = merge(x=freq,y=marg.freq,all.x=T)
+    }
+    
+    if(p.joint){
+        freq$p.joint = with(freq, Freq / sum(Freq))
+    }
+    
+    if(p.cond){
+        if(length(cond.col)==1 && is.na(cond.col)){
+            stop("you must specify the condition for conditional probability.")}
+        freq$p.cond = with(freq, Freq / marg.freq)
+    }
+    
+    if(p.marg){
+        if(length(cond.col)==1 && is.na(cond.col)){
+            stop("you must specify the condition for marginal probability.")}
+        freq$p.marg = with(freq, marg.freq / sum(Freq))
+    }
+    
+    freq
+}
 
 insertrow = function(tab, position, vector=NA, name=NA){
     ## how many original rows before insertation

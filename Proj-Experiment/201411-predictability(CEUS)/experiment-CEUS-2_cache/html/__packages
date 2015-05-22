@@ -1,0 +1,13 @@
+animation
+base
+ggplot2
+gridExtra
+manipulate
+plotrix
+plyr
+proto
+reshape2
+rgdal
+scales
+sp
+vcd
