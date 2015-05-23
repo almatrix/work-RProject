@@ -433,7 +433,7 @@ stats_by_date_hour <- function(df, category=NA) {
 ##                  p.joint, p.cond, p.marg: type of frequency desired in the output
 ## output:          a dataframe (similar output as xtabs/table + probability)
 xtabs2 = function(data,obs.col,cond.col=NA,wgt.col=NA,
-                  p.joint=F,p.cond=F,p.marg=F){
+                  p.joint=F,p.cond=F,p.marg=F, p.prior=F){
     
     if(length(cond.col)==1 && is.na(cond.col)){ # no conditional frequency/probability
         if(is.na(wgt.col)){
@@ -479,6 +479,14 @@ xtabs2 = function(data,obs.col,cond.col=NA,wgt.col=NA,
         freq = merge(x=freq,y=marg.freq,all.x=T)
     }
     
+    # prior frequency
+    prior.freq = ddply(freq, obs.col, function(y){
+        sum(y$Freq)
+    } )
+    colnames(prior.freq)[2]="prior.freq"
+    
+    freq = merge(x=freq,y=prior.freq,all.X=T)
+    
     if(p.joint){
         freq$p.joint = with(freq, Freq / sum(Freq))
     }
@@ -493,6 +501,10 @@ xtabs2 = function(data,obs.col,cond.col=NA,wgt.col=NA,
         if(length(cond.col)==1 && is.na(cond.col)){
             stop("you must specify the condition for marginal probability.")}
         freq$p.marg = with(freq, marg.freq / sum(Freq))
+    }
+    
+    if(p.prior){
+        freq$p.prior = with(freq, prior.freq / sum(Freq))
     }
     
     freq

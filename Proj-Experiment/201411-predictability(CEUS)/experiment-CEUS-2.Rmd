@@ -175,39 +175,44 @@ One of the shortcomings of regression (both linear and logistic) is that it does
 
 [D.Micci-Barreca,2001](http://dl.acm.org/citation.cfm?id=507538) provides an approach to deal with this problem. A similar approach is also mentioned [here](http://www.win-vector.com/blog/2012/07/modeling-trick-impact-coding-of-categorical-variables-with-many-levels/) The basic idea behind this is to transform categorical variables into continuous values with the *impact of each category value* on the outcome. 
 
+Here we first use spatial context (zip code) as an example.
+
 ```{r}
-# return a model of the conditional probability 
-# of dependent variable (depvar) by level 
-# assumes outcome is logical and not null
-impactModel = function(xcol, depvar) {
-  n = length(depvar)
-  p = sum(depvar)/n
-  # duplicate output for NA (average NA towards grand uniform average) 
-  x = c(xcol,xcol)
-  y = c(depvar, depvar)
-  x[(1+n):(2*n)] = NA
-  levelcounts = table(x, y, useNA="always")
-  condprobmodel = (levelcounts[,2]+p)/(levelcounts[,1]+levelcounts[,2]+1.0) 
-  # apply model example: applyImpactModel(condprobmodel,data[,varname])
-  condprobmodel
-}
 
-# apply model to column to essentially return condprobmodel[rawx]
-# both NA's and new levels are smoothed to original grand average 
-applyImpactModel = function(condprobmodel, xcol) {
-  naval = condprobmodel[is.na(names(condprobmodel))]
-  dim = length(xcol)
-  condprobvec = numeric(dim) + naval
-  for(nm in names(condprobmodel)) {
-    if(!is.na(nm)) {
-      condprobvec[xcol==nm] = condprobmodel[nm]
-    }
-  }
-  condprobvec
-}
+categorical.scaler.zip <- xtabs2(data = checkin.poly.list[[1]][1:100],
+                                 obs.col = "cate_l2", cond.col = "ZIP",
+                                 p.cond=T, p.prior=T)
+categorical.scaler.zip$prob.est.zip = with(categorical.scaler.zip,
+    marg.freq/(marg.freq+4)*p.cond + 4/(marg.freq+4)*p.prior)
+# apply
+checkin.continuous = merge(checkin.poly.list[[1]][,c(2,9,10,12,25)],
+                           categorical.scaler.zip[,c(1,2,9)],
+                           by.x=c("cate_l2","ZIP"),
+                           by.y=c("cate_l2","condition"),
+                           all.x=T)
 
-# convert Address variable to its impact model outcome
-impact_zip_mod = impactModel(data.seq$POSTAL, data.seq$cate_l1)
-data.seq$impactZip = applyImpactModel(impact_zip_mod, data.seq$POSTAL)
+# without impact model
+glmodel.1 <- glm(cate_l2 ~  ZIP , 
+               data=checkin.continuous, family=binomial(link="logit"))
+
+1 - glmodel1$deviance/glmodel1$null.deviance
+
+# with impact moidel
+glmodel.2 <- glm(cate_l2 ~  prob.est.zip , 
+               data=checkin.continuous, family=binomial(link="logit"))
+
+1 - glmodel2$deviance/glmodel2$null.deviance
+
+# adding time information
+glmodel.3 <- glm(cate_l2 ~  prob.est.zip + hour, 
+               data=checkin.continuous, family=binomial(link="logit"))
+
+1 - glmodel3$deviance/glmodel3$null.deviance
+
+# considering interactions between time and space
+glmodel.4 <- glm(cate_l2 ~  prob.est.zip * hour, 
+               data=checkin.continuous, family=binomial(link="logit"))
+
+1 - glmodel4$deviance/glmodel4$null.deviance 
 ```
 
