@@ -115,7 +115,7 @@ chisq.test(cate.on.hour.table,simulate.p.value = T)
 
 Similary, we reveal the spatial influences on user interest both with graphics and chi-square test.
 
-```{r spatial,echo=TRUE,eval=TRUE,fig.width=10,fig.height=8}
+```{r spatial,echo=TRUE,eval=TRUE,fig.width=10,fig.height=11}
 # frequency statistics
 cate.on.zip = xtabs2(data = checkin.poly.list[[1]], obs.col = "cate_l1", 
                       cond.col = city.guide$spatial.attr[1],
@@ -177,9 +177,9 @@ One of the shortcomings of regression (both linear and logistic) is that it does
 
 Here we first use spatial context (zip code) as an example.
 
-```{r}
+```{r zip.impact, echo=TRUE,eval=TRUE,cache=TRUE}
 
-categorical.scaler.zip <- xtabs2(data = checkin.poly.list[[1]][1:100],
+categorical.scaler.zip <- xtabs2(data = checkin.poly.list[[1]],
                                  obs.col = "cate_l2", cond.col = "ZIP",
                                  p.cond=T, p.prior=T)
 categorical.scaler.zip$prob.est.zip = with(categorical.scaler.zip,
@@ -192,27 +192,93 @@ checkin.continuous = merge(checkin.poly.list[[1]][,c(2,9,10,12,25)],
                            all.x=T)
 
 # without impact model
-glmodel.1 <- glm(cate_l2 ~  ZIP , 
+t0=Sys.time()
+glmodel1 <- glm(cate_l2 ~  ZIP , 
                data=checkin.continuous, family=binomial(link="logit"))
-
+Sys.time()-t0
+summary(glmodel1)
 1 - glmodel1$deviance/glmodel1$null.deviance
 
 # with impact moidel
-glmodel.2 <- glm(cate_l2 ~  prob.est.zip , 
+t0=Sys.time()
+glmodel2 <- glm(cate_l2 ~  prob.est.zip , 
                data=checkin.continuous, family=binomial(link="logit"))
-
+Sys.time()-t0
+summary(glmodel2)
 1 - glmodel2$deviance/glmodel2$null.deviance
 
-# adding time information
-glmodel.3 <- glm(cate_l2 ~  prob.est.zip + hour, 
-               data=checkin.continuous, family=binomial(link="logit"))
-
-1 - glmodel3$deviance/glmodel3$null.deviance
-
-# considering interactions between time and space
-glmodel.4 <- glm(cate_l2 ~  prob.est.zip * hour, 
-               data=checkin.continuous, family=binomial(link="logit"))
-
-1 - glmodel4$deviance/glmodel4$null.deviance 
 ```
 
+The above experiments show that transforming the categorical levels into continous "impact model" can:
+
++ making the computation more timely efficient;
++ equally (even slightly better) explain the data; (~25%)
++ provide much more significant regression coefficicent;
+
+We now perform similar operations on the temporal context:
+
+```{r hour.impact,echo=TRUE,eval=TRUE,cache=TRUE}
+# impact model for temporal context
+categorical.scaler.hour <- xtabs2(data = checkin.poly.list[[1]],
+                                 obs.col = "cate_l2", cond.col = "hour",
+                                 p.cond=T, p.prior=T)
+categorical.scaler.hour$prob.est.hour = with(categorical.scaler.hour,
+    marg.freq/(marg.freq+4)*p.cond + 4/(marg.freq+4)*p.prior)
+# apply
+checkin.continuous = merge(checkin.continuous,
+                           categorical.scaler.hour[,c(1,2,9)],
+                           by.x=c("cate_l2","hour"),
+                           by.y=c("cate_l2","condition"),
+                           all.x=T)
+
+# without impact model
+t0=Sys.time()
+glmodel3 <- glm(cate_l2 ~  hour , 
+               data=checkin.continuous, family=binomial(link="logit"))
+Sys.time()-t0
+summary(glmodel3)
+1 - glmodel3$deviance/glmodel3$null.deviance
+
+# with impact model
+t0=Sys.time()
+glmodel4 <- glm(cate_l2 ~  prob.est.hour , 
+               data=checkin.continuous, family=binomial(link="logit"))
+Sys.time()-t0
+summary(glmodel4)
+1 - glmodel4$deviance/glmodel4$null.deviance
+
+```
+
+And the conclusions for spatial context hold true also for temporal one. More interestingly, the model after transformation provides better describtion of the data: from merely 8% to 38%. 
+
+Then how about if we consider both?
+
+```{r st.model,echo=TRUE,eval=TRUE}
+# adding time+space information
+t0=Sys.time()
+glmodel5 <- glm(cate_l2 ~  prob.est.zip + hour, 
+               data=checkin.continuous, family=binomial(link="logit"))
+Sys.time()-t0
+summary(glmodel5)
+1 - glmodel5$deviance/glmodel5$null.deviance
+
+
+# adding impact model for both space and time
+t0=Sys.time()
+glmodel6 <- glm(cate_l2 ~  prob.est.hour + prob.est.zip , 
+               data=checkin.continuous, family=binomial(link="logit"))
+Sys.time()-t0
+summary(glmodel6)
+1 - glmodel6$deviance/glmodel6$null.deviance
+
+
+# considering interactions between time and space
+t0=Sys.time()
+glmodel7 <- glm(cate_l2 ~  prob.est.hour * prob.est.zip , 
+               data=checkin.continuous, family=binomial(link="logit"))
+Sys.time()-t0
+summary(glmodel7)
+1 - glmodel7$deviance/glmodel7$null.deviance
+```
+
+The last two models show that after the transformation, the interactions can be neglected.
