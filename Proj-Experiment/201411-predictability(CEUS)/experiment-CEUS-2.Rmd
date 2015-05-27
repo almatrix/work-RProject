@@ -46,7 +46,7 @@ city.guide=data.frame("city"=c("Chicago","Los Angeles","New York City"),
 
 ```
 
-#### load the data
+#### 1. load the data
 
 First, we load the data. The first several rows for each city is shown in the following to demonstrate the data structure. 
 
@@ -66,14 +66,14 @@ point.in.poly(checkin, SPDF, copy.attr=city.guide$spatial.attr[city.index])#)
 ```{r data.summary,eval=TRUE}
 # summary
 print(city.guide$city[1])
-head(checkin.poly.list[[1]][,c("gid","user_id","venue_id","lat","lon","localtime","cate_l1","cate_l2",city.guide$spatial.attr[1])])
+head(checkin.poly.list[[1]][,c("gid","user_id","venue_id","lat","lon","localtime","cate_l1","cate_l2",city.guide$spatial.attr[1],"last.cate_l1","last.cate_l2")])
 print(city.guide$city[2])
-head(checkin.poly.list[[2]][,c("gid","user_id","venue_id","lat","lon","localtime","cate_l1","cate_l2",city.guide$spatial.attr[2])])
+head(checkin.poly.list[[2]][,c("gid","user_id","venue_id","lat","lon","localtime","cate_l1","cate_l2",city.guide$spatial.attr[2],"last.cate_l1","last.cate_l2")])
 print(city.guide$city[3])
-head(checkin.poly.list[[3]][,c("gid","user_id","venue_id","lat","lon","localtime","cate_l1","cate_l2",city.guide$spatial.attr[3])])
+head(checkin.poly.list[[3]][,c("gid","user_id","venue_id","lat","lon","localtime","cate_l1","cate_l2",city.guide$spatial.attr[3],"last.cate_l1","last.cate_l2")])
 ```
 
-#### Demonstration of contextual influences 
+#### 2. Demonstration of contextual influences 
 
 This sections aims to show the influneces of differnt context on user interest visually. We include three types of context:
 
@@ -81,16 +81,25 @@ This sections aims to show the influneces of differnt context on user interest v
 + spatial: the location of check-in. It will be numerically represented by the zip code of the check-in.
 + sequential: the sequence of check-in. It will be numerically represented by the category of the last check-in venue. 
 
-Furthre, the user interest will be numerically represented by the category of check-in venue.
+Further, the user interest will be numerically represented by the category of check-in venue. The exploratory experiment will be carried out with the dataset from Chicago.
+
+```{r exp.data,echo=TRUE,eval=TRUE}
+exp.data = checkin.poly.list[[1]][,c("user_id","cate_l1","cate_l2","venue_id",
+                                     "hour", city.guide$spatial.attr[1],
+                                     "last.user_id","last.venue_id",
+                                     "last.cate_l1","last.cate_l2",
+                                     "time.interval")]
+```
 
 
-##### 1. temporal influences
+
+##### 2.1. temporal influences
 
 The following figure shows the fact that users have differnt interest towards geographic venues at differnt hour of day. The data comes from Chicago.
 
 ```{r temporal.fig,echo=TRUE,eval=TRUE,fig.width=10,fig.height=6}
 # frequency statistics
-cate.on.hour = xtabs2(data = checkin.poly.list[[1]], obs.col = "cate_l1", 
+cate.on.hour = xtabs2(data = exp.data, obs.col = "cate_l1", 
                           cond.col = "hour",p.joint = T,p.cond=T)
 
 theme_new<-theme_set(theme_bw(base_size = 10))
@@ -99,6 +108,7 @@ gg.cate.on.hour <- ggplot(cate.on.hour,
     geom_bar(stat="identity") +
     labs(x="User interest",y="Conditional probability")+
     facet_wrap(~condition,ncol=6,nrow=4)+
+    scale_y_sqrt()+
     coord_polar()
 
 gg.cate.on.hour
@@ -111,22 +121,27 @@ cate.on.hour.table = xtabs(Freq ~ condition+cate_l1, data=cate.on.hour)
 chisq.test(cate.on.hour.table,simulate.p.value = T)
 ```
 
-##### 2. spatial influences
+##### 2.2. spatial influences
 
 Similary, we reveal the spatial influences on user interest both with graphics and chi-square test.
 
-```{r spatial,echo=TRUE,eval=TRUE,fig.width=10,fig.height=11}
+```{r spatial,echo=TRUE,eval=TRUE,fig.width=10,fig.height=4.5}
 # frequency statistics
-cate.on.zip = xtabs2(data = checkin.poly.list[[1]], obs.col = "cate_l1", 
+cate.on.zip = xtabs2(data = exp.data, obs.col = "cate_l1", 
                       cond.col = city.guide$spatial.attr[1],
                       p.joint = T,p.cond=T)
 
+
+# for visualization purpose, we select only 18 most popular zip code regions (condition)
+cate.on.zip.plot = cate.on.zip[which(cate.on.zip$condition %in% 
+    unique(cate.on.zip[order(cate.on.zip$marg.freq,decreasing=T),"condition"])[1:18]),] 
 theme_new<-theme_set(theme_bw(base_size = 10))
-gg.cate.on.zip <- ggplot(cate.on.zip, 
+gg.cate.on.zip <- ggplot(cate.on.zip.plot, 
                          aes(x=abbreviate(cate_l1,2),y=p.cond,fill=cate_l1)) + 
     geom_bar(stat="identity") +
     labs(x="User interest",y="Conditional probability")+
-    facet_wrap(~condition,ncol=8)+
+    facet_wrap(~condition,ncol=6)+
+    scale_y_sqrt()+
     coord_polar()
 gg.cate.on.zip
 
@@ -135,7 +150,7 @@ cate.on.zip.table = xtabs(Freq ~ condition+cate_l1, data=cate.on.zip)
 chisq.test(cate.on.zip.table,simulate.p.value = T)
 ```
 
-##### 3. sequential influences
+##### 2.3. sequential influences
 
 The sequential influences are a little bit tricky to see, because the fuzzy dataset from Foursquare would result into some problematic scenarios that must be excluede/considered:
 
@@ -143,33 +158,73 @@ The sequential influences are a little bit tricky to see, because the fuzzy data
 - when two check-ins are taken place not really "consequtively" (long time interval);
 - other scenarios??
 
-```{r sequential,echo=TRUE,eval=TRUE,fig.width=10}
-# remove mismatch pairs
-data.seq = na.omit(checkin.poly.list[[1]])
-# remove continuous check-ins by the same user
-data.seq = data.seq[data.seq$venue_id!=data.seq$last.venue_id, ]
+
+```{r sequential,echo=TRUE,eval=TRUE,fig.width=10,fig.height=3}
 # add weight based on time interval
-data.seq$wgt = with(data.seq, 2^(-1*time.interval))
+exp.data$wgt = 2 ^ ( -1 * exp.data$time.interval + 1)
+
+# remove continuous check-ins by the same user (by changing the weight to 0)
+exp.data$wgt = with(exp.data,
+                    ifelse(venue_id==last.venue_id, 0, wgt))
+
+# deal with the empty values
+exp.data$wgt = with(exp.data, 
+        ifelse(is.na(last.cate_l1)|time.interval>12,
+               mean(wgt,na.rm=T),wgt))
+exp.data$last.cate_l1 = with(exp.data,
+        as.factor(ifelse(is.na(last.cate_l1)|time.interval>12,
+            "Unknown",as.character(last.cate_l1))))
+exp.data$last.cate_l2 = with(exp.data,
+        as.factor(ifelse(is.na(last.cate_l2)|time.interval>12,
+           "Unknown",as.character(last.cate_l2))))
+exp.data$last.venue_id = with(exp.data,
+        as.factor(ifelse(is.na(last.venue_id)|time.interval>12,
+           "Unknown",as.character(last.venue_id))))
+
 # weighted statistics for frequency/probability
-cate.on.last = xtabs2(data = data.seq, obs.col = "cate_l1", 
+cate.on.last = xtabs2(data = exp.data, obs.col = "cate_l1", 
                       cond.col = "last.cate_l1", wgt.col= "wgt",
-                      p.joint = T,p.cond=T)
+                      p.joint = T,p.cond=T,p.marg=T)
 
 theme_new<-theme_set(theme_bw(base_size = 10))
-gg.cate.on.last <- ggplot(cate.on.last, 
+gg.cate.on.zip <- ggplot(cate.on.last, 
                          aes(x=abbreviate(cate_l1,2),y=p.cond,fill=cate_l1)) + 
     geom_bar(stat="identity") +
     labs(x="User interest",y="Conditional probability")+
-    facet_wrap(~condition,ncol=5)+
+    facet_wrap(~condition,ncol=6)+
     coord_polar()
-gg.cate.on.last
+gg.cate.on.zip
 
 # frequency dataframe to contingency table
 cate.on.last.table = xtabs(Freq ~ condition+cate_l1, data=cate.on.last)
 chisq.test(cate.on.last.table,simulate.p.value = T)
 ```
 
-#### Dealing with high-cardinality categorical attributes
+##### 2.4. correlation / interaction 
+
+We assume there exist some correlations/interactions among these contextual factors.
+
++ Correlation means the value of one context (e.g., last category) relies on another context (e.g., hour).
++ Interaction means that the influence (magnitude, direction) of one context (e.g., last category) on the dependent variable (user interest) changes with another context (e.g., space). 
+
+###### 2.4.1. test correlation
+
+The correlation among two categorical variables is usually tested with chi-square test:
+
+```{r}
+# for visualization purpose, we select only 12 most popular categories (condition)
+chisq.test(xtabs( ~ hour + ZIP, data = exp.data), simulate.p.value = T)
+chisq.test(xtabs( ~ hour + last.cate_l1, data = exp.data), simulate.p.value = T)
+chisq.test(xtabs( ~ ZIP + last.cate_l1, data = exp.data), simulate.p.value = T)
+```
+
+
+###### 2.4.2 test interaction 
+
+
+
+
+#### 3. Dealing with high-cardinality categorical attributes
 
 One of the shortcomings of regression (both linear and logistic) is that it doesn’t handle categorical variables with a very large number of possible values (for example, postal codes). We can get around this, of course, by going to another modeling technique, such as Naive Bayes; however, we lose some of the advantages of regression — namely, the model’s explicit estimates of variables’ explanatory value, and explicit insight into and control of variable to variable dependence.
 
@@ -179,13 +234,13 @@ Here we first use spatial context (zip code) as an example.
 
 ```{r zip.impact, echo=TRUE,eval=TRUE,cache=TRUE}
 
-categorical.scaler.zip <- xtabs2(data = checkin.poly.list[[1]],
+categorical.scaler.zip <- xtabs2(data = exp.data,
                                  obs.col = "cate_l2", cond.col = "ZIP",
                                  p.cond=T, p.prior=T)
 categorical.scaler.zip$prob.est.zip = with(categorical.scaler.zip,
     marg.freq/(marg.freq+4)*p.cond + 4/(marg.freq+4)*p.prior)
 # apply
-checkin.continuous = merge(checkin.poly.list[[1]][,c(2,9,10,12,25)],
+checkin.continuous = merge(exp.data,
                            categorical.scaler.zip[,c(1,2,9)],
                            by.x=c("cate_l2","ZIP"),
                            by.y=c("cate_l2","condition"),
@@ -211,15 +266,15 @@ summary(glmodel2)
 
 The above experiments show that transforming the categorical levels into continous "impact model" can:
 
-+ making the computation more timely efficient;
++ making the computation more timely efficient (from 1.03 min to 8 sec);
 + equally (even slightly better) explain the data; (~25%)
-+ provide much more significant regression coefficicent;
++ provide much more significant (and meaningful) regression coefficicent;
 
 We now perform similar operations on the temporal context:
 
 ```{r hour.impact,echo=TRUE,eval=TRUE,cache=TRUE}
 # impact model for temporal context
-categorical.scaler.hour <- xtabs2(data = checkin.poly.list[[1]],
+categorical.scaler.hour <- xtabs2(data = exp.data,
                                  obs.col = "cate_l2", cond.col = "hour",
                                  p.cond=T, p.prior=T)
 categorical.scaler.hour$prob.est.hour = with(categorical.scaler.hour,
@@ -249,36 +304,78 @@ summary(glmodel4)
 
 ```
 
-And the conclusions for spatial context hold true also for temporal one. More interestingly, the model after transformation provides better describtion of the data: from merely 8% to 38%. 
+And the conclusions for spatial context hold true also for temporal one (more efficient, more significant). More interestingly, the model after transformation provides much better describtion of the data: from merely 8% to 38%. 
 
 Then how about if we consider both?
 
 ```{r st.model,echo=TRUE,eval=TRUE}
-# adding time+space information
-t0=Sys.time()
-glmodel5 <- glm(cate_l2 ~  prob.est.zip + hour, 
+# adding impact model for both space and time
+glmodel5 <- glm(cate_l2 ~  prob.est.hour + prob.est.zip , 
                data=checkin.continuous, family=binomial(link="logit"))
-Sys.time()-t0
 summary(glmodel5)
 1 - glmodel5$deviance/glmodel5$null.deviance
+```
+The model can describe 41.6% variances in the dependent variable (i.e. user interest).
 
+Furthermore, we want to investigate the *correlation/interaction* between the two predictors before/after applying the impact model.
 
-# adding impact model for both space and time
-t0=Sys.time()
-glmodel6 <- glm(cate_l2 ~  prob.est.hour + prob.est.zip , 
+```{r cor.int.predictors,eval=TRUE,echo=TRUE,fig.width=10}
+# correlations ?
+cor(checkin.continuous$prob.est.hour, checkin.continuous$prob.est.zip)
+
+ggplot(checkin.continuous,aes(x=prob.est.hour,y=prob.est.zip))+
+    geom_point(alpha=0.1,shape=21,fill="black",color="white")+
+    facet_wrap(~cate_l1,ncol = 5,scale="free")+
+    theme_bw(base_size = 10)
+
+# interactions between time and space
+glmodel6 <- glm(cate_l2 ~  prob.est.hour * prob.est.zip , 
                data=checkin.continuous, family=binomial(link="logit"))
-Sys.time()-t0
 summary(glmodel6)
 1 - glmodel6$deviance/glmodel6$null.deviance
+1 - glmodel6$deviance/glmodel5$deviance
+```
+
+Hence, after applying the impact model, we do not need to conside the interaction between space and time. The correlations are not significant either. 
+
+Similarly, the impact model is applied on the sequential context:
+
+```{r seq.impact,echo=TRUE,eval=TRUE}
+
+categorical.scaler.last <- xtabs2(data = exp.data,
+                                 obs.col = "cate_l2", cond.col = "last.cate_l2",
+#                                  wgt.col = "wgt",
+                                 p.cond=T, p.prior=T)
+categorical.scaler.last$prob.est.last = with(categorical.scaler.last,
+    marg.freq/(marg.freq+4)*p.cond + 4/(marg.freq+4)*p.prior)
+# apply
+checkin.continuous = merge(checkin.continuous,
+                           categorical.scaler.last[,c(1,2,9)],
+                           by.x=c("cate_l2","last.cate_l2"),
+                           by.y=c("cate_l2","condition"),
+                           all.x=T)
+```
 
 
-# considering interactions between time and space
-t0=Sys.time()
-glmodel7 <- glm(cate_l2 ~  prob.est.hour * prob.est.zip , 
-               data=checkin.continuous, family=binomial(link="logit"))
-Sys.time()-t0
+** dealing with weights**
+
+The impact model of sequential context has taken *time interval* into consideration (considering the interval as weight: the smaller the time interval is, (the more precise we tend to know about the sequential context),  the heavier impact the previous record would have on the user interest).
+
+However, the classic (non-)linear regression models normally consider all the information as equally precise. In other words, the standard deviation of the error term is constant over all values of the predictor or explanatory variables. Unfortunatelly, the sequential context does not follow this premise. In situations like this, when it may not be reasonable to assume that every observation should be treated equally, weighted least squares can often be used to maximize the efficiency of parameter estimation. 
+
+This is done by attempting to give each data point its proper amount of influence over the parameter estimates. A procedure that treats all of the data equally would give less precisely measured points more influence than they should have and would give highly precise points too little influence. 
+
+This technique is actually frequently used in spatial analysis (spatial weighted regression). We will apply similar techniques to the seqential context in our study case. 
+
+```{r seq.reg,echo=TRUE,eval=TRUE}
+glmodel7 <- glm(cate_l2 ~  prob.est.last + prob.est.last:wgt, 
+                data=checkin.continuous, family=binomial(link="logit"))
 summary(glmodel7)
 1 - glmodel7$deviance/glmodel7$null.deviance
 ```
 
-The last two models show that after the transformation, the interactions can be neglected.
+... How come....??
+
+#### 4. Personal model V.S. global model
+
+

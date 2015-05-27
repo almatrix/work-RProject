@@ -16,7 +16,7 @@ library(grid)
 library(plotrix) # radial plot
 library(reshape2)
 library(plyr) # for join
-library(animation) # for gif creation
+# library(animation) # for gif creation
 
 
 
@@ -74,60 +74,60 @@ map.plot = function(mapdir=NA,maplayer=NA,mapdf=NA,basemap=NA,
 
 
 ###############################################################
-point.animation.plot = function(point, x = "lon", y="lat", split.attr="hour",
-                                basemap=NA, more.aes=NULL, title="",...){
-  
-  # must be constrained in the same area
-  xlim = range(point[,x], finite = TRUE)
-  ylim = range(point[,y], finite = TRUE)
-  
-  # slice the data
-  point.slices = split(point,point[,split.attr])
-  
-  lapply(point.slices,function(i){
-      a <- point.plot( i, x=x, y=y, basemap=basemap, more.aes=more.aes, 
-                       xlim=xlim, ylim=ylim, ... ) +
-          ggtitle(paste(title, i[1,split.attr],": 00")) +
-          theme_bw(base_size=20) + 
-          xlab("") + ylab("") 
-      
-      print(a)
-  })
-}
+# point.animation.plot = function(point, x = "lon", y="lat", split.attr="hour",
+#                                 basemap=NA, more.aes=NULL, title="",...){
+#   
+#   # must be constrained in the same area
+#   xlim = range(point[,x], finite = TRUE)
+#   ylim = range(point[,y], finite = TRUE)
+#   
+#   # slice the data
+#   point.slices = split(point,point[,split.attr])
+#   
+#   lapply(point.slices,function(i){
+#       a <- point.plot( i, x=x, y=y, basemap=basemap, more.aes=more.aes, 
+#                        xlim=xlim, ylim=ylim, ... ) +
+#           ggtitle(paste(title, i[1,split.attr],": 00")) +
+#           theme_bw(base_size=20) + 
+#           xlab("") + ylab("") 
+#       
+#       print(a)
+#   })
+# }
 
 
 
 
 
 ###############################################################
-map.animation.plot= function(point,SPDF,basemap=NA, title="",
-                             split.attr="hour",more.aes=NULL,...){
-    
-    xlim = range(point$lon, finite = TRUE)
-    ylim = range(point$lat, finite=TRUE)
-    
-    lapply(split(point,point[,split.attr]),function(i){# data by hour
-        
-        # classify the polygons in the SPDF by the overlapped point data 
-        SPDF = classify.polygon.by.point(point=i, SPDF, clsfy.attr="cate_l1")
-        
-        # plot
-        mapdf=df.from.spdf(SPDF)
-        # mapdf$density=apply(mapdf,1,function(i){i[i["cate.dom"]]})
-        # mapdf$density=as.numeric(formatC(mapdf$density,digits=1,format = "f"))
-        
-        # grid.arrange(
-        a <- map.plot(mapdf = mapdf, more.aes = more.aes, 
-                      basemap = basemap, ...)+
-            ggtitle(paste(title, i[1,split.attr],": 00")) +
-#             theme_bw(base_size=20) + 
-            xlab("") + ylab("") 
-        
-        print(a)
-        
-    })
-    
-}
+# map.animation.plot= function(point,SPDF,basemap=NA, title="",
+#                              split.attr="hour",more.aes=NULL,...){
+#     
+#     xlim = range(point$lon, finite = TRUE)
+#     ylim = range(point$lat, finite=TRUE)
+#     
+#     lapply(split(point,point[,split.attr]),function(i){# data by hour
+#         
+#         # classify the polygons in the SPDF by the overlapped point data 
+#         SPDF = classify.polygon.by.point(point=i, SPDF, clsfy.attr="cate_l1")
+#         
+#         # plot
+#         mapdf=df.from.spdf(SPDF)
+#         # mapdf$density=apply(mapdf,1,function(i){i[i["cate.dom"]]})
+#         # mapdf$density=as.numeric(formatC(mapdf$density,digits=1,format = "f"))
+#         
+#         # grid.arrange(
+#         a <- map.plot(mapdf = mapdf, more.aes = more.aes, 
+#                       basemap = basemap, ...)+
+#             ggtitle(paste(title, i[1,split.attr],": 00")) +
+# #             theme_bw(base_size=20) + 
+#             xlab("") + ylab("") 
+#         
+#         print(a)
+#         
+#     })
+#     
+# }
 
 
 ######################################################
