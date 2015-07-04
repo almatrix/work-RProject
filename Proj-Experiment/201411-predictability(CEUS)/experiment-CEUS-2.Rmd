@@ -21,6 +21,7 @@ library(reshape2)
 library(gridExtra)
 library(manipulate)
 library(plyr)
+library(nnet)
 library(vcd) # for chi-square and cramer's V
 # source("D:\\GitRepos\\work\\fun\\multiplot.R")
 
@@ -205,34 +206,80 @@ One of the shortcomings of regression (both linear and logistic) is that it does
 
 [D.Micci-Barreca,2001](http://dl.acm.org/citation.cfm?id=507538) provides an approach to deal with this problem. A similar approach is also mentioned [here](http://www.win-vector.com/blog/2012/07/modeling-trick-impact-coding-of-categorical-variables-with-many-levels/) The basic idea behind this is to transform categorical variables into continuous values with the *impact of each category value* on the outcome. 
 
-Here we first use spatial context (zip code) as an example.
+The approach proposed by [D.Micci-Barreca,2001](http://dl.acm.org/citation.cfm?id=507538) is implemented with the following code.
+
+```{r impact.model.coding,echo=TRUE,eval=TRUE,fig.width=10}
+#########################################
+# supporting functions impact model 
+#########################################
+# impact.model(): xi --> si
+# input: data: raw data frame (observations)
+#        x: the condition/predictor
+#        y: the dependent variable
+#        k, f: the parameters for shrink factor()
+# output: the impact of x on y
+impact.model <- function(data, x, y, k=10, f=5){
+    scaler <- xtabs2(data = data, obs.col = y, 
+                     cond.col = x, p.cond=T, p.prior=T)
+    scaler$lambda <- with(scaler, shrink.factor(marg.freq, k, f))
+    scaler$impact <- with(scaler, lambda*p.cond + (1-lambda)*p.prior)
+
+    scaler[,c(y,"condition","impact")]
+#     merge(data, scaler[,c(y,"condition","impact")],
+#           by.x=c(y,x),by.y=c(y,"condition"),all.x=T)
+    
+}
+#########################################
+# shrink.factor(): lambda
+# input: n, k, f
+# output: lambda
+shrink.factor <- function(n, k=10, f=5){
+    1 / (1 + exp( -1 * (n - k) / f ))
+}
+#########################################
+# plot how lamdba varies with k and f
+x <- seq(1,40,length.out = 100)
+k <- c(4, 10, 20)
+f <- c(0.5, 1, 2)
+lambda <- do.call(rbind,lapply(k, function(ki){
+    do.call(rbind,lapply(f, function(fj){
+        lambda = shrink.factor(x, ki, fj)
+        data.frame(x, lambda, k=ki, f=fj)
+    }))
+}))
+lambda$k = as.factor(lambda$k)
+lambda$f = as.factor(lambda$f)
+theme_new<-theme_set(theme_bw(base_size = 8))
+theme_new<-theme_update(legend.position=c(0.9,0.4))
+gg.shrink <- ggplot(lambda, aes(x=x,y=lambda))+
+    geom_line(aes(color=k,linetype=f))+
+    labs(x="n",y=expression(paste(lambda,"(n)")))
+gg.shrink
+
+```
+
+Now we try out the implemented impact model with spatial context (zip code).
 
 ```{r zip.impact, echo=TRUE,eval=TRUE,cache=TRUE}
-
-categorical.scaler.zip <- xtabs2(data = exp.data,
-                                 obs.col = "cate_l2", cond.col = "ZIP",
-                                 p.cond=T, p.prior=T)
-categorical.scaler.zip$prob.est.zip = with(categorical.scaler.zip,
-    marg.freq/(marg.freq+4)*p.cond + 4/(marg.freq+4)*p.prior)
-# apply
-checkin.continuous = merge(exp.data,
-                           categorical.scaler.zip[,c(1,2,9)],
-                           by.x=c("cate_l2","ZIP"),
-                           by.y=c("cate_l2","condition"),
-                           all.x=T)
-
 # without impact model
 t0=Sys.time()
 glmodel1 <- glm(cate_l2 ~  ZIP , 
-               data=checkin.continuous, family=binomial(link="logit"))
+               data=exp.data, family=binomial(link="logit"))
 Sys.time()-t0
 summary(glmodel1)
 1 - glmodel1$deviance/glmodel1$null.deviance
 
+
+# impact moidel
+impact.zip <- impact.model(exp.data, x="ZIP", y= "cate_l2")
+exp.data.zip.impact <- merge(exp.data, impact.zip,
+          by.x=c("cate_l2","ZIP"),by.y=c("cate_l2","condition"),all.x=T)
+colnames(exp.data.zip.impact)[ncol(exp.data.zip.impact)]="impact.s"
+
 # with impact moidel
 t0=Sys.time()
-glmodel2 <- glm(cate_l2 ~  prob.est.zip , 
-               data=checkin.continuous, family=binomial(link="logit"))
+glmodel2 <- glm(cate_l2 ~  impact.s , 
+               data=exp.data.zip.impact, family=binomial(link="logit"))
 Sys.time()-t0
 summary(glmodel2)
 1 - glmodel2$deviance/glmodel2$null.deviance
@@ -248,31 +295,26 @@ The above experiments show that transforming the categorical levels into contino
 We now perform similar operations on the temporal context:
 
 ```{r hour.impact,echo=TRUE,eval=TRUE,cache=TRUE}
-# impact model for temporal context
-categorical.scaler.hour <- xtabs2(data = exp.data,
-                                 obs.col = "cate_l2", cond.col = "hour",
-                                 p.cond=T, p.prior=T)
-categorical.scaler.hour$prob.est.hour = with(categorical.scaler.hour,
-    marg.freq/(marg.freq+4)*p.cond + 4/(marg.freq+4)*p.prior)
-# apply
-checkin.continuous = merge(checkin.continuous,
-                           categorical.scaler.hour[,c(1,2,9)],
-                           by.x=c("cate_l2","hour"),
-                           by.y=c("cate_l2","condition"),
-                           all.x=T)
-
 # without impact model
 t0=Sys.time()
-glmodel3 <- glm(cate_l2 ~  hour , 
-               data=checkin.continuous, family=binomial(link="logit"))
+# glmodel3 <- glm(cate_l2 ~  hour , 
+#                data=exp.data, family=binomial(link="logit"))
+glmodel3 <- multinom(cate_l2 ~  hour , data=exp.data)
 Sys.time()-t0
 summary(glmodel3)
 1 - glmodel3$deviance/glmodel3$null.deviance
 
-# with impact model
+
+# impact moidel
+impact.hour <- impact.model(exp.data, x="hour", y= "cate_l2")
+exp.data.hour.impact <- merge(exp.data, impact.hour,
+          by.x=c("cate_l2","hour"),by.y=c("cate_l2","condition"),all.x=T)
+colnames(exp.data.hour.impact)[ncol(exp.data.hour.impact)]="impact.t"
+
+# with impact moidel
 t0=Sys.time()
-glmodel4 <- glm(cate_l2 ~  prob.est.hour , 
-               data=checkin.continuous, family=binomial(link="logit"))
+glmodel4 <- glm(cate_l2 ~  impact.t , 
+               data=exp.data.hour.impact, family=binomial(link="logit"))
 Sys.time()-t0
 summary(glmodel4)
 1 - glmodel4$deviance/glmodel4$null.deviance
@@ -281,16 +323,27 @@ summary(glmodel4)
 
 And the conclusions for spatial context hold true also for temporal one (more efficient, more significant). More interestingly, the model after transformation provides much better describtion of the data: from merely 8% to 38%. 
 
+```
+A little note that might worth considering:
+
+Before applying such impact model, the spatial and temproal information has coorelations; while after the opertion the correlation does not exist. 
+```
+
 Then how about if we consider both?
 
 ```{r st.model,echo=TRUE,eval=TRUE}
 # adding impact model for both space and time
-glmodel5 <- glm(cate_l2 ~  prob.est.hour + prob.est.zip , 
-               data=checkin.continuous, family=binomial(link="logit"))
+exp.data.st.impact <- merge(exp.data.zip.impact, impact.hour,
+          by.x=c("cate_l2","hour"),by.y=c("cate_l2","condition"),all.x=T)
+colnames(exp.data.st.impact)[ncol(exp.data.st.impact)]="impact.t"
+
+glmodel5 <- glm(cate_l2 ~  impact.s + impact.t , 
+               data=exp.data.st.impact, family=binomial(link="logit"))
 summary(glmodel5)
 1 - glmodel5$deviance/glmodel5$null.deviance
 ```
-The model can describe 41.6% variances in the dependent variable (i.e. user interest).
+
+The model can explain 41.6% variances in the dependent variable (i.e. user interest).
 
 
 #### 4. Personal model V.S. global model
@@ -300,21 +353,91 @@ Users typically have differnt personal interest. Personal model would thus be ab
 Our approach is to build models from other users (less weight) and the target user (more weight). Consequently, we would have personalized models. 
 
 ```{r}
+
+#########################################
+# making predictions
 learning.size = as.integer(nrow(exp.data)*19/20)
 exp.data = exp.data[order(exp.data$timestamps),]
 exp.data.learning = exp.data[c(1:learning.size),]
 exp.data.predicting = exp.data[c((learning.size+1):nrow(exp.data)),]
 
-ddply(exp.data.predicting, .(user_id),function(user){
+impact.hour.global <- impact.model(exp.data.learning,
+                                   x="hour",y="cate_l2")
+impact.zip.global <- impact.model(exp.data.learning,
+                                  x="ZIP",y="cate_l2")
+
+counter.reset();
+test<-ddply(exp.data.predicting, .(user_id),function(user){
+
+    counter.print(10)
     # predictions for each user
     uid = user[1,"user_id"]
     
+    r2 = 0; size=0; converged <- "unknown"
+    
     # do we have historical data for this user?
-    # if yes, we make the first prediction based on personal & global data
+    # if yes, we'd like to make personalized prediction model from 
+    # personalized impact model
     if(uid %in% exp.data.learning$user_id){
+        udata.learning <- exp.data.learning[which(exp.data.learning$user_id==uid),]
+        size <- nrow(udata.learning)
+        
+        impact.hour.u <- impact.model(udata.learning,
+                                   x="hour",y="cate_l2")
+        impact.zip.u <- impact.model(udata.learning,
+                                     x="ZIP",y="cate_l2")
+        # apply impact model
+        udata.learning <- merge(udata.learning, impact.hour.u,
+               by.x=c("cate_l2","hour"),by.y=c("cate_l2","condition"),
+               all.x=T)
+        colnames(udata.learning)[ncol(udata.learning)]="impact.t"
+        
+        udata.learning <- merge(udata.learning, impact.zip.u,
+               by.x=c("cate_l2","ZIP"),by.y=c("cate_l2","condition"),
+               all.x=T)
+        colnames(udata.learning)[ncol(udata.learning)]="impact.s"
+
+        # personalized model:
+        umodel <- glm(cate_l2 ~  impact.s + impact.t ,                
+                      data=udata.learning, family=binomial(link="logit"))
+        r2 <- 1 - umodel$deviance/umodel$null.deviance 
+        converged <- umodel$converged
+        
+        # sometimes the model is converged and thus not trusted:
+        if(umodel$converged){
+            # apply the impact model learned from learning data 
+            # to the predicting data.
+            # before that, the missing data has to be dealt with.
+            impact.hour.combined <- 
+                impact.hour.global[which(!(impact.hour.global$condition 
+                                         %in% impact.hour.u$condition)),]
+            impact.hour.combined$sorc <- "global"
+            impact.hour.combined <<- rbind(impact.hour.combined, 
+                                          cbind(impact.hour.u,"sorc"="personal"))
+            
+            impact.zip.combined <- 
+                impact.zip.global[which(!(impact.zip.global$condition 
+                                         %in% impact.zip.u$condition)),]
+            impact.zip.combined$sorc <- "global"
+            impact.zip.combined <<- rbind(impact.zip.combined, 
+                                          cbind(impact.zip.u,"sorc"="personal"))
+            
+             # apply impact model
+            udata.predicting <- merge(udata.predicting, impact.hour.u,
+                   by.x=c("cate_l2","hour"),by.y=c("cate_l2","condition"),
+                   all.x=T)
+            colnames(udata.predicting)[ncol(udata.predicting)]="impact.t"
+            
+            udata.predicting <- merge(udata.predicting, impact.zip.u,
+                   by.x=c("cate_l2","ZIP"),by.y=c("cate_l2","condition"),
+                   all.x=T)
+            colnames(udata.predicting)[ncol(udata.predicting)]="impact.s"
+        }
         
     }
-    
+   
+    c(r2, size,converged)
+#     udata.st
     # make predictions just based on global model
 })
 ```

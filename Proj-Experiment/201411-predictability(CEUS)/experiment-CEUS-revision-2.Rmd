@@ -1,0 +1,578 @@
+---
+title: "experiments-CEUS-revision-2nd"
+author: "Ming Li"
+date: "Tuesday, June 09, 2015"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo=FALSE,eval=FALSE,message=FALSE,warning=FALSE)
+```
+
+This document is in line with the first revision for CEUS paper. The paper is about using multinomial logistic regression models to model/predict user interest (venue categoty) in LBSN, more specifically, Foursquare. 
+
+The experimantal datasets are crawled from three cities in USA, namely Chicago, Los Angeles and New York City. The reason for choosing these three study sites is because users in these cities have high level of activity in both Foursquare and Twitter. (Foursquare only makes the check-ins that are published via Twitter public.)
+
+
+```{r libraries.loading,eval=TRUE} 
+# load the libraries,functions, and define the global variables
+library(rgdal)
+library(scales)
+library(ggplot2)
+library(reshape2)
+library(gridExtra)
+library(manipulate)
+library(plyr)
+
+library(vcd) # for chi-square and cramer's V
+
+library(nnet)
+library(VGAM)
+library(mlogit)
+
+# source("D:\\GitRepos\\work\\fun\\multiplot.R")
+
+source("../../global/functions/prepare.checkin.R")
+source("../../global/functions/basic.stats.plots.R")
+source("../../global/functions/spatial.analysis.R")
+source("../../global/functions/etc.R")
+source("../../global/functions/truncated.power.law.R")
+source("../../global/functions/geom_textbox.R")
+
+gcinfo(T)
+
+# ############
+# global variable
+crs.wgs84.str = "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
+city.guide=data.frame("city"=c("Chicago","Los Angeles","New York City"),
+                      "coord.x"=c(-87.92,-118.64,-74.23),
+                      "coord.y"=c(41.7,33.82,40.85),
+                      "spatial.attr" = c("ZIP","Zip_Num","POSTAL"),
+                      "shapefile.boundary" = c("bounds_ChicagoCity_WGS84",
+                                               "bounds_LA_City_WGS84","NYC_borough_boundaries_WGS84"),
+                      "shapefile.zip" = c("Chicago-ZipCodes","LA_Zipcodes","NYC_zipcode"),
+                      "csvfile"=c("ChicagoCity","LosAngelesCity","NewYorkCity"),
+                      stringsAsFactors=FALSE)
+
+```
+
+#### 1. load the data
+
+First, we load the data. The first several rows for each city is shown in the following to demonstrate the data structure. 
+
+```{r data.loading,eval=TRUE,cache=TRUE,results='hide'}
+checkin.poly.list = lapply(1:3, function(city.index){
+    checkin = prepare.checkin(paste0("../../global/data/csv-raw/",
+                                     city.guide$csvfile[city.index],".csv"),
+                             is.raw=TRUE, weather.data=NA, 
+                             convert.time=TRUE, add.history=TRUE)
+    SPDF = readOGR(dsn = "../../global/data/shapefiles", 
+                   layer = city.guide$shapefile.zip[city.index])
+    
+#     na.omit(
+point.in.poly(checkin, SPDF, copy.attr=city.guide$spatial.attr[city.index])#)
+})
+```
+```{r data.summary,eval=TRUE}
+# summary
+print(city.guide$city[1])
+head(checkin.poly.list[[1]][,c("gid","user_id","venue_id","lat","lon","localtime","cate_l1","cate_l2",city.guide$spatial.attr[1],"last.cate_l1","last.cate_l2")])
+print(city.guide$city[2])
+head(checkin.poly.list[[2]][,c("gid","user_id","venue_id","lat","lon","localtime","cate_l1","cate_l2",city.guide$spatial.attr[2],"last.cate_l1","last.cate_l2")])
+print(city.guide$city[3])
+head(checkin.poly.list[[3]][,c("gid","user_id","venue_id","lat","lon","localtime","cate_l1","cate_l2",city.guide$spatial.attr[3],"last.cate_l1","last.cate_l2")])
+```
+
+#### 2. Demonstration of contextual influences 
+
+This sections aims to show the influneces of differnt context on user interest visually. We include three types of context:
+
++ temporal: the time of check-in. It will be numerically represented by the hour of check-in.
++ spatial: the location of check-in. It will be numerically represented by the zip code of the check-in.
++ sequential: the sequence of check-in. It will be numerically represented by the category of the last check-in venue. 
+
+Further, the user interest will be numerically represented by the category of check-in venue. The exploratory experiment will be carried out with the dataset from Chicago.
+
+```{r exp.data,echo=TRUE,eval=TRUE}
+exp.data = checkin.poly.list[[1]][,c("user_id","cate_l1","cate_l2","venue_id",
+                                     "hour", city.guide$spatial.attr[1],
+                                     "last.user_id","last.venue_id",
+                                     "last.cate_l1","last.cate_l2",
+                                     "time.interval","timestamps")]
+```
+
+
+
+##### 2.1. temporal influences
+
+The following figure shows the fact that users have differnt interest towards geographic venues at differnt hour of day. The data comes from Chicago.
+
+```{r temporal.fig,echo=TRUE,eval=TRUE,fig.width=10,fig.height=6}
+# frequency statistics
+cate.on.hour = xtabs2(data = exp.data, obs.col = "cate_l1", 
+                          cond.col = "hour",p.joint = T,p.cond=T)
+
+theme_new<-theme_set(theme_bw(base_size = 10))
+gg.cate.on.hour <- ggplot(cate.on.hour, 
+                          aes(x=abbreviate(cate_l1,2),y=p.cond,fill=cate_l1)) + 
+    geom_bar(stat="identity") +
+    labs(x="User interest",y="Conditional probability")+
+    facet_wrap(~condition,ncol=6,nrow=4)+
+    scale_y_sqrt()+
+    coord_polar()
+
+gg.cate.on.hour
+```
+
+This fact can also be demonstrated from chi-square test:
+```{r temporal.chisq,echo=TRUE,eval=TRUE}
+# frequency dataframe to contingency table
+cate.on.hour.table = xtabs(Freq ~ condition+cate_l1, data=cate.on.hour)
+chisq.test(cate.on.hour.table,simulate.p.value = T)
+```
+
+##### 2.2. spatial influences
+
+Similary, we reveal the spatial influences on user interest both with graphics and chi-square test.
+
+```{r spatial,echo=TRUE,eval=TRUE,fig.width=10,fig.height=4.5}
+# frequency statistics
+cate.on.zip = xtabs2(data = exp.data, obs.col = "cate_l1", 
+                      cond.col = city.guide$spatial.attr[1],
+                      p.joint = T,p.cond=T)
+
+
+# for visualization purpose, we select only 18 most popular zip code regions (condition)
+cate.on.zip.plot = cate.on.zip[which(cate.on.zip$condition %in% 
+    unique(cate.on.zip[order(cate.on.zip$marg.freq,decreasing=T),"condition"])[1:18]),] 
+theme_new<-theme_set(theme_bw(base_size = 10))
+gg.cate.on.zip <- ggplot(cate.on.zip.plot, 
+                         aes(x=abbreviate(cate_l1,2),y=p.cond,fill=cate_l1)) + 
+    geom_bar(stat="identity") +
+    labs(x="User interest",y="Conditional probability")+
+    facet_wrap(~condition,ncol=6)+
+    scale_y_sqrt()+
+    coord_polar()
+gg.cate.on.zip
+
+# frequency dataframe to contingency table
+cate.on.zip.table = xtabs(Freq ~ condition+cate_l1, data=cate.on.zip)
+chisq.test(cate.on.zip.table,simulate.p.value = T)
+```
+
+##### 2.3. sequential influences
+
+The sequential influences are a little bit tricky to see, because the fuzzy dataset from Foursquare would result into some problematic scenarios that must be excluede/considered:
+
+- when a user kept checking in at the same place;
+- when two check-ins are taken place not really "consequtively" (long time interval);
+- other scenarios??
+
+```{r sequential,echo=TRUE,eval=TRUE,fig.width=10,fig.height=3}
+# add weight based on time interval
+exp.data$wgt = 2 ^ ( -1 * exp.data$time.interval + 1)
+
+# remove continuous check-ins by the same user (by changing the weight to 0)
+exp.data$wgt = with(exp.data,
+                    ifelse(venue_id==last.venue_id, 0, wgt))
+
+# deal with the empty values
+exp.data$wgt = with(exp.data, 
+        ifelse(is.na(last.cate_l1)|time.interval>12,
+               mean(wgt,na.rm=T),wgt))
+exp.data$last.cate_l1 = with(exp.data,
+        as.factor(ifelse(is.na(last.cate_l1)|time.interval>12,
+            "Unknown",as.character(last.cate_l1))))
+exp.data$last.cate_l2 = with(exp.data,
+        as.factor(ifelse(is.na(last.cate_l2)|time.interval>12,
+           "Unknown",as.character(last.cate_l2))))
+exp.data$last.venue_id = with(exp.data,
+        as.factor(ifelse(is.na(last.venue_id)|time.interval>12,
+           "Unknown",as.character(last.venue_id))))
+
+# weighted statistics for frequency/probability
+cate.on.last = xtabs2(data = exp.data, obs.col = "cate_l1", 
+                      cond.col = "last.cate_l1", wgt.col= "wgt",
+                      p.joint = T,p.cond=T,p.marg=T)
+
+theme_new<-theme_set(theme_bw(base_size = 10))
+gg.cate.on.zip <- ggplot(cate.on.last, 
+                         aes(x=abbreviate(cate_l1,2),y=p.cond,fill=cate_l1)) + 
+    geom_bar(stat="identity") +
+    labs(x="User interest",y="Conditional probability")+
+    facet_wrap(~condition,ncol=6)+
+    coord_polar()
+gg.cate.on.zip
+
+# frequency dataframe to contingency table
+cate.on.last.table = xtabs(Freq ~ condition+cate_l1, data=cate.on.last)
+chisq.test(cate.on.last.table,simulate.p.value = T)
+```
+
+#### 3. Dealing with high-cardinality categorical attributes
+
+One of the shortcomings of regression (both linear and logistic) is that it doesn’t handle categorical variables with a very large number of possible values (for example, postal codes). We can get around this, of course, by going to another modeling technique, such as Naive Bayes; however, we lose some of the advantages of regression — namely, the model’s explicit estimates of variables’ explanatory value, and explicit insight into and control of variable to variable dependence.
+
+A common approach is to reduce the dimensions (numbers of possible values) by aggregating similar dimensions. Two benifits from the preprocssing step:
+
++ reduced dimensions, good for efficient computation;
++ more distinguished features. 
+
+```{r reduce.dimensions, echo=TRUE,eval=TRUE}
+find.k <- function(vec,threshold=0.9,...){
+        
+    k.ss.df <- do.call(rbind,lapply(seq.int(...),function(i){
+       clusters = kmeans(vec,centers=i)
+       pct.ss = clusters$betweenss / clusters$totss
+       data.frame("size"=i,"pct.ss"=pct.ss)
+    }))
+    
+    k <- k.ss.df[which(k.ss.df$pct.ss>=threshold),][1,]
+    
+
+    gg <- ggplot(k.ss.df,aes(x=size,y=pct.ss))+
+        geom_point()+
+        geom_hline(yintercept=threshold,linetype="dashed")+
+        geom_point(data=k,size=4)+
+        theme_bw()
+    
+    list(k$size, gg)
+
+}
+# reduced the dimensions of xcol based on the similarity of their impacts on ycol
+reduce.dimensions <- function(data, xcol, ycol, ...){
+    # build a vector for each possible value in xcol
+    # based on the observations of ycol
+    freq.df <- xtabs2(data = data, obs.col = ycol, cond.col = xcol,
+                      p.cond = T)
+    vec <- reshape(freq.df[,c("condition",ycol,"p.cond")], 
+                   v.names = "p.cond", idvar = "condition", 
+                   timevar = ycol, direction = "wide")
+    vec[is.na(vec)] <- 0 
+    
+    vec2 <- reshape(freq.df[,c("condition",ycol,"marg.freq")], 
+                   v.names = "marg.freq", idvar = "condition", 
+                   timevar = ycol, direction = "wide")
+    vec2[is.na(vec2)] <- 0 
+    
+    # clustering the vectors based on distances
+    k <- find.k(vec[,c(2:ncol(vec))],...)
+    clusters = kmeans(x = vec[,c(2:ncol(vec))],
+                      centers = k[[1]])
+    gg1 <- k[[2]]
+    
+    stat <- data.frame(condition = vec$condition, 
+                       cluster = as.factor(clusters$cluster),
+                       size = rowSums(vec2[,c(2:ncol(vec2))]))
+    
+    gg2 <- ggplot(stat,aes(x=condition,y=size,fill=cluster))+
+        geom_histogram(stat="identity")+
+        scale_y_log10()+
+        coord_polar()+
+        theme_bw()
+    
+    list(stat, gg1, gg2)
+
+}
+```
+
+merge with orginal data:
+
+```{r}
+exp.data.t <- merge(exp.data,
+      reduce.dimensions(exp.data,"hour", "cate_l1",
+                        from=1,to=length(unique(exp.data$hour))-1,
+                        by=1,threshold=0.9)[[1]],
+      by.x="hour",by.y="condition",all.x=T)
+exp.data.st <- merge(exp.data.t,
+      reduce.dimensions(exp.data,"ZIP", "cate_l1",
+                        from=1,to=length(unique(exp.data$ZIP))-1,
+                        by=1,threshold=0.9)[[1]],
+      by.x="ZIP",by.y="condition",all.x=T)
+colnames(exp.data.st)[c(13,15)]<-c("cluster.hour","cluster.ZIP")
+```
+
+some supporting functions
+```{r}
+# some supporting functions
+watch.time.memory <- function(t0=NA,mem0=NA){
+
+    if(is.na(mem0)){
+        mem.stat = gc(reset=T)
+        mem = mem.stat["Ncells",6] + mem.stat["Vcells",6]
+    }else{
+        mem.stat = gc()
+        mem = mem.stat["Ncells",6] + mem.stat["Vcells",6] - mem0
+    }
+    
+    if(is.na(t0)){
+        t = proc.time()[3]
+    }else{
+        t = proc.time()[3] - t0
+    }
+    
+    c(t,mem)
+  
+}
+
+percent <- function(x, digits = 2, format = "f", ...) {
+  paste0(formatC(100 * x, format = format, digits = digits, ...), "%")
+}
+
+model.prediction <- function(model, raw){
+#     prediction = levels(raw$cate_l1)[
+#         max.col( model$fitted.values)]
+    prediction = predict(model)
+    
+    list(data.frame("true" = raw$cate_l1, "predicted" = prediction, 
+                    "eval" = (raw$cate_l1==prediction)),
+         data.frame("accuracy[%]" = sum(raw$cate_l1==prediction)/nrow(raw) ))  
+}
+
+significance.code <- function(p){
+    ifelse(p>0.1,"",
+           ifelse(p>0.05, ".",
+                  ifelse(p>0.01, "*",
+                         ifelse(p>0.001, "**", "***"))))
+}
+
+model.fitness <- function(model){
+    deviance = model$deviance
+    edf = model$edf
+    df = nrow(model$fitted.values) * (ncol(model$fitted.values)-1) - edf
+    p = 1 - pchisq(deviance, df)
+    significance = significance.code(p)
+    AIC = model$AIC
+    
+    data.frame(AIC,deviance,edf,df,p,significance)
+}
+
+model.comparison <- function(model.null, model.fitted){
+    deviance.diff = model.null$deviance - model.fitted$deviance
+    
+    df.null = nrow(model.null$fitted.values) * 
+        (ncol(model.null$fitted.values)-1) - model.null$edf
+    df.fitted = nrow(model.fitted$fitted.values) * 
+        (ncol(model.fitted$fitted.values)-1) - model.fitted$edf
+    df.diff = df.null - df.fitted
+    
+    p = 1 - pchisq(deviance.diff, df.diff)
+    significance = significance.code(p)
+    
+    LLf = model.fitted$deviance / (-2)
+    LL0 = model.null$deviance / (-2)
+    N = nrow(model.null$fitted.values)
+    
+    McFadden.R2 = 1 - LLf / LL0
+    CoxSnell.R2 = 1 - exp((2/N) * (LL0 - LLf))
+    Nagelkerke.R2 = (1 - exp((2/N) * (LL0 - LLf))) / (1 - exp(LL0)^(2/N))
+    
+    data.frame(deviance.diff, df.diff, p, significance, 
+               "McFadden.R2"=McFadden.R2, 
+               "CoxSnell.R2"=CoxSnell.R2, 
+               "Nagelkerke.R2"=Nagelkerke.R2)
+}
+
+
+```
+
+get a sample 
+```{r}
+set.seed(1234)
+sample.data = exp.data.st[sample(1:nrow(exp.data.st),8000),]
+```
+
+create differnt models 
+```{r}
+# sample.data = exp.data.st
+efficiency = data.frame()
+
+tm.init = watch.time.memory()
+mnFit.null <- multinom(cate_l1 ~ 1, data=sample.data)
+efficiency <- rbind(efficiency, 
+                    "null"=watch.time.memory(tm.init[1],tm.init[2]) )
+
+tm.init = watch.time.memory()
+mnFit.hour.unclustered <- multinom(cate_l1 ~ hour, 
+                     data=sample.data)
+efficiency <- rbind(efficiency, 
+                    "unclustered hour"=watch.time.memory(tm.init[1],tm.init[2]) )
+
+tm.init = watch.time.memory()
+mnFit.hour <- multinom(cate_l1 ~ cluster.hour, maxit = 1000, 
+                     data=sample.data)
+efficiency <- rbind(efficiency, 
+                    "hour only"=watch.time.memory(tm.init[1],tm.init[2]) )
+
+tm.init = watch.time.memory()
+mnFit.zip.unclustered <- multinom(cate_l1 ~ ZIP, 
+                     data=sample.data)
+efficiency <- rbind(efficiency, 
+                    "unclustered zip"=watch.time.memory(tm.init[1],tm.init[2]) )
+
+tm.init = watch.time.memory()
+mnFit.zip <- multinom(cate_l1 ~ cluster.ZIP, maxit = 1000, 
+                     data=sample.data)
+efficiency <- rbind(efficiency, 
+                    "space only"=watch.time.memory(tm.init[1],tm.init[2]) )
+
+tm.init = watch.time.memory()
+mnFit <- multinom(cate_l1 ~ cluster.hour + cluster.ZIP, 
+                     data=sample.data, maxit = 1000)
+efficiency <- rbind(efficiency, 
+                    "hour+space"=watch.time.memory(tm.init[1],tm.init[2]) )
+
+tm.init = watch.time.memory()
+mnFit.interaction <- multinom(cate_l1 ~ cluster.hour * cluster.ZIP, 
+                     MaxNWts = 3000, maxit = 1000, data=sample.data)
+efficiency <- rbind(efficiency, 
+                    "hour*space"=watch.time.memory(tm.init[1],tm.init[2]) )
+
+## model evaluation
+
+# step 1: prediction accurarcy
+accurarcy <- rbind("null"=model.prediction(mnFit.null,sample.data)[[2]],
+                 "unclustered hour"=model.prediction(mnFit.hour.unclustered,sample.data)[[2]],
+                 "hour only"=model.prediction(mnFit.hour,sample.data)[[2]],
+                 "unclustered zip"=model.prediction(mnFit.zip.unclustered,sample.data)[[2]],
+                 "space only"=model.prediction(mnFit.zip,sample.data)[[2]],
+                 "hour+space"=model.prediction(mnFit,sample.data)[[2]],
+                 "hour*space"=model.prediction(mnFit.interaction,sample.data)[[2]])
+
+# step 2: chi-square model fitness test for each model
+fitness <- rbind("null"=model.fitness(mnFit.null),
+                 "unclustered hour"=model.fitness(mnFit.hour.unclustered),
+                 "hour only"=model.fitness(mnFit.hour),
+                 "unclustered zip"=model.fitness(mnFit.hour.unclustered),
+                 "space only"=model.fitness(mnFit.zip),
+                 "hour+space"=model.fitness(mnFit),
+                 "hour*space"=model.fitness(mnFit.interaction))
+
+# step 3: model comparison (likelihood test & pseudo-R2)
+comparison <- rbind(
+    "clustering effect t"=model.comparison(mnFit.hour,mnFit.hour.unclustered),
+    "clustering effect s"=model.comparison(mnFit.hour,mnFit.zip.unclustered),
+    "hour to null"=model.comparison(mnFit.null,mnFit.hour),
+    "space to null"=model.comparison(mnFit.null,mnFit.zip),
+    "hour+space to null"=model.comparison(mnFit.null,mnFit),
+    "hour*space to null"=model.comparison(mnFit.null,mnFit.interaction),
+    "hour*space to hour"=model.comparison(mnFit.hour,mnFit.interaction),
+    "hour*space to space"=model.comparison(mnFit.zip,mnFit.interaction),
+    "interaction effect"=model.comparison(mnFit,mnFit.interaction))
+
+```
+
+compare the models (& reveal the clustering effect)
+```{r}
+# observe the effect of clustering
+clustering.compare <- cbind(efficiency[2:5,],accurarcy[2:5,]* 100, 
+                           fitness[2:5,c("deviance","AIC")])
+colnames(clustering.compare)[1:3] <- c("duration [s]","memory [M]", "accurarcy [%]")
+
+clustering.effect <- cbind(
+    rbind(
+    "clustering effect t" = (clustering.compare[1,1:3]-clustering.compare[2,1:3])/clustering.compare[1,1:3]*100,
+    "clustering effect s" = (clustering.compare[3,1:3]-clustering.compare[4,1:3])/clustering.compare[3,1:3]*100),
+    
+    rbind("clustering effect t" = clustering.compare[1,5]-clustering.compare[2,5],
+    "clustering effect s" = clustering.compare[3,5]-clustering.compare[4,5]),
+    
+    rbind("clustering effect t" = exp((clustering.compare[2,5]-clustering.compare[1,5])/2),
+    "clustering effect s" = exp((clustering.compare[4,5]-clustering.compare[3,5])/2)))
+colnames(clustering.effect) <- c("shorten.duration[%]","save.memory[%]","accurary[%]","reduced AIC","relative LL")
+
+```
+
+The investigation shows that the clustering step effectivly improved the computation with the cost of little accurarcy loss, and the clustered model creates a overall much better model than the unclustered data.
+
+#### 4. Personal model V.S. global model
+
+Users typically have differnt personal interest. Personal model would thus be able to yield better predictions for the user's personal interest. However, the LBSN dataset is sparse. In other words, most users only have one or several records in the dataset. A model based on these limited number of records would be sensible to changes. Hence, a global model built from the entire dataset would provide more confident clues regarding user interest in such circumstances. The overall model, however, should consider both situations and combinds personal models and global models.
+
+Our approach is to build models from other users (less weight) and the target user (more weight). Consequently, we would have personalized models. 
+
+---
+
+build user-weighted models: more weight for data from similar users
+
+```{r}
+#########################################
+# making predictions
+learning.ratio = 0.8
+learning.size = as.integer(nrow(sample.data) * learning.ratio)
+sample.data = sample.data[order(sample.data$timestamps),]
+sample.data.learning = sample.data[c(1:learning.size),]
+sample.data.predicting = sample.data[c((learning.size+1):nrow(sample.data)),]
+
+# global model
+gmodel <- multinom(cate_l1 ~ cluster.hour + cluster.ZIP, maxit = 1000,
+                   data = sample.data.learning)
+
+# representing each user with his/her visiting vector
+user.vectors <- xtabs2(data=sample.data.learning, obs.col="cate_l1",
+                       cond.col="user_id", p.cond=T)
+user.vectors <- reshape(user.vectors[,c("condition","cate_l1","p.cond")], 
+                   v.names = "p.cond", idvar = "condition", 
+                   timevar = "cate_l1", direction = "wide")
+user.vectors[is.na(user.vectors)] <- 0 
+
+
+
+predicting.list <- split(sample.data.predicting, sample.data.predicting$user_id)
+
+counter.reset();
+test<-do.call(rbind,lapply(predicting.list, 
+                           function(target.user){
+    counter.print(1)
+    
+    # build model for this target user 
+    uid = target.user[1,"user_id"]
+    predicting.size = nrow(target.user)
+    
+    # do we have enough historial data for this user?
+    # if yes: adding weights based on user similarity
+    # if no: use all learning data with equal weights
+    learning.size = sum(sample.data.learning$user_id == uid)
+    if(learning.size>30){
+        ulearning <- sample.data.learning
+        target.vv <- user.vectors[
+                which(user.vectors$condition == uid),2:11]
+        
+        weight<-ddply(ulearning,.(user_id),function(user){
+            user.vv <- user.vectors[
+                which(user.vectors$condition == user[1,"user_id"]),2:11]
+            distance = dist(rbind(target.vv,user.vv))[1]
+            
+            0.02 ^ distance
+        })
+        colnames(weight)[2]="weights"
+        ulearning = merge(x=ulearning, y=weight, by="user_id")
+    
+        # simplify the learning data
+        ulearning <- ulearning[which(ulearning$weights>mean(ulearning$weights)),]
+        
+        umodel <- multinom(cate_l1 ~ cluster.hour + cluster.ZIP,
+                           data = ulearning, 
+                           weights = weights, maxit = 1000)
+    } else {
+        umodel <- gmodel
+    }
+    
+    # make prediction based on the model
+    cbind(data.frame(
+        "usermodel"=sum(target.user$cate_l1==predict(umodel, target.user))/predicting.size,
+        "globalmodel"=sum(target.user$cate_l1==predict(gmodel, target.user))/predicting.size,
+        "learning.size"=learning.size,
+        "predicting.size"=predicting.size),
+        model.fitness(umodel),
+        model.fitness(gmodel),
+        model.comparison(gmodel,umodel))
+              
+}))
+
+
+```
+
+
+
+
