@@ -251,3 +251,117 @@ counter.print = function(interval){
 }
 
 counter.reset = function(n=1){counter <<- n}
+
+
+#######
+# scattered matrix plot
+scatter.regression.matrix<-function(data,xs,ys,xnames=NA,ynames=NA,weight=NA){
+    # 0. deal with NA parameters
+    if(is.na(xnames)){xnames=xs}
+    if(is.na(ynames)){ynames=ys}
+    
+    # 1. decide panel color
+    data.r <- abs(cor(data[,c(xs,ys)]))[xs,ys]    
+    rbPal <- c("#F4BBDD","#FDFFDA","#D2F4F2")
+    data.col <- rbPal[as.numeric(cut(as.vector(data.r),breaks = 3))]
+    data.col <- matrix(data.col,nrow=length(xs),byrow=F,dimnames=dimnames(data.r))
+    
+    # 2. shared part of the theme
+    theme_shared <- theme_bw(base_size = 12) %+replace% 
+        theme(legend.position="none",  # no lengend
+              plot.margin =unit(c(0.03,0.03,-0.05,-0.05), "npc"), # margin
+              panel.grid= element_blank(), # no grid
+              axis.text.y=element_text(angle=90)) # rotate y axis labels
+    
+    # 3. scatter plot for each x and y column
+    regression.matrix <-lapply(1:length(xs),function(i){
+        x = xs[i]
+        
+        lapply(1:length(ys),function(j){
+            y = ys[j]
+            
+            ######## 
+            # deal with the theme of each matrix cell
+            # add background color based on the strength of correlation
+            theme_cell <- theme_shared %+replace%
+                theme(panel.background=element_rect(fill=data.col[x,y]))
+            # remove y axis for non-first column
+            if(i!=1){
+                theme_cell <- theme_cell %+replace% 
+                    theme(axis.ticks.y=element_blank(),
+                          axis.text.y=element_blank())
+            }
+            # remove x axis for non-last row
+            if(j!=length(ys)){
+                theme_cell <- theme_cell %+replace% 
+                    theme(axis.ticks.x=element_blank(),
+                          axis.text.x=element_blank())
+            }
+            
+            
+            #######
+            # plot each matrix cell
+            ggplot(data, aes_string(x=x, y=y, weight=weight)) +
+                geom_point(shape="*")+
+                geom_smooth(method="lm",color="blue")+
+                geom_smooth(method="loess",color="red",se=F)+
+                labs(x="",y="")+
+                scale_y_continuous(limit=c(min(data[,y]),max(data[,y])))+
+                theme_cell
+        })
+    })
+    
+    # 4. density for each x and y
+    x.density <- lapply(1:length(xs),function(i){
+        x=xs[i]
+        theme_x <- theme_shared %+replace% 
+            theme(panel.background=element_blank(), 
+                  axis.ticks.x=element_blank(),
+                  axis.text.x=element_blank(),
+                  panel.border=element_rect(color="grey50",fill=NA))
+        if(i!=1){
+            theme_x <- theme_x %+replace% 
+                theme(axis.ticks.y=element_blank(),
+                      axis.text.y=element_blank())
+        }
+        ggplot(data, aes_string(x=x)) +
+            stat_density(geom = "line")+
+            annotation_custom(textGrob(x,gp = gpar(fontsize = 20)), 
+                              xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf)+ 
+            labs(x="",y="")+
+            theme_x
+    })
+    
+    y.density <- lapply(1:length(ys),function(j){
+        y=ys[j]
+        theme_y <- theme_shared %+replace% 
+            theme(panel.background=element_blank(),
+                  axis.ticks.y=element_blank(),
+                  axis.text.y=element_blank(),
+                  panel.border=element_rect(color="grey50",fill=NA),
+                  plot.margin =unit(c(0.03,0.03,-0.05,-0.1), "npc"))
+        if(j!=length(ys)){
+            theme_y <- theme_y %+replace% 
+                theme(axis.ticks.x=element_blank(),
+                      axis.text.x=element_blank())
+        }
+        ggplot(data, aes_string(x=y)) +
+            stat_density(geom = "line")+
+            annotation_custom(textGrob(y,gp = gpar(fontsize = 20)), 
+                              xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf)+ 
+            labs(x="",y="")+coord_flip()+
+            theme_y 
+    })
+    
+    # 5. placeholder empty plot
+    empty.plot <- ggplot(data,aes_string(x=xs[1],y=ys[1]))+geom_blank()+
+        labs(x="",y="")+theme_shared %+replace% 
+        theme(panel.border=element_blank(),
+              axis.ticks=element_blank(),axis.text=element_blank())
+    
+    list("regression.matrix"=regression.matrix,
+         "x.density"=x.density,
+         "y.density"=y.density,
+         "empty.plot"=empty.plot)
+    
+}
