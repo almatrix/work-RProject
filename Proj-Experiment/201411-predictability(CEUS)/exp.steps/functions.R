@@ -269,8 +269,9 @@ scatter.regression.matrix<-function(data,xs,ys,xnames=NA,ynames=NA,weight=NA){
     # 2. shared part of the theme
     theme_shared <- theme_bw(base_size = 12) %+replace% 
         theme(legend.position="none",  # no lengend
-              plot.margin =unit(c(0.03,0.03,-0.05,-0.05), "npc"), # margin
+              plot.margin =unit(c(0,0,0,0), "npc"), # margin
               panel.grid= element_blank(), # no grid
+              axis.title=element_blank(),
               axis.text.y=element_text(angle=90)) # rotate y axis labels
     
     # 3. scatter plot for each x and y column
@@ -285,26 +286,26 @@ scatter.regression.matrix<-function(data,xs,ys,xnames=NA,ynames=NA,weight=NA){
             # add background color based on the strength of correlation
             theme_cell <- theme_shared %+replace%
                 theme(panel.background=element_rect(fill=data.col[x,y]))
-            # remove y axis for non-first column
-            if(i!=1){
-                theme_cell <- theme_cell %+replace% 
-                    theme(axis.ticks.y=element_blank(),
-                          axis.text.y=element_blank())
-            }
+            
             # remove x axis for non-last row
             if(j!=length(ys)){
                 theme_cell <- theme_cell %+replace% 
                     theme(axis.ticks.x=element_blank(),
                           axis.text.x=element_blank())
             }
-            
+            # remove y axis for non-first column
+            if(i!=1){
+                theme_cell <- theme_cell %+replace% 
+                    theme(axis.ticks.y=element_blank(),
+                          axis.text.y=element_blank())
+            }
             
             #######
             # plot each matrix cell
             ggplot(data, aes_string(x=x, y=y, weight=weight)) +
                 geom_point(shape="*")+
-                geom_smooth(method="lm",color="blue")+
                 geom_smooth(method="loess",color="red",se=F)+
+                geom_smooth(method="lm",color="blue")+
                 labs(x="",y="")+
                 scale_y_continuous(limit=c(min(data[,y]),max(data[,y])))+
                 theme_cell
@@ -318,6 +319,7 @@ scatter.regression.matrix<-function(data,xs,ys,xnames=NA,ynames=NA,weight=NA){
             theme(panel.background=element_blank(), 
                   axis.ticks.x=element_blank(),
                   axis.text.x=element_blank(),
+                  plot.margin =unit(c(0.03,0,0,0), "npc"),
                   panel.border=element_rect(color="grey50",fill=NA))
         if(i!=1){
             theme_x <- theme_x %+replace% 
@@ -326,7 +328,7 @@ scatter.regression.matrix<-function(data,xs,ys,xnames=NA,ynames=NA,weight=NA){
         }
         ggplot(data, aes_string(x=x)) +
             stat_density(geom = "line")+
-            annotation_custom(textGrob(x,gp = gpar(fontsize = 20)), 
+            annotation_custom(textGrob(x,gp = gpar(fontsize = 16)), 
                               xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf)+ 
             labs(x="",y="")+
             theme_x
@@ -338,8 +340,8 @@ scatter.regression.matrix<-function(data,xs,ys,xnames=NA,ynames=NA,weight=NA){
             theme(panel.background=element_blank(),
                   axis.ticks.y=element_blank(),
                   axis.text.y=element_blank(),
-                  panel.border=element_rect(color="grey50",fill=NA),
-                  plot.margin =unit(c(0.03,0.03,-0.05,-0.1), "npc"))
+                  plot.margin =unit(c(0,0.03,0,0), "npc"),
+                  panel.border=element_rect(color="grey50",fill=NA))
         if(j!=length(ys)){
             theme_y <- theme_y %+replace% 
                 theme(axis.ticks.x=element_blank(),
@@ -347,7 +349,7 @@ scatter.regression.matrix<-function(data,xs,ys,xnames=NA,ynames=NA,weight=NA){
         }
         ggplot(data, aes_string(x=y)) +
             stat_density(geom = "line")+
-            annotation_custom(textGrob(y,gp = gpar(fontsize = 20)), 
+            annotation_custom(textGrob(y,gp = gpar(fontsize = 16)), 
                               xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf)+ 
             labs(x="",y="")+coord_flip()+
             theme_y 

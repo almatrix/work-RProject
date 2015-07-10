@@ -1,6 +1,7 @@
 library(reshape2)
 library(ggplot2)
 library(nnet)
+library(gridExtra)
 
 source("../functions.R")
 
@@ -75,8 +76,69 @@ ggplot(prediction.ratios.melt[which(prediction.ratios.melt$learning.size>30),],
     theme_bw() 
 dev.off()
 
-png("test1.png",width=3000,height=2100,res=300)
-plot(prediction.bases[sample(1:nrow(prediction.bases),
-                             ceiling(nrow(prediction.bases)*0.05)),
-                      c(2,5,6,8,9,10)])
+
+############################
+dta =  predictions[which(predictions$learning.size>30&
+                                  predictions$city=="Chi"),]
+dta$learning.size.log=log(dta$learning.size)
+scattermatrix<-scatter.regression.matrix(
+    data = dta,
+    xs = c("weight.base","learning.ratio","learning.size.log"),
+    ys = c("globalmodel.adj","usermodel.adj","alpha.adj"),
+    weight = "predicting.size")
+x.density = scattermatrix$x.density
+y.density = scattermatrix$y.density
+regression.matrix=scattermatrix$regression.matrix
+empty.plot = scattermatrix$empty.plot
+
+png("test_Chi.png",res=300,width=3000,height=1500)
+grid.arrange(x.density[[1]],x.density[[2]],x.density[[3]],empty.plot,
+             regression.matrix[[1]][[1]],regression.matrix[[2]][[1]],regression.matrix[[3]][[1]],y.density[[1]],
+             regression.matrix[[1]][[2]],regression.matrix[[2]][[2]],regression.matrix[[3]][[2]],y.density[[2]],
+             regression.matrix[[1]][[3]],regression.matrix[[2]][[3]],regression.matrix[[3]][[3]],y.density[[3]],
+             nrow=4,widths=c(1,1,1,0.8))
+dev.off()
+
+####
+dta =  predictions[which(predictions$learning.size>30&
+                             predictions$city=="LA"),]
+dta$learning.size.log=log(dta$learning.size)
+scattermatrix<-scatter.regression.matrix(
+    data = dta,
+    xs = c("weight.base","learning.ratio","learning.size.log"),
+    ys = c("globalmodel.adj","usermodel.adj","alpha.adj"),
+    weight = "predicting.size")
+x.density = scattermatrix$x.density
+y.density = scattermatrix$y.density
+regression.matrix=scattermatrix$regression.matrix
+empty.plot = scattermatrix$empty.plot
+
+png("test_LA.png",res=300,width=3000,height=1500)
+grid.arrange(x.density[[1]],x.density[[2]],x.density[[3]],empty.plot,
+             regression.matrix[[1]][[1]],regression.matrix[[2]][[1]],regression.matrix[[3]][[1]],y.density[[1]],
+             regression.matrix[[1]][[2]],regression.matrix[[2]][[2]],regression.matrix[[3]][[2]],y.density[[2]],
+             regression.matrix[[1]][[3]],regression.matrix[[2]][[3]],regression.matrix[[3]][[3]],y.density[[3]],
+             nrow=4,widths=c(1,1,1,0.8))
+dev.off()
+
+####
+dta =  predictions[which(predictions$learning.size>30&
+                             predictions$city=="NYC"),]
+dta$learning.size.log=log(dta$learning.size)
+scattermatrix<-scatter.regression.matrix(
+    data = dta,
+    xs = c("weight.base","learning.ratio","learning.size.log"),
+    ys = c("globalmodel.adj","usermodel.adj","alpha.adj"),
+    weight = "predicting.size")
+x.density = scattermatrix$x.density
+y.density = scattermatrix$y.density
+regression.matrix=scattermatrix$regression.matrix
+empty.plot = scattermatrix$empty.plot
+
+png("test_NYC.png",res=300,width=3000,height=1500)
+grid.arrange(x.density[[1]],x.density[[2]],x.density[[3]],empty.plot,
+             regression.matrix[[1]][[1]],regression.matrix[[2]][[1]],regression.matrix[[3]][[1]],y.density[[1]],
+             regression.matrix[[1]][[2]],regression.matrix[[2]][[2]],regression.matrix[[3]][[2]],y.density[[2]],
+             regression.matrix[[1]][[3]],regression.matrix[[2]][[3]],regression.matrix[[3]][[3]],y.density[[3]],
+             nrow=4,widths=c(1,1,1,0.8))
 dev.off()
