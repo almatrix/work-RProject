@@ -96,9 +96,10 @@ Further, the user interest will be numerically represented by the category of ch
 ```{r exp.data,echo=TRUE,eval=TRUE}
 exp.data = checkin.poly.list[[1]][,c("user_id","cate_l1","cate_l2","venue_id",
                                      "hour", city.guide$spatial.attr[1],
-                                     "last.user_id","last.venue_id",
-                                     "last.cate_l1","last.cate_l2",
-                                     "time.interval","timestamps")]
+#                                      "last.user_id","last.venue_id",
+#                                      "last.cate_l1","last.cate_l2",
+#                                      "time.interval",
+                                     "timestamps")]
 ```
 
 
@@ -112,16 +113,19 @@ The following figure shows the fact that users have differnt interest towards ge
 cate.on.hour = xtabs2(data = exp.data, obs.col = "cate_l1", 
                           cond.col = "hour",p.joint = T,p.cond=T)
 
-theme_new<-theme_set(theme_bw(base_size = 10))
+# theme_new<-theme_set(theme_bw(base_size = 10))
 gg.cate.on.hour <- ggplot(cate.on.hour, 
                           aes(x=abbreviate(cate_l1,2),y=p.cond,fill=cate_l1)) + 
     geom_bar(stat="identity") +
     labs(x="User interest",y="Conditional probability")+
     facet_wrap(~condition,ncol=6,nrow=4)+
     scale_y_sqrt()+
-    coord_polar()
+    coord_polar()+
+    theme_bw(base_size=10) 
 
+png("hour.effect.png",width=3000,height=2000,res=300)
 gg.cate.on.hour
+dev.off()
 ```
 
 This fact can also be demonstrated from chi-square test:
@@ -145,15 +149,19 @@ cate.on.zip = xtabs2(data = exp.data, obs.col = "cate_l1",
 # for visualization purpose, we select only 18 most popular zip code regions (condition)
 cate.on.zip.plot = cate.on.zip[which(cate.on.zip$condition %in% 
     unique(cate.on.zip[order(cate.on.zip$marg.freq,decreasing=T),"condition"])[1:18]),] 
-theme_new<-theme_set(theme_bw(base_size = 10))
+# theme_new<-theme_set(theme_bw(base_size = 10))
 gg.cate.on.zip <- ggplot(cate.on.zip.plot, 
                          aes(x=abbreviate(cate_l1,2),y=p.cond,fill=cate_l1)) + 
     geom_bar(stat="identity") +
     labs(x="User interest",y="Conditional probability")+
     facet_wrap(~condition,ncol=6)+
     scale_y_sqrt()+
-    coord_polar()
+    coord_polar()+
+    theme_bw(base_size = 10)
+
+png("sp.effect.png",width=3000,height=1500,res=300)
 gg.cate.on.zip
+dev.off()
 
 # frequency dataframe to contingency table
 cate.on.zip.table = xtabs(Freq ~ condition+cate_l1, data=cate.on.zip)
