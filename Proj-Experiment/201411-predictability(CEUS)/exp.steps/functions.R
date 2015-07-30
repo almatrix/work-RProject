@@ -187,14 +187,13 @@ watch.time.memory <- function(t0=NA,mem0=NA){
 
 
 
-model.prediction <- function(model, raw){
+model.prediction <- function(model, ref.data){
     #     prediction = levels(raw$cate_l1)[
     #         max.col( model$fitted.values)]
-    prediction = predict(model)
-    
-    list(data.frame("true" = raw$cate_l1, "predicted" = prediction, 
-                    "eval" = (raw$cate_l1==prediction)),
-         data.frame("accuracy" = sum(raw$cate_l1==prediction)/nrow(raw) ))  
+    prediction = predict(model, type="class", newdata=ref.data)
+    list(data.frame("true" = ref.data$cate_l1, "predicted" = prediction, 
+                    "eval" = (ref.data$cate_l1==prediction)),
+         data.frame("accuracy" = sum(ref.data$cate_l1==prediction)/nrow(ref.data) ))  
 }
 
 significance.code <- function(p){
@@ -204,15 +203,35 @@ significance.code <- function(p){
                          ifelse(p>0.001, "**", "***"))))
 }
 
-model.fitness <- function(model){
+model.fitness <- function(model, raw.data){
+    # classification table
+    prediction = predict(model, type="class")
+
+    cTab <- xtabs(~cate_l1+prediction,data=raw.data)
+
+    # correct classification rate
+    CCR <- sum(diag(cTab)) / sum(cTab)
+    # deviance
     deviance = model$deviance
+    # AIC
+    AIC = model$AIC
+    # log-likelihood
+    log.likelihood = logLik(model)[1]
+    
     edf = model$edf
     df = nrow(model$fitted.values) * (ncol(model$fitted.values)-1) - edf
     p = 1 - pchisq(deviance, df)
     significance = significance.code(p)
-    AIC = model$AIC
     
-    data.frame(AIC,deviance,edf,df,p,significance)
+    cTab.view <- addmargins(cTab)
+    cTab.view <- as.data.frame(cTab.view)
+    cTab.view <- dcast(cTab.view,cate_l1~prediction,value.var="Freq")
+    
+    list(
+        "classfication.table"=cTab,
+        "classfication.table.view"=cTab.view,
+        "statistics"=data.frame(CCR,deviance,log.likelihood,AIC),
+        "chisq-test"=data.frame(edf,df,p,significance))
 }
 
 
