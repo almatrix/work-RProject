@@ -219,7 +219,7 @@ CT.g<-ggplot(dta.plot.g,aes(x=cate_l1,y=pred.g,fill=Freq))+
     scale_fill_continuous(limits=ceiling(sum(dta.plot.g$Freq)*c(0,0.26)))+
     labs(x="Real Interest\n(a)",y="Predicted Interest (Personalized)")+
     theme_bw(base_size=16) %+replace%
-    theme(legend.position="none",axis.text.x=element_text(angle=30,hjust=1,vjust=1))
+    theme(legend.position="none",axis.text.x=element_text(angle=35,hjust=1,vjust=1))
     
 # CTable.personalized
 cTab.p <- xtabs(~cate_l1+pred.p,data=eva.k[which(eva.k$k==15),])
@@ -243,7 +243,7 @@ CT.p<-ggplot(dta.plot.p,aes(x=cate_l1,y=pred.p,fill=Freq))+
     scale_fill_continuous(limits=ceiling(sum(dta.plot.g$Freq)*c(0,0.26)))+
     labs(x="Real Interest\n(b)",y="Predicted Interest (Personalized)")+
     theme_bw(base_size=16) %+replace%
-    theme(legend.position="none",axis.text.x=element_text(angle=30,hjust=1,vjust=1))
+    theme(legend.position="none",axis.text.x=element_text(angle=35,hjust=1,vjust=1))
 
 dta.diag.g$model = "Global";dta.diag.p$model="Personalized"
 precision.recall<- 
@@ -254,7 +254,7 @@ precision.recall<-
     labs(x="Interest Type\n(c)",y="Precision / Recall")+
     facet_wrap(~variable)+
     theme_bw(base_size=16) %+replace%
-    theme(axis.text.x=element_text(angle=30,hjust=1,vjust=1))
+    theme(axis.text.x=element_text(angle=35,hjust=1,vjust=1))
 
     
 png("g.vs.p.png",width=3000,height=2600,res=300)
@@ -283,7 +283,7 @@ prediction = do.call(rbind,lapply(pred.result,function(user){
 prediction = prediction[prediction$note %in% c("1","2"),]
 CCR.g.overall = sum(fit$cate_l1==fit$fit.g)/nrow(fit)
 CCR.p.overall = sum(fit$cate_l1==fit$fit.p)/nrow(fit)
-CPR.g.overall = sum(prediction$cate_l1==prediction2$pred.g)/nrow(prediction2)
+CPR.g.overall = sum(prediction$cate_l1==prediction$pred.g)/nrow(prediction)
 CPR.p.overall = sum(prediction$cate_l1==prediction$pred.p)/nrow(prediction)
 
 ##############
@@ -396,10 +396,10 @@ gg.g.fit<-ggplot(perf.g.fit[[1]],aes(x=cate_l1,y=fit.g,fill=Freq))+
               aes(label=formatC(perf.g.fit[[2]]$Rate,digits=2)))+
 #               aes(label=formatC(Freq/sum(perf.g.fit[[1]]$Freq),digits=2)))+
     scale_fill_continuous(low="white",high="#66CC99",
-                          limits=ceiling(sum(perf.g.fit[[1]]$Freq)*c(0,0.28)))+
-    labs(x="Real Interest\n(a)",y="Estimated Interest (Global)")+
+                          limits=ceiling(sum(perf.g.fit[[1]]$Freq)*c(0,0.32)))+
+    labs(x="Real Interest\n(a)",y="Estimated Interest\n(Global)")+
     theme_bw(base_size=16) %+replace%
-    theme(legend.position="none",axis.text.x=element_text(angle=30,hjust=1,vjust=1))
+    theme(legend.position="none",axis.text.x=element_text(angle=35,hjust=1,vjust=1))
 
 gg.p.fit<-ggplot(perf.p.fit[[1]],aes(x=cate_l1,y=fit.p,fill=Freq))+
     geom_tile()+
@@ -408,10 +408,10 @@ gg.p.fit<-ggplot(perf.p.fit[[1]],aes(x=cate_l1,y=fit.p,fill=Freq))+
               aes(label=formatC(perf.p.fit[[2]]$Rate,digits=2)))+
 #               aes(label=formatC(Freq/sum(perf.g.fit[[1]]$Freq),digits=2)))+
     scale_fill_continuous(low="white",high="#66CC99",
-                          limits=ceiling(sum(perf.g.fit[[1]]$Freq)*c(0,0.28)))+
-    labs(x="Real Interest\n(b)",y="Estimated Interest (Personalized)")+
+                          limits=ceiling(sum(perf.g.fit[[1]]$Freq)*c(0,0.32)))+
+    labs(x="Real Interest\n(b)",y="Estimated Interest\n(Personalized)")+
     theme_bw(base_size=16) %+replace%
-    theme(legend.position="none",axis.text.x=element_text(angle=30,hjust=1,vjust=1))
+    theme(legend.position="none",axis.text.x=element_text(angle=35,hjust=1,vjust=1))
 
 gg.ref.fit<-ggplot(perf.g.fit[[1]],aes(x=cate_l1,y=cate_l1,fill=Freq.real))+
     geom_tile()+
@@ -419,20 +419,20 @@ gg.ref.fit<-ggplot(perf.g.fit[[1]],aes(x=cate_l1,y=cate_l1,fill=Freq.real))+
     geom_text(data=perf.g.fit[[2]],color="black",size=4,
               aes(label=formatC(perf.g.fit[[2]]$Freq.real/sum(perf.g.fit[[2]]$Freq.real),digits=2)))+
     scale_fill_continuous(low="white",high="#66CC99",
-                          limits=ceiling(sum(perf.g.fit[[2]]$Freq.real)*c(0,0.28)))+
-    labs(x="Real Interest\n(c)",y="Real Interest (for Reference)")+
+                          limits=ceiling(sum(perf.g.fit[[2]]$Freq.real)*c(0,0.32)))+
+    labs(x="Real Interest\n(c)",y="Real Interest\n(for Reference)")+
     theme_bw(base_size=16) %+replace%
     theme(legend.position="none",panel.grid=element_blank(),
-          axis.text.x=element_text(angle=30,hjust=1,vjust=1))
+          axis.text.x=element_text(angle=35,hjust=1,vjust=1))
 precision.recall.fit<- 
     ggplot(melt(rbind(perf.p.fit[[2]][,c(2,7:9)],perf.g.fit[[2]][,c(2,7:9)]),
                 id.vars=c("cate_l1","model")))+
     geom_point(aes(x=cate_l1,y=value,color=model),size=2)+
     geom_line(aes(x=cate_l1,y=value,color=model,group=model))+
-    labs(x="Interest Type\n(c)",y="Precision / Recall")+
+    labs(x="Interest Type\n(d)",y="Precision / Recall")+
     facet_wrap(~variable)+
     theme_bw(base_size=16) %+replace%
-    theme(axis.text.x=element_text(angle=30,hjust=1,vjust=1))
+    theme(axis.text.x=element_text(angle=35,hjust=1,vjust=1))
 
 ################
 
@@ -443,10 +443,10 @@ gg.g.pred<-ggplot(perf.g.pred[[1]],aes(x=cate_l1,y=pred.g,fill=Freq))+
               aes(label=formatC(perf.g.pred[[2]]$Rate,digits=2)))+
     #               aes(label=formatC(Freq/sum(perf.g.pred[[1]]$Freq),digits=2)))+
     scale_fill_continuous(low="white",high="#66CC99",
-                          limits=ceiling(sum(perf.g.pred[[1]]$Freq)*c(0,0.28)))+
-    labs(x="Real Interest\n(a)",y="Predicted Interest (Global)")+
+                          limits=ceiling(sum(perf.g.pred[[1]]$Freq)*c(0,0.32)))+
+    labs(x="Real Interest\n(a)",y="Predicted Interest\n(Global)")+
     theme_bw(base_size=16) %+replace%
-    theme(legend.position="none",axis.text.x=element_text(angle=30,hjust=1,vjust=1))
+    theme(legend.position="none",axis.text.x=element_text(angle=35,hjust=1,vjust=1))
 
 gg.p.pred<-ggplot(perf.p.pred[[1]],aes(x=cate_l1,y=pred.p,fill=Freq))+
     geom_tile()+
@@ -455,10 +455,10 @@ gg.p.pred<-ggplot(perf.p.pred[[1]],aes(x=cate_l1,y=pred.p,fill=Freq))+
               aes(label=formatC(perf.p.pred[[2]]$Rate,digits=2)))+
     #               aes(label=formatC(Freq/sum(perf.g.pred[[1]]$Freq),digits=2)))+
     scale_fill_continuous(low="white",high="#66CC99",
-                          limits=ceiling(sum(perf.g.pred[[1]]$Freq)*c(0,0.28)))+
-    labs(x="Real Interest\n(b)",y="Predicted Interest (Personalized)")+
+                          limits=ceiling(sum(perf.g.pred[[1]]$Freq)*c(0,0.32)))+
+    labs(x="Real Interest\n(b)",y="Predicted Interest\n(Personalized)")+
     theme_bw(base_size=16) %+replace%
-    theme(legend.position="none",axis.text.x=element_text(angle=30,hjust=1,vjust=1))
+    theme(legend.position="none",axis.text.x=element_text(angle=35,hjust=1,vjust=1))
 
 gg.ref.pred<-ggplot(perf.g.pred[[1]],aes(x=cate_l1,y=cate_l1,fill=Freq.real))+
     geom_tile()+
@@ -466,25 +466,27 @@ gg.ref.pred<-ggplot(perf.g.pred[[1]],aes(x=cate_l1,y=cate_l1,fill=Freq.real))+
     geom_text(data=perf.g.pred[[2]],color="black",size=4,
               aes(label=formatC(perf.g.pred[[2]]$Freq.real/sum(perf.g.pred[[2]]$Freq.real),digits=2)))+
     scale_fill_continuous(low="white",high="#66CC99",
-                          limits=ceiling(sum(perf.g.pred[[2]]$Freq.real)*c(0,0.28)))+
-    labs(x="Real Interest\n(c)",y="Real Interest (for Reference)")+
+                          limits=ceiling(sum(perf.g.pred[[2]]$Freq.real)*c(0,0.32)))+
+    labs(x="Real Interest\n(c)",y="Real Interest\n(for Reference)")+
     theme_bw(base_size=16) %+replace%
     theme(legend.position="none",panel.grid=element_blank(),
-          axis.text.x=element_text(angle=30,hjust=1,vjust=1))
+          axis.text.x=element_text(angle=35,hjust=1,vjust=1))
 precision.recall.pred<- 
     ggplot(melt(rbind(perf.p.pred[[2]][,c(2,7:9)],perf.g.pred[[2]][,c(2,7:9)]),
                 id.vars=c("cate_l1","model")))+
     geom_point(aes(x=cate_l1,y=value,color=model),size=2)+
     geom_line(aes(x=cate_l1,y=value,color=model,group=model))+
-    labs(x="Interest Type\n(c)",y="Precision / Recall")+
+    labs(x="Interest Type\n(d)",y="Precision / Recall")+
     facet_wrap(~variable)+
     theme_bw(base_size=16) %+replace%
-    theme(axis.text.x=element_text(angle=30,hjust=1,vjust=1))
+    theme(axis.text.x=element_text(angle=35,hjust=1,vjust=1))
 
 ##############
-# png("g.vs.p.png",width=3000,height=2600,res=300)
+png("g.vs.p_global_la.png",width=3600,height=1900,res=300)
 grid.arrange(arrangeGrob(gg.g.fit,gg.p.fit,gg.ref.fit,ncol=3),precision.recall.fit,
-             ncol=1,nrow=2,heights=c(1.4,1))
+             ncol=1,nrow=2,heights=c(1.5,1))
+dev.off()
+png("g.vs.p_pers_la.png",width=3600,height=1900,res=300)
 grid.arrange(arrangeGrob(gg.g.pred,gg.p.pred,gg.ref.pred,ncol=3),precision.recall.pred,
-             ncol=1,nrow=2,heights=c(1.2,1))
-# dev.off()
+             ncol=1,nrow=2,heights=c(1.5,1))
+dev.off()

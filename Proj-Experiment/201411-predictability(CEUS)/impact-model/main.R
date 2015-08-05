@@ -279,7 +279,6 @@ test.k.pers <- do.call(rbind,lapply(seq(0,100,5),function(k){
     
     eva
 }))
-test.k.pers$k=as.factor(test.k.pers$k)
 
 
 test.Z.pers <- do.call(rbind,lapply(seq(0,100,5),function(Z){
@@ -302,7 +301,8 @@ test.f.pers <- do.call(rbind,lapply(seq(-3,1,0.2),function(f){
     eva
 }))
 
-overall.rate = do.call(rbind,lapply(split(test.k.pers, test.k.pers$k),function(model){
+overall.rate = do.call(rbind,lapply(split(test.k.pers, test.k.pers$k),
+                                    function(model){
 
     rate.g.overall = sum(model$cate_l1==model$pred.g)/nrow(model)
     rate.p.overall = sum(model$cate_l1==model$pred.p)/nrow(model)
