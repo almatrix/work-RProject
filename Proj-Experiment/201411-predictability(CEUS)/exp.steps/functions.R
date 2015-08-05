@@ -386,3 +386,12 @@ scatter.regression.matrix<-function(data,xs,ys,xnames=NA,ynames=NA,weight=NA){
          "empty.plot"=empty.plot)
     
 }
+
+
+######
+get.entropy <- function(p_vec,base=2){
+    do.call(sum,lapply(p_vec,function(p){
+        if(p==0) 0
+        else -1 * p * log(p, base)
+    }))
+}

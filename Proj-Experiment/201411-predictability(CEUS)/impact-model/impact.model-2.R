@@ -26,9 +26,13 @@ impact.model <- function(data, x, y, w=NA, Z=30, global.im = NA, ...){
         # long format to wide format
         im <- as.data.frame.table(
             xtabs(data=im,as.formula(paste("impact~condition+",y))))
-        im <- dcast(im,as.formula(paste("condition~",y)),value.var="Freq")
+        im <- reshape(im,v.names="Freq",idvar="condition",
+                      timevar=y,direction="wide")
+#         im <- dcast(im,as.formula(paste("condition~",y)),value.var="Freq")
         colnames(im)[2:ncol(im)] <- 
-            paste(abbreviate(colnames(im))[2:ncol(im)],x,sep="_")
+            paste(abbreviate(
+                unlist(strsplit(colnames(im),".",fixed=T)[2:ncol(im)])[seq(2,20,2)]
+                ),x,sep="_")
 
         
         # dealing with empty data 

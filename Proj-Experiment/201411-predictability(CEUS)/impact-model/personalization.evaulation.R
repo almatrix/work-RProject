@@ -1,4 +1,4 @@
-pers.eva = function(data=dta,...){
+pers.eva = function(dta,...){
     # global context coding for three types of context
     im.hour = impact.model(data=dta,x="hour2",y="cate_l1",...)
     im.zip = impact.model(data=dta,x="ZIP",y="cate_l1",...)
@@ -21,9 +21,9 @@ pers.eva = function(data=dta,...){
                                global.im = im.zip,...)
         uim.last = impact.model(data=user,x="last.cate_l1",y="cate_l1",
                                 w="wgt",global.im = im.last,...)
-        user.im = apply.impact.models(user,im.hour,"hour2")
-        user.im = apply.impact.models(user.im,im.zip,"ZIP")
-        user.im = apply.impact.models(user.im,im.last,"last.cate_l1")
+        user.im = apply.impact.models(user,uim.hour,"hour2")
+        user.im = apply.impact.models(user.im,uim.zip,"ZIP")
+        user.im = apply.impact.models(user.im,uim.last,"last.cate_l1")
         
         # entropy
         stat = as.data.frame(xtabs(~cate_l1,data=user))
@@ -36,22 +36,27 @@ pers.eva = function(data=dta,...){
         if(length(unique(user$cate_l1))>1){
             model = multinom(data=user.im[,c(7,14:43)], cate_l1~., 
                              maxit=2000,trace=FALSE)
+            fit.g = predict(gmodel,type="class",newdata=user.im)
+            fit.p = predict(model,type="class",newdata=user.im)
+            CCR.g = sum(levels(fit.g)[fit.g]==user.im$cate_l1)/nrow(user.im)
+            CCR.p = sum(levels(fit.p)[fit.p]==user.im$cate_l1)/nrow(user.im)
+            
         }else{
-            model = gmodel
+            fit.g = predict(gmodel,type="class",newdata=user.im)
+            fit.p = user.training.im$cate_l1
+            CCR.g = sum(levels(fit.g)[fit.g]==user.im$cate_l1)/nrow(user.im)
+            CCR.p = 1
         }
-        
-        pred.g = predict(gmodel,type="class",newdata=user.im)
-        pred.p = predict(model,type="class",newdata=user.im)
         
         data.frame("user_id"=user[1,"user_id"],
                    "cate_l1"=user.im$cate_l1,
                    "sample.size"=nrow(user),
                    "entropy"= entropy,
                    "entropy.adj"= entropy.adj,
-                   "pred.g"=pred.g,
-                   "rate.g"=sum(levels(pred.g)[pred.g]==user.im$cate_l1)/nrow(user.im),
-                   "pred.p"=pred.p,
-                   "rate.p"=sum(levels(pred.p)[pred.p]==user.im$cate_l1)/nrow(user.im),
+                   "fit.g"=fit.g,
+                   "CCR.g"=CCR.g,
+                   "fit.p"=fit.p,
+                   "CCR.p"=CCR.p,
                    "candidate.leng"=length(unique(user$cate_l1)))
     }))
 }
