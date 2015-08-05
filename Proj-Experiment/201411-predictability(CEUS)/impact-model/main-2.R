@@ -6,12 +6,13 @@ library(gridExtra)
 source("../exp.steps/functions.R")
 source("impact.model-2.R")
 source("personalization.evaulation.R")
+source("predictions.R")
 
 load("../data/checkin.poly.list.Rda")
 city.guide=data.frame("city"=c("Chicago","Los Angeles","New York City"),
                       "spatial.attr" = c("ZIP","Zip_Num","POSTAL"),
                       stringsAsFactors=FALSE)
-city.index = 3
+city.index = 1
 data.regress <- checkin.poly.list[[city.index]][,c("gid","user_id","venue_id",
                                           "cate_l1","hour","weekday",
                                           city.guide[city.index,"spatial.attr"],
@@ -268,6 +269,8 @@ dev.off()
 
 pred.result = prediction.eva(training.data, reference.data)
 save(pred.result,file=paste("pred.result.",city.guide[city.index,"city"],".Rda",sep=""))
+
+
 #############
 # overall performance
 fit = do.call(rbind,lapply(pred.result,function(user){
