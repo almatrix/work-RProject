@@ -64,7 +64,7 @@ prediction.eva <- function(training.data, reference.data, Z1=30, Z2=3){
         
         # personalized regression
         # if there is any training data for this user
-        if(user.training.length > 0){
+        if(user.training.length > 30){
             
             # evaluation of the data itself (diversity of user behavior)
             ustat = as.data.frame(xtabs(~cate_l1,data=user.training.data))

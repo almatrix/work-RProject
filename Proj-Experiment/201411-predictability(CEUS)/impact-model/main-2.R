@@ -266,8 +266,7 @@ dev.off()
 # test 3: prediction
 ###########
 
-
-pred.result = prediction.eva(training.data, reference.data)
+pred.result = prediction.eva(training.data, reference.data,Z2=30)
 save(pred.result,file=paste("pred.result.",city.guide[city.index,"city"],".Rda",sep=""))
 
 
@@ -276,11 +275,11 @@ save(pred.result,file=paste("pred.result.",city.guide[city.index,"city"],".Rda",
 fit = do.call(rbind,lapply(pred.result,function(user){
     user$inner
 }))
-fit = fit[fit$note %in% c("1","2"),]
+fit = fit[fit$note %in% c("1"),]
 prediction = do.call(rbind,lapply(pred.result,function(user){
     user$outer
 }))
-prediction = prediction[prediction$note %in% c("1","2"),]
+prediction = prediction[prediction$note %in% c("1"),]
 CCR.g.overall = sum(fit$cate_l1==fit$fit.g)/nrow(fit)
 CCR.p.overall = sum(fit$cate_l1==fit$fit.p)/nrow(fit)
 CPR.g.overall = sum(prediction$cate_l1==prediction$pred.g)/nrow(prediction)
@@ -298,13 +297,13 @@ to.investigate$TP.ratio.scl = with(to.investigate, cut(TP.ratio,breaks=quantile(
 to.investigate$trainig.lng.scl = with(to.investigate, cut(user.training.length,breaks=quantile(user.training.length,probs=c(0,0.5,0.75,1)),include.lowest = T))
 
 scatterplot.matrix(~CCR.g+CCR.p+CPR.g+CPR.p|entropy.scl, 
-                   data=to.investigate[to.investigate$note=="1: Normal personal regression model.",],
+                   data=to.investigate[to.investigate$note=="1",],
                    upper.panel=NULL)
 scatterplot.matrix(~CCR.g+CCR.p+CPR.g+CPR.p|TP.ratio.scl, 
-                   data=to.investigate[to.investigate$note=="1: Normal personal regression model.",],
+                   data=to.investigate[to.investigate$note=="1",],
                    upper.panel=NULL)
 scatterplot.matrix(~CCR.g+CCR.p+CPR.g+CPR.p|trainig.lng.scl, 
-                   data=to.investigate[to.investigate$note=="1: Normal personal regression model.",],
+                   data=to.investigate[to.investigate$note=="1",],
                    upper.panel=NULL)
 View(var(to.investigate[,c(2,4:9)],na.rm=T))
 
@@ -482,11 +481,11 @@ precision.recall.pred<-
     theme(axis.text.x=element_text(angle=35,hjust=1,vjust=1))
 
 ##############
-png("g.vs.p_global_la.png",width=3600,height=1900,res=300)
+png("g.vs.p_global_nyc.png",width=3600,height=1900,res=300)
 grid.arrange(arrangeGrob(gg.g.fit,gg.p.fit,gg.ref.fit,ncol=3),precision.recall.fit,
              ncol=1,nrow=2,heights=c(1.5,1))
 dev.off()
-png("g.vs.p_pers_la.png",width=3600,height=1900,res=300)
+png("g.vs.p_pers_nyc.png",width=3600,height=1900,res=300)
 grid.arrange(arrangeGrob(gg.g.pred,gg.p.pred,gg.ref.pred,ncol=3),precision.recall.pred,
              ncol=1,nrow=2,heights=c(1.5,1))
 dev.off()
