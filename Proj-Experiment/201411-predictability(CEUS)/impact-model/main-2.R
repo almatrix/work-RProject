@@ -12,7 +12,7 @@ load("../data/checkin.poly.list.Rda")
 city.guide=data.frame("city"=c("Chicago","Los Angeles","New York City"),
                       "spatial.attr" = c("ZIP","Zip_Num","POSTAL"),
                       stringsAsFactors=FALSE)
-city.index = 1
+city.index = 2
 data.regress <- checkin.poly.list[[city.index]][,c("gid","user_id","venue_id",
                                           "cate_l1","hour","weekday",
                                           city.guide[city.index,"spatial.attr"],
@@ -275,70 +275,25 @@ save(pred.result,file=paste("pred.result.",city.guide[city.index,"city"],".Rda",
 fit = do.call(rbind,lapply(pred.result,function(user){
     user$inner
 }))
-fit = fit[fit$note %in% c("1"),]
+fit.p1 = fit[fit$note %in% c("1","2"),]
+fit.p2 = fit[fit$note %in% c("3","4"),]
 prediction = do.call(rbind,lapply(pred.result,function(user){
     user$outer
 }))
-prediction = prediction[prediction$note %in% c("1"),]
-CCR.g.overall = sum(fit$cate_l1==fit$fit.g)/nrow(fit)
-CCR.p.overall = sum(fit$cate_l1==fit$fit.p)/nrow(fit)
-CPR.g.overall = sum(prediction$cate_l1==prediction$pred.g)/nrow(prediction)
-CPR.p.overall = sum(prediction$cate_l1==prediction$pred.p)/nrow(prediction)
+prediction.p1 = prediction[prediction$note %in% c("1","2"),]
+prediction.p2 = prediction[prediction$note %in% c("3","4"),]
+# for part 1, the global value is different from the personalized value
+sum(prediction.p1$CPR.g==prediction.p1$CPR.p) / nrow(prediction.p1)
+# for part 2, the global value should be equal to persoanlized value
+sum(prediction.p2$CPR.g==prediction.p2$CPR.p) / nrow(prediction.p2)
 
-##############
-# performance by user
-to.investigate = do.call(rbind,lapply(pred.result,function(user){
-    inner = unique(user$inner[,c(1:5,9,10)])
-    outer = unique(user$outer[,c(9:11)])
-    cbind(inner,outer)
-}))
-to.investigate$entropy.scl = with(to.investigate, cut(entropy,breaks=quantile(entropy),include.lowest = T))
-to.investigate$TP.ratio.scl = with(to.investigate, cut(TP.ratio,breaks=quantile(TP.ratio,probs=c(0,0.5,0.75,1)),include.lowest = T))
-to.investigate$trainig.lng.scl = with(to.investigate, cut(user.training.length,breaks=quantile(user.training.length,probs=c(0,0.5,0.75,1)),include.lowest = T))
-
-scatterplot.matrix(~CCR.g+CCR.p+CPR.g+CPR.p|entropy.scl, 
-                   data=to.investigate[to.investigate$note=="1",],
-                   upper.panel=NULL)
-scatterplot.matrix(~CCR.g+CCR.p+CPR.g+CPR.p|TP.ratio.scl, 
-                   data=to.investigate[to.investigate$note=="1",],
-                   upper.panel=NULL)
-scatterplot.matrix(~CCR.g+CCR.p+CPR.g+CPR.p|trainig.lng.scl, 
-                   data=to.investigate[to.investigate$note=="1",],
-                   upper.panel=NULL)
-View(var(to.investigate[,c(2,4:9)],na.rm=T))
-
-# CCR.g v.s. CCR.p
-ggplot(to.investigate[complete.cases(to.investigate),],aes(x=CCR.g,y=CCR.p))+
-    geom_point(alpha=0.6)+
-    geom_smooth()
-# CCR.g v.s. CPR.g
-ggplot(to.investigate[complete.cases(to.investigate),],aes(x=CCR.g,y=CPR.g))+
-    geom_point(alpha=0.6)+
-    geom_smooth()
-# CPR.g v.s. CPR.p
-ggplot(to.investigate[complete.cases(to.investigate),],aes(x=CPR.g,y=CPR.p))+
-    geom_point(alpha=0.6)+
-    geom_smooth(method="lm")
-#     geom_segment(aes(x = 0, y = 0, xend = CCR.g, yend = CCR.p, color=TP.ratio.scl),
-#                  arrow = arrow(length = unit(0.5, "cm")),alpha=0.3)+
-    facet_wrap(~note)
-# CPR.g v.s. CPR.p
-ggplot(to.investigate[(to.investigate$CPR.g|to.investigate$CPR.p),])+
-    geom_point(aes(x=CPR.g,y=CPR.p))+
-#     geom_segment(aes(x = 0, y = 0, xend = CPR.g, yend = CPR.p, color=TP.ratio),
-#                  arrow = arrow(length = unit(0.5, "cm")),alpha=0.5)+
-    facet_wrap(~note)
-# CCR v.s. CPR
-ggplot(to.investigate) + 
-    geom_point(aes(x=CCR.g,y=CCR.p,size=entropy),color="green",shape=21,alpha=0.5)+
-    geom_point(aes(x=CPR.g,y=CPR.p,size=entropy),color="red",shape=21,alpha=0.5)+
-    geom_segment(aes(x = CCR.g, y = CCR.p, xend = CPR.g, yend = CPR.p, color=TP.ratio),
-                 arrow = arrow(length = unit(0.5, "cm")))+
-    facet_wrap(~note)
-ggplot(to.investigate) + 
-    geom_point(aes(x=CCR.g,y=CPR.g),color="red")+
-    geom_point(aes(x=CCR.p,y=CPR.p),color="green")
-
+# the performance of fit and prediction for part 1 
+CCR.g.overall = sum(fit.p1$cate_l1==fit.p1$fit.g)/nrow(fit.p1)
+CCR.p.overall = sum(fit.p1$cate_l1==fit.p1$fit.p)/nrow(fit.p1)
+CPR.g.overall = sum(prediction.p1$cate_l1==prediction.p1$pred.g)/nrow(prediction.p1)
+CPR.p.overall = sum(prediction.p1$cate_l1==prediction.p1$pred.p)/nrow(prediction.p1)
+# the performance of prediction for part 2
+CPR.gp.overall = sum(prediction.p2$cate_l1==prediction.p2$pred.g)/nrow(prediction.p2)
 
 ##############
 # performance by venue type
@@ -383,11 +338,13 @@ performance.by.type = function(real,predicted,data,model.name){
 #     list(dta.plot, dta.diag)
 }
 # CTable.global
-perf.g.fit = performance.by.type("cate_l1","fit.g",fit,"Global")
-perf.p.fit = performance.by.type("cate_l1","fit.p",fit,"Personalized")
-perf.g.pred = performance.by.type("cate_l1","pred.g",prediction[prediction$user.training.length>0,],"Global")
-perf.p.pred = performance.by.type("cate_l1","pred.p",prediction[prediction$user.training.length>0,],"Personalized")
+perf.g.fit = performance.by.type("cate_l1","fit.g",fit.p1,"Global")
+perf.p.fit = performance.by.type("cate_l1","fit.p",fit.p1,"Personalized")
+perf.g.pred = performance.by.type("cate_l1","pred.g",prediction.p1,"Global")
+perf.p.pred = performance.by.type("cate_l1","pred.p",prediction.p1,"Personalized")
+perf.gp.pred = performance.by.type("cate_l1","pred.g",prediction.p2,"Shared")
 
+##############
 gg.g.fit<-ggplot(perf.g.fit[[1]],aes(x=cate_l1,y=fit.g,fill=Freq))+
     geom_tile()+
     geom_tile(data=perf.g.fit[[2]],color="black")+
@@ -470,22 +427,132 @@ gg.ref.pred<-ggplot(perf.g.pred[[1]],aes(x=cate_l1,y=cate_l1,fill=Freq.real))+
     theme_bw(base_size=16) %+replace%
     theme(legend.position="none",panel.grid=element_blank(),
           axis.text.x=element_text(angle=35,hjust=1,vjust=1))
+gg.gp.pred<-ggplot(perf.gp.pred[[1]],aes(x=cate_l1,y=pred.g,fill=Freq))+
+    geom_tile()+
+    geom_tile(data=perf.gp.pred[[2]],color="black")+
+    geom_text(data=perf.gp.pred[[2]],color="black",size=4,
+              aes(label=formatC(perf.gp.pred[[2]]$Rate,digits=2)))+
+    #               aes(label=formatC(Freq/sum(perf.g.pred[[1]]$Freq),digits=2)))+
+    scale_fill_continuous(low="white",high="#66CC99",
+                          limits=ceiling(sum(perf.gp.pred[[1]]$Freq)*c(0,0.32)))+
+    labs(x="Real Interest\n(d)",y="Predicted Interest\n(Personalized)")+
+    theme_bw(base_size=16) %+replace%
+    theme(legend.position="none",axis.text.x=element_text(angle=35,hjust=1,vjust=1))
+
+gg.ref.pred2<-ggplot(perf.gp.pred[[1]],aes(x=cate_l1,y=cate_l1,fill=Freq.real))+
+    geom_tile()+
+    geom_tile(data=perf.gp.pred[[2]],color="black")+
+    geom_text(data=perf.gp.pred[[2]],color="black",size=4,
+              aes(label=formatC(perf.gp.pred[[2]]$Freq.real/sum(perf.gp.pred[[2]]$Freq.real),digits=2)))+
+    scale_fill_continuous(low="white",high="#66CC99",
+                          limits=ceiling(sum(perf.gp.pred[[2]]$Freq.real)*c(0,0.32)))+
+    labs(x="Real Interest\n(e)",y="Real Interest\n(for Reference)")+
+    theme_bw(base_size=16) %+replace%
+    theme(legend.position="none",panel.grid=element_blank(),
+          axis.text.x=element_text(angle=35,hjust=1,vjust=1))
 precision.recall.pred<- 
-    ggplot(melt(rbind(perf.p.pred[[2]][,c(2,7:9)],perf.g.pred[[2]][,c(2,7:9)]),
+    ggplot(melt(rbind(perf.p.pred[[2]][,c(2,7:9)],perf.g.pred[[2]][,c(2,7:9)],
+                      perf.gp.pred[[2]][,c(2,7:9)]),
                 id.vars=c("cate_l1","model")))+
     geom_point(aes(x=cate_l1,y=value,color=model),size=2)+
     geom_line(aes(x=cate_l1,y=value,color=model,group=model))+
-    labs(x="Interest Type\n(d)",y="Precision / Recall")+
-    facet_wrap(~variable)+
+    labs(x="Interest Type\n(f)",y="Precision / Recall")+
+    facet_wrap(~variable,nrow=2)+
     theme_bw(base_size=16) %+replace%
-    theme(axis.text.x=element_text(angle=35,hjust=1,vjust=1))
+    theme(axis.text.x=element_text(angle=35,hjust=1,vjust=1),
+          legend.direction="horizontal",legend.position="top")
 
 ##############
-png("g.vs.p_global_nyc.png",width=3600,height=1900,res=300)
+png("g.vs.p_fit_la.png",width=3600,height=1900,res=300)
 grid.arrange(arrangeGrob(gg.g.fit,gg.p.fit,gg.ref.fit,ncol=3),precision.recall.fit,
              ncol=1,nrow=2,heights=c(1.5,1))
 dev.off()
-png("g.vs.p_pers_nyc.png",width=3600,height=1900,res=300)
-grid.arrange(arrangeGrob(gg.g.pred,gg.p.pred,gg.ref.pred,ncol=3),precision.recall.pred,
-             ncol=1,nrow=2,heights=c(1.5,1))
+png("g.vs.p_pred_la.png",width=3650,height=2120,res=300)
+grid.arrange(gg.g.pred,gg.p.pred,gg.ref.pred,gg.gp.pred,gg.ref.pred2,precision.recall.pred,
+             ncol=3,nrow=2)
 dev.off()
+
+
+##############
+# performance by user
+to.investigate = do.call(rbind,lapply(pred.result,function(user){
+    inner = unique(user$inner[,c(1:5,9,10)])
+    outer = unique(user$outer[,c(9:11)])
+    cbind(inner,outer)
+}))
+to.investigate = to.investigate[to.investigate$note=="1",]
+to.investigate$entropy.scl = with(to.investigate, cut(entropy,breaks=quantile(entropy),include.lowest = T))
+to.investigate$TP.ratio.scl = with(to.investigate, cut(TP.ratio,breaks=quantile(TP.ratio,probs=c(0,0.5,0.75,1)),include.lowest = T))
+to.investigate$trainig.lng.scl = with(to.investigate, cut(user.training.length,breaks=quantile(user.training.length,probs=c(0,0.5,0.75,1)),include.lowest = T))
+
+scatterplot.matrix(~CCR.g+CCR.p+CPR.g+CPR.p|entropy.scl, 
+                   data=to.investigate[to.investigate$note=="1",],
+                   upper.panel=NULL)
+scatterplot.matrix(~CCR.g+CCR.p+CPR.g+CPR.p|TP.ratio.scl, 
+                   data=to.investigate[to.investigate$note=="1",],
+                   upper.panel=NULL)
+scatterplot.matrix(~CCR.g+CCR.p+CPR.g+CPR.p|trainig.lng.scl, 
+                   data=to.investigate[to.investigate$note=="1",],
+                   upper.panel=NULL)
+View(var(to.investigate[,c(2,4:9)],na.rm=T))
+
+# CCR.g v.s. CCR.p
+ggplot(to.investigate[complete.cases(to.investigate),],aes(x=CCR.g,y=CCR.p))+
+    geom_point(alpha=0.6)+
+    geom_smooth()
+# CCR.g v.s. CPR.g
+ggplot(to.investigate[complete.cases(to.investigate),],aes(x=CCR.g,y=CPR.g))+
+    geom_point(alpha=0.6)+
+    geom_smooth()
+# CPR.g v.s. CPR.p
+ggplot(to.investigate[complete.cases(to.investigate),],
+       aes(x=CPR.g,y=CPR.p,weight=user.reference.length,
+           group=trainig.lng.scl,color=trainig.lng.scl))+
+    geom_point(alpha=0.6)+
+    geom_smooth(method="lm",se=F)
+#     geom_segment(aes(x = 0, y = 0, xend = CCR.g, yend = CCR.p, color=TP.ratio.scl),
+#                  arrow = arrow(length = unit(0.5, "cm")),alpha=0.3)+
+facet_wrap(~note)
+# CPR.g v.s. CPR.p
+ggplot(to.investigate[(to.investigate$CPR.g|to.investigate$CPR.p),])+
+    geom_point(aes(x=CPR.g,y=CPR.p))+
+    #     geom_segment(aes(x = 0, y = 0, xend = CPR.g, yend = CPR.p, color=TP.ratio),
+    #                  arrow = arrow(length = unit(0.5, "cm")),alpha=0.5)+
+    facet_wrap(~note)
+# CCR v.s. CPR
+ggplot(to.investigate) + 
+    geom_point(aes(x=CCR.g,y=CCR.p,size=entropy),color="green",shape=21,alpha=0.5)+
+    geom_point(aes(x=CPR.g,y=CPR.p,size=entropy),color="red",shape=21,alpha=0.5)+
+    geom_segment(aes(x = CCR.g, y = CCR.p, xend = CPR.g, yend = CPR.p, color=TP.ratio),
+                 arrow = arrow(length = unit(0.5, "cm")))+
+    facet_wrap(~note)
+ggplot(to.investigate) + 
+    geom_point(aes(x=CCR.g,y=CPR.g),color="red")+
+    geom_point(aes(x=CCR.p,y=CPR.p),color="green")
+
+
+##########
+res = read.csv("result.txt")
+colnames(res)[1]="Global"
+res = melt(res, id.vars=c(3:5))
+png("result.overall.png",width=3200, height=1200,res=300)
+ggplot(res,aes(x=Statistics,y=value,group=variable,fill=variable))+geom_bar(stat="identity",position="dodge")+facet_wrap(~City)+theme_bw(base_size = 16)
+dev.off()
+
+mean.CPR = ddply(unique(prediction[prediction$user.training.length>0,c(1,2,9,10)]),
+                   .(user.training.length),
+                   function(tlength){
+                       if(tlength$user.training.length>30)
+                       data.frame(CPR.g = mean(tlength$CPR.g),
+                                  CPR.p = mean(tlength$CPR.p),
+                                  weight = nrow(tlength))
+                       else 
+                           data.frame(CPR.g = mean(tlength$CPR.g),
+                                      CPR.p = NA,
+                                      weight = nrow(tlength))
+                   })
+
+mean.CPR = melt(mean.CPR, id.vars=c(1,4))
+ggplot(mean.CPR,aes(x=user.training.length,y=value,color=variable,group=variable))+
+    geom_point()+scale_x_log10()+
+    geom_smooth()

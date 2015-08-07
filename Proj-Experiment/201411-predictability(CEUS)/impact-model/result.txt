@@ -1,0 +1,10 @@
+﻿Global, Personalized, Statistics, City, Sample Size
+0.2533, 0.9196, CCR, Chicago, 76545
+0.4149, 0.9534, CCR, Los Angeles, 40012
+0.3976, 0.9493, CCR, New York City, 215919
+0.2315, 0.4877, CPR, Chicago, 16887
+0.3694, 0.4981, CPR, Los Angeles, 8977
+0.2713, 0.4679, CPR, New York City, 54985
+0.4677, 0.4677, CPR(Shared), Chicago, 16621
+0.5135, 0.5135, CPR(Shared), Los Angeles, 14994
+0.4168, 0.4168, CPR(Shared), New York City, 51464
