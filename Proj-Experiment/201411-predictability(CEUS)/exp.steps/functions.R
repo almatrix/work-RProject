@@ -395,3 +395,8 @@ get.entropy <- function(p_vec,base=2){
         else -1 * p * log(p, base)
     }))
 }
+
+
+percent <- function(x, digits = 2, format = "f", ...) {
+    paste0(formatC(100 * x, format = format, digits = digits, ...), "%")
+}

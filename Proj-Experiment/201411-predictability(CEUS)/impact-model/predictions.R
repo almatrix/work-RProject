@@ -1,11 +1,4 @@
 data.preparation <- function(data.regress,ratio=0.8){
-    data.regress <- checkin.poly.list[[city.index]][,c("gid","user_id","venue_id",
-                                                       "cate_l1","hour","weekday",
-                                                       city.guide[city.index,"spatial.attr"],
-                                                       "last.cate_l1","last.venue_id",
-                                                       "timestamps","time.interval")]
-    colnames(data.regress)[7]="ZIP"
-    data.regress = data.regress[complete.cases(data.regress),]
     
     # some operations on spatial and temporal context
     data.regress$ZIP = factor(data.regress$ZIP)
@@ -34,7 +27,7 @@ data.preparation <- function(data.regress,ratio=0.8){
          "reference.data"=reference.data)
 }
 
-prediction.eva <- function(training.data, reference.data, Z1=30, Z2=3){
+prediction.eva <- function(training.data, reference.data, Z1=30, Z2=5){
     
     # evaluation of the global data itself (diversity of user behavior)
     gstat = as.data.frame(xtabs(~cate_l1,data=training.data))
@@ -64,7 +57,7 @@ prediction.eva <- function(training.data, reference.data, Z1=30, Z2=3){
         
         # personalized regression
         # if there is any training data for this user
-        if(user.training.length > 30){
+        if(user.training.length > 0){
             
             # evaluation of the data itself (diversity of user behavior)
             ustat = as.data.frame(xtabs(~cate_l1,data=user.training.data))

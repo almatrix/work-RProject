@@ -2,6 +2,7 @@ library(ggplot2)
 library(nnet)
 library(reshape2) # dcast
 library(gridExtra)
+library(scales) # percent, scientific formatting ...
 
 source("../exp.steps/functions.R")
 source("impact.model-2.R")
@@ -12,7 +13,9 @@ load("../data/checkin.poly.list.Rda")
 city.guide=data.frame("city"=c("Chicago","Los Angeles","New York City"),
                       "spatial.attr" = c("ZIP","Zip_Num","POSTAL"),
                       stringsAsFactors=FALSE)
-city.index = 2
+
+######
+city.index = 1
 data.regress <- checkin.poly.list[[city.index]][,c("gid","user_id","venue_id",
                                           "cate_l1","hour","weekday",
                                           city.guide[city.index,"spatial.attr"],
@@ -266,12 +269,191 @@ dev.off()
 # test 3: prediction
 ###########
 
-pred.result = prediction.eva(training.data, reference.data,Z2=30)
+pred.result = prediction.eva(training.data, reference.data)
 save(pred.result,file=paste("pred.result.",city.guide[city.index,"city"],".Rda",sep=""))
 
 
 #############
 # overall performance
+result.cities <- lapply(1:3,function(city.index){
+    load(paste("pred.result.",city.guide[city.index,"city"],".Rda",sep=""))
+    fit = do.call(rbind,lapply(pred.result,function(user){
+        user$inner
+    }))
+    prediction = do.call(rbind,lapply(pred.result,function(user){
+        user$outer
+    }))
+    list(fit,prediction)
+})
+save(result.cities, file="result.cities.Rda")
+
+#####
+# data description
+data.descp <- do.call(rbind,lapply(1:3,function(city.index){
+    data.regress <- checkin.poly.list[[city.index]][,c("gid","user_id","venue_id",
+                                                       "cate_l1","hour","weekday",
+                                                       city.guide[city.index,"spatial.attr"],
+                                                       "last.cate_l1","last.venue_id",
+                                                       "timestamps","time.interval")]
+    colnames(data.regress)[7]="ZIP"
+    data.regress = data.regress[complete.cases(data.regress),]
+    NNC = nrow(data.regress)
+    NNU = length(unique(data.regress$user_id))
+    data.regress = data.preparation(data.regress)
+    
+    training.data = data.regress$training.data
+    NTC = nrow(training.data)
+    NTU = length(unique(training.data$user_id))
+    
+    reference.data = data.regress$reference.data
+    NRC = nrow(reference.data)
+    NRU = length(unique(reference.data$user_id))
+    
+    test=result.cities[[city.index]][[1]]
+    pTC=nrow(test[which(test$note %in% c("1","2","3")),]) # used for personalization (A)
+    cTC=NTC-pTC 
+    pTU=length(unique(test[test$note %in% c("1","2","3"),"user_id"]))# used for personalization
+    cTU=NTU-pTU
+    
+    test=result.cities[[city.index]][[2]]
+    pRC=nrow(test[which(test$note %in% c("1","2","3")),]) # with personal history
+    cRC=nrow(test[which(test$note %in% c("4")),]) # without personal history
+    pRU=length(unique(test[test$note %in% c("1","2","3"),"user_id"]))# with personal history
+    cRU=length(unique(test[test$note %in% c("4"),"user_id"]))# without persoanal history
+
+    data.frame("city"=city.guide[city.index,"city"],
+               "counts"=c(pTC,cTC,pRC,cRC,pTU,cTU,pRU,cRU),
+               "sum"=rep(c(NNC,NNU),each=4),
+               "counts.agg"=c(pTC,NTC,pRC,NRC,pTU,NTU,pRU,NRU),
+               "data.type"=factor(rep(rep(c("Training","Referencing"),each=2),2),
+                                  levels=c("Training","Referencing")),
+               "Group"=rep(c("for personalization","for contextualization only",
+                             "with personal history","without personal history"),2),
+               "observation"=rep(c("Check-ins","Users"),each=4))
+    
+}))
+
+data.descp$prop = with(data.descp,counts/sum)
+data.descp$vjust = rep(c(2,1),12)
+
+png("data.description.png",width=3000,height=1800,res=300)
+ggplot(data.descp,aes(x=data.type,y=counts,fill=Group,group=Group))+
+    geom_bar(stat="identity")+
+    geom_text(aes(y=counts.agg,label=percent(prop),vjust=vjust))+
+    facet_wrap(~observation+city,scales="free_y")+
+    theme_bw(base_size = 16)%+replace%
+    theme(legend.position="top",legend.direction="horizontal")+
+    labs(x="Data type",y="Counts")+
+    scale_y_continuous(labels=comma)
+dev.off()
+
+# analysis the pattern of correct rate v.s. training length
+mean.CCR.CPR <- do.call(rbind,lapply(1:3, function(city.index){
+    fit = result.cities[[city.index]][[1]]
+    prediction = result.cities[[city.index]][[2]]
+    df.CCR = ddply(unique(fit[fit$note=="1",c(1,2,3,9,10)]),
+                   .(user.training.length),
+                   function(tlength){
+                       if(tlength$user.training.length>0)
+                           data.frame(CCR.g = with(tlength,weighted.mean(CCR.g,user.reference.length)),
+                                      CCR.p = with(tlength,weighted.mean(CCR.p,user.reference.length)),
+                                      ucounts = nrow(tlength))
+                       else 
+                           data.frame(CCR.g = with(tlength,weighted.mean(CCR.g,user.reference.length)),
+                                      CCR.p = NA,
+                                      ucounts = nrow(tlength))
+                   }) 
+    df.CPR = ddply(unique(prediction[prediction$note=="1",c(1,2,3,9,10)]),
+                   .(user.training.length),
+                   function(tlength){
+                       if(tlength$user.training.length>0)
+                           data.frame(CPR.g = with(tlength,weighted.mean(CPR.g,user.reference.length)),
+                                      CPR.p = with(tlength,weighted.mean(CPR.p,user.reference.length)),
+                                      ucounts = nrow(tlength))
+                       else 
+                           data.frame(CPR.g = with(tlength,weighted.mean(CPR.g,user.reference.length)),
+                                      CPR.p = NA,
+                                      ucounts = nrow(tlength))
+                   })
+    
+    df = join(df.CCR, df.CPR, by=c("user.training.length","ucounts"))
+    df$city = city.guide[city.index,"city"]
+    df
+}))   
+mean.CCR.CPR = melt(mean.CCR.CPR, id.vars=c("user.training.length",
+                                            "ucounts","city"))
+mean.CCR.CPR$statistics = as.factor(with(mean.CCR.CPR, ifelse(grepl("CCR",as.character(variable)), 
+                                                              "CCR","CPR")))
+mean.CCR.CPR$model = as.factor(with(mean.CCR.CPR, ifelse(grepl(".g", as.character(variable)), 
+                                                         "Global","Personalized")))
+
+png("overall.rate.comparision.png",width=3000,height=1500,res=300)
+ggplot(mean.CCR.CPR,aes(x=user.training.length,y=value,group=variable,
+                        color=model))+
+    geom_point(size=1,shape=21,fill=NA)+scale_x_log10()+
+    geom_smooth(method="loess",span=0.1,size=0.4,linetype=1,aes(weight=ucounts),se=F)+
+    geom_smooth(method="loess",span=.75,size=1,linetype=2,aes(weight=ucounts),se=F)+
+    facet_grid(statistics~city)+
+    labs(x="Length of personal training data",y="Correct rate")+
+    theme_bw(base_size = 16)
+dev.off()
+
+
+######
+# based on the above analysis, the personalized model performs bertter
+# than the global model w.r.t. prediction when the user have more than 
+# approx. 12 training records
+# We therefore have to change the results accordingly: using global 
+# prediction result when training data is smaller than 12
+result.cities.adj = lapply(1:3,function(city.index){
+    prediction = result.cities[[city.index]][[2]]
+    prediction$pred.p.adj = with(prediction,
+                             ifelse(user.training.length < 12 & note =="1", 
+                                    levels(pred.g)[pred.g], 
+                                    levels(pred.p)[pred.p]))
+    prediction$CPR.p.adj = with(prediction,
+                             ifelse(user.training.length < 12 & note =="1", 
+                                    CPR.g, CPR.p))
+    prediction$note = with(prediction,
+                             ifelse(user.training.length < 12 & note =="1", 
+                                    "5", as.character(note)))
+
+    list(result.cities[[city.index]][[1]], prediction)
+})
+
+pref.res.adj=do.call(rbind,lapply(1:3, function(city.index){
+    #fit = result.cities.adj[[city.index]][[1]]
+    #fit = fit[complete.cases(fit),]
+    prediction.adj = result.cities.adj[[city.index]][[2]]
+    df1 = data.frame("note"=c(#"CCR:Overall",
+                              "Overall"), 
+                     "Global"=c(#sum(fit$cate_l1==fit$fit.g)/nrow(fit),
+                                sum(prediction.adj$cate_l1==prediction.adj$pred.g)/nrow(prediction.adj)),
+                     "Personalized"=c(#sum(fit$cate_l1==fit$fit.p)/nrow(fit),
+                                      sum(prediction.adj$cate_l1==prediction.adj$pred.p.adj)/nrow(prediction.adj)))
+
+    prediction.n1 = prediction.adj[prediction.adj$note %in% c("1","5"),]
+    df2 = ddply(prediction.n1,.(note),function(group){
+        c("Global"=sum(group$cate_l1==group$pred.g)/nrow(group),
+          "Personalized"=sum(group$cate_l1==group$pred.p)/nrow(group))
+    })
+    df2$note=c("Length>=12","0<Length<12")
+    
+    df=rbind(df1,df2)
+    df$city = city.guide[city.index,"city"]
+    df
+}))
+pref.res.adj=melt(pref.res.adj,id.vars=c(1,4))
+colnames(pref.res.adj)[c(1,3,4)]=c("Group","model","CPR")
+png("CPR.in.group.png",width=3000,height=1200,res=300)
+ggplot(pref.res.adj,
+       aes(x=Group,y=CPR,group=model,fill=model))+
+    geom_bar(stat="identity",position="dodge")+
+    facet_wrap(~city)+
+    theme_bw(base_size = 16) %+replace%
+    theme(axis.text.x=element_text(angle=35,hjust=1,vjust=1))
+dev.off()
+
 fit = do.call(rbind,lapply(pred.result,function(user){
     user$inner
 }))
@@ -539,20 +721,4 @@ png("result.overall.png",width=3200, height=1200,res=300)
 ggplot(res,aes(x=Statistics,y=value,group=variable,fill=variable))+geom_bar(stat="identity",position="dodge")+facet_wrap(~City)+theme_bw(base_size = 16)
 dev.off()
 
-mean.CPR = ddply(unique(prediction[prediction$user.training.length>0,c(1,2,9,10)]),
-                   .(user.training.length),
-                   function(tlength){
-                       if(tlength$user.training.length>30)
-                       data.frame(CPR.g = mean(tlength$CPR.g),
-                                  CPR.p = mean(tlength$CPR.p),
-                                  weight = nrow(tlength))
-                       else 
-                           data.frame(CPR.g = mean(tlength$CPR.g),
-                                      CPR.p = NA,
-                                      weight = nrow(tlength))
-                   })
 
-mean.CPR = melt(mean.CPR, id.vars=c(1,4))
-ggplot(mean.CPR,aes(x=user.training.length,y=value,color=variable,group=variable))+
-    geom_point()+scale_x_log10()+
-    geom_smooth()
