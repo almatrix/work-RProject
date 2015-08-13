@@ -1,6 +1,6 @@
-library(ggplot2)
+#library(ggplot2)
 library(nnet)
-library(reshape2) # dcast
+#library(reshape2) # dcast
 
 source("../../exp.steps/functions.R")
 source("../impact.model-2.R")
@@ -34,9 +34,9 @@ data.regress$last.cate_l1 = with(data.regress,
                              as.factor(ifelse(is.na(last.cate_l1)|time.interval>12,
                                               "Unknown",as.character(last.cate_l1))))
 
-eva = pers.eva(dta, k=k, f=10^f, Z=Z)
+eva = pers.eva(data.regress, k=k, f=10^f, Z=Z)
 eva$k = k
 eva$f = 10^f
 eva$Z = Z
 
-save(eva,file=paste("result/pers-eva",k,f,z,".Rda",sep="-"))
+save(eva,file=paste("../result/pers-eva",k,f,Z,".Rda",sep="-"))

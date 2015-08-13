@@ -1,0 +1,30 @@
+#!/bin/bash -login
+##PBS -N Ming_R_1
+#PBS -M wuhu@ife.uni-hannover.de
+#PBS -j oe
+#PBS -l nodes=1:ppn=1
+#PBS -l mem=3000mb
+#PBS -l walltime=03:00:00
+#PBS -W x=PARTITION:tane:taurus
+
+# load the module
+module load R/3.1.1
+
+# change to work dir
+cd $PBS_O_WORKDIR
+
+export LD_LIBRARY_PATH=$INTEL_LIB_PATH:$LD_LIBRARY_PATH
+
+# show which computer the job run on
+echo "Job ran on:" $(hostname)
+
+echo "==================================="
+echo "          beginning at             "
+date
+echo
+
+R --slave < main.R 
+
+echo "          end computing            "
+date
+echo "==================================="
