@@ -334,14 +334,16 @@ data.descp <- do.call(rbind,lapply(1:3,function(city.index){
 }))
 
 data.descp$prop = with(data.descp,counts/sum)
-data.descp$vjust = rep(c(2,1),12)
+#data.descp$vjust = rep(c(1.5,-0.5,0.5,-1),6)
+data.descp$vjust = rep(c(5,2.2,2,0.5,3,4.5,3,1.5),3)
 
-png("data.description.png",width=3000,height=1800,res=300)
+png("data.description_serif.png",width=3000,height=1800,res=300)
 ggplot(data.descp,aes(x=data.type,y=counts,fill=Group,group=Group))+
     geom_bar(stat="identity")+
-    geom_text(aes(y=counts.agg,label=percent(prop),vjust=vjust))+
-    facet_wrap(~observation+city,scales="free_y")+
-    theme_bw(base_size = 16)%+replace%
+    geom_text(aes(y=counts.agg,label=percent(prop),vjust=vjust),
+              family="serif")+
+    facet_wrap(observation~city,scales="free_y")+
+    theme_bw(base_size = 16,base_family="serif")%+replace%
     theme(legend.position="top",legend.direction="horizontal")+
     labs(x="Data type",y="Counts")+
     scale_y_continuous(labels=comma)
@@ -385,9 +387,9 @@ mean.CCR.CPR = melt(mean.CCR.CPR, id.vars=c("user.training.length",
 mean.CCR.CPR$statistics = as.factor(with(mean.CCR.CPR, ifelse(grepl("CCR",as.character(variable)), 
                                                               "CCR","CPR")))
 mean.CCR.CPR$model = as.factor(with(mean.CCR.CPR, ifelse(grepl(".g", as.character(variable)), 
-                                                         "Global","Personalized")))
+                                                         "Global","Personal")))
 
-png("overall.rate.comparision.png",width=3000,height=1500,res=300)
+png("overall.rate.comparision_serif.png",width=3000,height=1500,res=300)
 ggplot(mean.CCR.CPR,aes(x=user.training.length,y=value,group=variable,
                         color=model))+
     geom_point(size=1,shape=21,fill=NA)+scale_x_log10()+
@@ -395,7 +397,7 @@ ggplot(mean.CCR.CPR,aes(x=user.training.length,y=value,group=variable,
     geom_smooth(method="loess",span=.75,size=1,linetype=2,aes(weight=ucounts),se=F)+
     facet_grid(statistics~city)+
     labs(x="Length of personal training data",y="Correct rate")+
-    theme_bw(base_size = 16)
+    theme_bw(base_size = 16,base_family="serif")
 dev.off()
 
 
@@ -536,7 +538,7 @@ gg.g.fit<-ggplot(perf.g.fit[[1]],aes(x=cate_l1,y=fit.g,fill=Freq))+
     scale_fill_continuous(low="white",high="#66CC99",
                           limits=ceiling(sum(perf.g.fit[[1]]$Freq)*c(0,0.32)))+
     labs(x="Real Interest\n(a)",y="Estimated Interest\n(Global)")+
-    theme_bw(base_size=16) %+replace%
+    theme_bw(base_size=16,base_family="serif") %+replace%
     theme(legend.position="none",axis.text.x=element_text(angle=35,hjust=1,vjust=1))
 
 gg.p.fit<-ggplot(perf.p.fit[[1]],aes(x=cate_l1,y=fit.p,fill=Freq))+
@@ -547,8 +549,8 @@ gg.p.fit<-ggplot(perf.p.fit[[1]],aes(x=cate_l1,y=fit.p,fill=Freq))+
 #               aes(label=formatC(Freq/sum(perf.g.fit[[1]]$Freq),digits=2)))+
     scale_fill_continuous(low="white",high="#66CC99",
                           limits=ceiling(sum(perf.g.fit[[1]]$Freq)*c(0,0.32)))+
-    labs(x="Real Interest\n(b)",y="Estimated Interest\n(Personalized)")+
-    theme_bw(base_size=16) %+replace%
+    labs(x="Real Interest\n(b)",y="Estimated Interest\n(Personal)")+
+    theme_bw(base_size=16,base_family="serif") %+replace%
     theme(legend.position="none",axis.text.x=element_text(angle=35,hjust=1,vjust=1))
 
 gg.ref.fit<-ggplot(perf.g.fit[[1]],aes(x=cate_l1,y=cate_l1,fill=Freq.real))+
@@ -559,7 +561,7 @@ gg.ref.fit<-ggplot(perf.g.fit[[1]],aes(x=cate_l1,y=cate_l1,fill=Freq.real))+
     scale_fill_continuous(low="white",high="#66CC99",
                           limits=ceiling(sum(perf.g.fit[[2]]$Freq.real)*c(0,0.32)))+
     labs(x="Real Interest\n(c)",y="Real Interest\n(for Reference)")+
-    theme_bw(base_size=16) %+replace%
+    theme_bw(base_size=16,base_family="serif") %+replace%
     theme(legend.position="none",panel.grid=element_blank(),
           axis.text.x=element_text(angle=35,hjust=1,vjust=1))
 precision.recall.fit<- 
@@ -569,7 +571,7 @@ precision.recall.fit<-
     geom_line(aes(x=cate_l1,y=value,color=model,group=model))+
     labs(x="Interest Type\n(d)",y="Precision / Recall")+
     facet_wrap(~variable)+
-    theme_bw(base_size=16) %+replace%
+    theme_bw(base_size=16,base_family="serif") %+replace%
     theme(axis.text.x=element_text(angle=35,hjust=1,vjust=1))
 
 ################
@@ -645,7 +647,7 @@ precision.recall.pred<-
           legend.direction="horizontal",legend.position="top")
 
 ##############
-png("g.vs.p_fit_la.png",width=3600,height=1900,res=300)
+png("g.vs.p_fit_chi_serif.png",width=3600,height=1900,res=300)
 grid.arrange(arrangeGrob(gg.g.fit,gg.p.fit,gg.ref.fit,ncol=3),precision.recall.fit,
              ncol=1,nrow=2,heights=c(1.5,1))
 dev.off()
@@ -717,8 +719,12 @@ ggplot(to.investigate) +
 res = read.csv("result.txt")
 colnames(res)[1]="Global"
 res = melt(res, id.vars=c(3:5))
-png("result.overall.png",width=3200, height=1200,res=300)
-ggplot(res,aes(x=Statistics,y=value,group=variable,fill=variable))+geom_bar(stat="identity",position="dodge")+facet_wrap(~City)+theme_bw(base_size = 16)
+png("result.overall_serif.png",width=3200, height=1200,res=300)
+ggplot(res,aes(x=Statistics,y=value,group=variable,
+               fill=variable))+
+    geom_bar(stat="identity",position="dodge")+
+    facet_wrap(~City)+
+    theme_bw(base_size = 16,base_family="serif")
 dev.off()
 
 

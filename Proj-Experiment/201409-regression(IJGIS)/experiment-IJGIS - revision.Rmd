@@ -246,7 +246,7 @@ gg.Fx=ggplot(do.call(rbind,personal.stat.cdf))+
 #                 formula=y~x,method=glm,family=gaussian(link='log'))+
     scale_x_log10(breaks=c(10,30,100,1000))+scale_y_continuous(label=percent)+
     labs(x="Personal check-in frequency [x]",y="CDF [Pr(X<=x)]")+
-    facet_wrap(~city)+theme_bw(base_size = 10)
+    facet_wrap(~city)#+theme_bw(base_size = 10)
 #     theme(strip.text=element_text(size=8),axis.text = element_text(size=8),
 #               axis.title = element_text(size=8),plot.title = element_text(size=10),
 #           plot.margin=unit(c(.05,.05,.05,.05),"npc"))
